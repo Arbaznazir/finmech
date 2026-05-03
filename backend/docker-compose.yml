@@ -1,7 +1,7 @@
 services:
   backend:
     build:
-      context: ./backend
+      context: .
       dockerfile: Dockerfile
     container_name: finmech-api
     ports:
@@ -11,7 +11,7 @@ services:
       - NODE_ENV=production
       - DATABASE_URL=file:/app/data/finmech.db
       - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
-      - FRONTEND_URL=http://localhost:3000
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
     volumes:
       - backend-data:/app/data
     restart: unless-stopped
@@ -20,22 +20,6 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
-
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      args:
-        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:5000/api}
-    container_name: finmech-web
-    ports:
-      - "3000:3000"
-    environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:5000/api
-    depends_on:
-      backend:
-        condition: service_healthy
-    restart: unless-stopped
 
 volumes:
   backend-data:
