@@ -1,0 +1,47 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  password      String
+  name          String
+  company       String?
+  plan          String   @default("free") // free, standalone, standard, investor
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  calculations  Calculation[]
+  savedModels   SavedModel[]
+}
+
+model Calculation {
+  id          String   @id @default(uuid())
+  userId      String
+  modelSlug   String   // e.g. "break-even", "income-statement"
+  modelName   String
+  tier        String   // free, standalone, standard, investor
+  inputs      String   // JSON string of inputs
+  outputs     String   // JSON string of outputs
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model SavedModel {
+  id          String   @id @default(uuid())
+  userId      String
+  modelSlug   String
+  modelName   String
+  data        String   // JSON string of full model state
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}

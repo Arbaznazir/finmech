@@ -1,0 +1,308 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import {
+  ArrowLeft, Gem, Save, RotateCcw,
+  ChevronDown, ChevronUp,
+} from "lucide-react";
+import { useAuth } from "@/lib/store";
+import { formatCurrency } from "@/lib/utils";
+import api from "@/lib/api";
+import {
+  INPUT_FIELDS,
+  calculateDCF,
+  createDefaultInputs,
+  type DCFInputs,
+  type DCFResults,
+} from "@/lib/dcf-model";
+
+export default function DCFValuationPage() {
+  const { user, hydrate } = useAuth();
+  const [inputs, setInputs] = useState<DCFInputs>(createDefaultInputs());
+  const [results, setResults] = useState<DCFResults | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({});
+
+  useEffect(() => { hydrate(); }, [hydrate]);
+
+  const handleChange = (key: keyof DCFInputs, value: string) => {
+    setInputs((prev) => ({ ...prev, [key]: parseFloat(value) || 0 }));
+    setSaved(false);
+  };
+
+  const handleCalculate = () => {
+    setResults(calculateDCF(inputs));
+  };
+
+  const handleReset = () => {
+    setInputs(createDefaultInputs());
+    setResults(null);
+    setSaved(false);
+  };
+
+  const handleSave = async () => {
+    if (!user || !results) return;
+    setSaving(true);
+    try {
+      await api.post("/calculations", {
+        modelSlug: "dcf-valuation",
+        inputs,
+        outputs: {
+          wacc: results.wacc,
+          enterpriseValue: results.enterpriseValue,
+          equityValue: results.equityValue,
+          terminalValue: results.terminalValue,
+        },
+      });
+      setSaved(true);
+    } catch (err) {
+      console.error("Failed to save:", err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const toggleCategory = (cat: string) => {
+    setCollapsedCategories((prev) => ({ ...prev, [cat]: !prev[cat] }));
+  };
+
+  const categories = INPUT_FIELDS.reduce<Record<string, typeof INPUT_FIELDS>>((acc, field) => {
+    if (!acc[field.category]) acc[field.category] = [];
+    acc[field.category].push(field);
+    return acc;
+  }, {});
+
+  const fmtPct = (v: number) => (v * 100).toFixed(2) + "%";
+
+  return (
+    <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-8">
+      {/* Header */}
+      <Link href="/models" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
+        <ArrowLeft className="h-4 w-4" /> Back to Models
+      </Link>
+
+      <div className="flex items-start justify-between gap-4 mb-8">
+        <div className="flex items-start gap-4">
+          <div className="h-14 w-14 rounded-2xl flex items-center justify-center shrink-0 bg-purple-400/10">
+            <Gem className="h-7 w-7 text-purple-400" />
+          </div>
+          <div>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-bold">DCF Valuation Model</h1>
+              <span className="rounded px-2 py-0.5 text-xs font-medium uppercase bg-blue-400/10 text-blue-400">
+                Standalone
+              </span>
+            </div>
+            <p className="text-muted-foreground mt-1">
+              WACC, 5-year FCFF projection, terminal value, enterprise &amp; equity valuation.
+            </p>
+          </div>
+        </div>
+        {results && user && (
+          <button
+            onClick={handleSave}
+            disabled={saving || saved}
+            className={`inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+              saved ? "bg-success/10 text-success" : "bg-primary/10 text-primary hover:bg-primary/20"
+            }`}
+          >
+            <Save className="h-4 w-4" />
+            {saved ? "Saved!" : saving ? "Saving..." : "Save Results"}
+          </button>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-[400px_1fr] gap-6">
+        {/* Input Panel */}
+        <div className="rounded-2xl border border-border bg-card p-6 h-fit" data-inputs>
+          <h2 className="font-semibold mb-5">Assumptions</h2>
+          {Object.entries(categories).map(([category, fields]) => (
+            <div key={category} className="mb-4">
+              <button
+                onClick={() => toggleCategory(category)}
+                className="flex items-center justify-between w-full rounded-lg bg-background/50 px-3 py-2 mb-2"
+              >
+                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{category}</span>
+                {collapsedCategories[category] ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" />}
+              </button>
+              {!collapsedCategories[category] && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 px-1">
+                  {fields.map((field) => (
+                    <div key={field.key} className={field.type === "currency" ? "sm:col-span-2" : ""}>
+                      <label className="block text-xs text-muted-foreground mb-1">{field.label}</label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                          {field.type === "currency" ? "$" : field.type === "percent" ? "%" : "#"}
+                        </span>
+                        <input
+                          type="number"
+                          step={field.type === "decimal" ? "0.01" : field.type === "percent" ? "0.1" : "1"}
+                          data-field={field.key}
+                          value={inputs[field.key] || ""}
+                          onChange={(e) => handleChange(field.key, e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              const allInputs = Array.from(
+                                (e.currentTarget.closest("[data-inputs]") || document)
+                                  .querySelectorAll<HTMLInputElement>("input[data-field]")
+                              );
+                              const idx = allInputs.indexOf(e.currentTarget);
+                              if (idx >= 0 && idx < allInputs.length - 1) {
+                                allInputs[idx + 1].focus();
+                              } else {
+                                handleCalculate();
+                              }
+                            }
+                          }}
+                          placeholder="0"
+                          className="w-full rounded-lg border border-border bg-input pl-7 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+          <div className="flex gap-3 mt-4 pt-4 border-t border-border">
+            <button
+              onClick={handleCalculate}
+              className="flex-1 rounded-lg bg-primary py-2.5 text-sm font-semibold text-primary-foreground hover:bg-accent transition-colors"
+            >
+              Calculate Valuation
+            </button>
+            <button onClick={handleReset} className="rounded-lg border border-border px-4 py-2.5 text-sm hover:bg-muted transition-colors">
+              <RotateCcw className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Results */}
+        {results ? (
+          <div className="space-y-6">
+            {/* WACC Summary */}
+            <div className="rounded-2xl border border-border bg-card p-6">
+              <h2 className="font-semibold mb-4">WACC Calculation</h2>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div className="rounded-xl bg-background/50 border border-border/50 p-3 text-center">
+                  <p className="text-xs text-muted-foreground mb-1">Cost of Equity</p>
+                  <p className="text-lg font-bold">{fmtPct(results.costOfEquity)}</p>
+                </div>
+                <div className="rounded-xl bg-background/50 border border-border/50 p-3 text-center">
+                  <p className="text-xs text-muted-foreground mb-1">After-Tax Cost of Debt</p>
+                  <p className="text-lg font-bold">{fmtPct(results.afterTaxCostOfDebt)}</p>
+                </div>
+                <div className="rounded-xl bg-background/50 border border-border/50 p-3 text-center">
+                  <p className="text-xs text-muted-foreground mb-1">Equity Weight</p>
+                  <p className="text-lg font-bold">{fmtPct(results.equityWeight)}</p>
+                </div>
+                <div className="rounded-xl bg-primary/10 border border-primary/30 p-3 text-center">
+                  <p className="text-xs text-primary mb-1">WACC</p>
+                  <p className="text-xl font-bold text-primary">{fmtPct(results.wacc)}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* 5-Year Projection Table */}
+            <div className="rounded-2xl border border-border bg-card overflow-hidden">
+              <div className="px-4 py-3 border-b border-border bg-background/50">
+                <h2 className="font-semibold text-sm">5-Year FCFF Projection</h2>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border bg-background/50">
+                      <th className="text-left px-4 py-3 font-semibold text-muted-foreground sticky left-0 bg-background/50 min-w-[140px]">Line Item</th>
+                      {results.projection.map((row) => (
+                        <th key={row.year} className="text-right px-4 py-3 font-semibold text-muted-foreground min-w-[120px]">{row.year}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {([
+                      { key: "revenue", label: "Revenue", bold: true },
+                      { key: "ebitda", label: "EBITDA", bold: false },
+                      { key: "depreciation", label: "Depreciation", bold: false },
+                      { key: "ebit", label: "EBIT", bold: false },
+                      { key: "nopat", label: "NOPAT", bold: true },
+                      { key: "capex", label: "CapEx", bold: false },
+                      { key: "deltaWC", label: "Δ Working Capital", bold: false },
+                      { key: "fcff", label: "FCFF", bold: true },
+                      { key: "pvOfFCFF", label: "PV of FCFF", bold: true },
+                    ] as const).map((field) => (
+                      <tr key={field.key} className={`border-b border-border/30 ${field.bold ? "bg-background/30" : ""}`}>
+                        <td className={`px-4 py-2.5 sticky left-0 bg-card ${field.bold ? "font-semibold bg-background/30" : "text-muted-foreground"}`}>
+                          {field.label}
+                        </td>
+                        {results.projection.map((row) => {
+                          const val = row[field.key];
+                          return (
+                            <td key={row.year} className={`text-right px-4 py-2.5 ${field.bold ? "font-semibold" : ""} ${val < 0 ? "text-danger" : ""}`}>
+                              {formatCurrency(val)}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Valuation Summary */}
+            <div className="rounded-2xl border border-border bg-card p-6">
+              <h2 className="font-semibold mb-5">Valuation Summary</h2>
+              <div className="space-y-3">
+                {([
+                  { label: "Sum of PV of FCFF", value: results.totalPVOfFCFF, bold: false },
+                  { label: "Terminal Value", value: results.terminalValue, bold: false },
+                  { label: "PV of Terminal Value", value: results.pvOfTerminalValue, bold: false },
+                  { label: "Enterprise Value", value: results.enterpriseValue, bold: true },
+                  { label: "Less: Market Value of Debt", value: -inputs.marketValueOfDebt, bold: false },
+                  { label: "Equity Value", value: results.equityValue, bold: true },
+                ]).map((row) => (
+                  <div key={row.label} className={`flex items-center justify-between rounded-lg px-4 py-3 ${row.bold ? "bg-primary/5 border border-primary/20" : "bg-background/50 border border-border/50"}`}>
+                    <span className={`text-sm ${row.bold ? "font-semibold" : "text-muted-foreground"}`}>{row.label}</span>
+                    <span className={`text-sm font-semibold ${row.value < 0 ? "text-danger" : row.bold ? "text-primary" : ""}`}>
+                      {formatCurrency(row.value)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Big Number */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="rounded-2xl border-2 border-primary/30 bg-primary/5 p-6 text-center">
+                <p className="text-sm text-muted-foreground mb-2">Enterprise Value</p>
+                <p className="text-3xl font-bold text-primary">{formatCurrency(results.enterpriseValue)}</p>
+              </div>
+              <div className={`rounded-2xl border-2 p-6 text-center ${results.equityValue >= 0 ? "border-success/30 bg-success/5" : "border-danger/30 bg-danger/5"}`}>
+                <p className="text-sm text-muted-foreground mb-2">Equity Value</p>
+                <p className={`text-3xl font-bold ${results.equityValue >= 0 ? "text-success" : "text-danger"}`}>
+                  {formatCurrency(results.equityValue)}
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center justify-center rounded-2xl border border-border bg-card min-h-[400px]">
+            <p className="text-muted-foreground text-sm">Enter assumptions and click Calculate Valuation</p>
+          </div>
+        )}
+      </div>
+
+      {!user && results && (
+        <div className="mt-8 rounded-2xl bg-primary/5 border border-primary/20 p-6 text-center">
+          <p className="text-muted-foreground mb-3">Sign up to save your DCF Valuation</p>
+          <Link href="/signup" className="inline-block rounded-lg bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-accent transition-colors">
+            Create Free Account
+          </Link>
+        </div>
+      )}
+    </div>
+  );
+}

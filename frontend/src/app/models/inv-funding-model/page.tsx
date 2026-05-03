@@ -1,0 +1,285 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import { ArrowLeft, Rocket, Save, RotateCcw } from "lucide-react";
+import { useAuth } from "@/lib/store";
+import { formatCurrency } from "@/lib/utils";
+import api from "@/lib/api";
+import { loadModelResults, saveModelResults, clearModelResults } from "@/lib/model-link";
+import {
+  MONTHS_ORDER,
+  INPUT_FIELDS,
+  OUTPUT_FIELDS,
+  calculateFunding,
+  createEmptyInputs,
+  type MonthName,
+  type FundingResults,
+} from "@/lib/funding-model";
+
+type TabView = "input" | "monthly" | "summary";
+
+export default function InvFundingModelPage() {
+  const { user, hydrate } = useAuth();
+  const [activeMonth, setActiveMonth] = useState<MonthName>("Apr");
+  const [monthsData, setMonthsData] = useState<Record<string, Record<string, number>>>(() => {
+    const d: Record<string, Record<string, number>> = {};
+    MONTHS_ORDER.forEach((m) => { d[m] = createEmptyInputs(); });
+    return d;
+  });
+  const [openingCash, setOpeningCash] = useState(0);
+  const [contingencyPct, setContingencyPct] = useState(15);
+  const [results, setResults] = useState<FundingResults | null>(null);
+  const [activeTab, setActiveTab] = useState<TabView>("input");
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [hubLinked, setHubLinked] = useState(false);
+
+  useEffect(() => {
+    hydrate();
+    const hub = loadModelResults<Record<string, number>>("inv-common-utility");
+    if (hub && hub.monthlyRevenue > 0) {
+      setHubLinked(true);
+      setMonthsData((prev) => {
+        const next = { ...prev };
+        MONTHS_ORDER.forEach((m) => {
+          next[m] = { ...next[m], Revenue: hub.monthlyRevenue };
+          if (hub.totalFixedCosts > 0) next[m]["Fixed Cost"] = hub.totalFixedCosts;
+          if (hub.totalVariableCosts > 0) next[m]["Variable Cost"] = hub.totalVariableCosts;
+        });
+        return next;
+      });
+    }
+  }, [hydrate]);
+
+  const handleInputChange = (key: string, value: string) => {
+    setMonthsData((prev) => ({
+      ...prev,
+      [activeMonth]: { ...prev[activeMonth], [key]: parseFloat(value) || 0 },
+    }));
+    setSaved(false);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const all = Array.from(
+        (e.currentTarget.closest("[data-inputs]") || document).querySelectorAll<HTMLInputElement>("input[data-field]")
+      );
+      const idx = all.indexOf(e.currentTarget);
+      if (idx >= 0 && idx < all.length - 1) all[idx + 1].focus();
+    }
+  };
+
+  const handleCalculate = () => {
+    const r = calculateFunding(monthsData, openingCash, contingencyPct);
+    setResults(r);
+    saveModelResults("inv-funding-model", {
+      maxCashDeficit: r.summary.maxCashDeficit,
+      fundingRequired: r.summary.fundingRequired,
+      totalFunding: r.summary.totalFunding,
+    });
+  };
+
+  const handleReset = () => {
+    const d: Record<string, Record<string, number>> = {};
+    MONTHS_ORDER.forEach((m) => { d[m] = createEmptyInputs(); });
+    setMonthsData(d);
+    setOpeningCash(0);
+    setContingencyPct(15);
+    setResults(null);
+    setSaved(false);
+    setHubLinked(false);
+    clearModelResults("inv-funding-model");
+  };
+
+  const handleSave = async () => {
+    if (!user || !results) return;
+    setSaving(true);
+    try {
+      await api.post("/calculations", { modelSlug: "inv-funding-model", inputs: { openingCash, contingencyPct, monthsData }, outputs: results.summary });
+      setSaved(true);
+    } catch (err) { console.error("Failed to save:", err); }
+    finally { setSaving(false); }
+  };
+
+  const categories = [...new Set(INPUT_FIELDS.map((f) => f.category))];
+
+  return (
+    <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-8">
+      <Link href="/models" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
+        <ArrowLeft className="h-4 w-4" /> Back to Models
+      </Link>
+
+      <div className="flex items-start justify-between gap-4 mb-6">
+        <div className="flex items-start gap-4">
+          <div className="h-14 w-14 rounded-2xl flex items-center justify-center shrink-0 bg-amber-400/10">
+            <Rocket className="h-7 w-7 text-amber-400" />
+          </div>
+          <div>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-bold">Funding Model</h1>
+              <span className="rounded px-2 py-0.5 text-xs font-medium uppercase bg-amber-400/10 text-amber-400">Investor Grade</span>
+            </div>
+            <p className="text-muted-foreground mt-1">
+              Month-by-month cash flow, working capital, and funding requirements.
+              <span className="text-amber-400 ml-2 text-xs font-medium">&larr; Common Utility</span>
+            </p>
+          </div>
+        </div>
+        {results && user && (
+          <button onClick={handleSave} disabled={saving || saved}
+            className={`inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${saved ? "bg-success/10 text-success" : "bg-amber-400/10 text-amber-400 hover:bg-amber-400/20"}`}>
+            <Save className="h-4 w-4" />
+            {saved ? "Saved!" : saving ? "Saving..." : "Save"}
+          </button>
+        )}
+      </div>
+
+      {hubLinked && (
+        <div className="rounded-xl bg-success/5 border border-success/20 p-3 mb-6">
+          <p className="text-xs text-success font-medium">Auto-filled from Common Utility — Revenue &amp; Costs loaded for all months.</p>
+        </div>
+      )}
+
+      {/* Tabs */}
+      <div className="flex gap-1 mb-6 rounded-xl bg-card border border-border p-1 overflow-x-auto">
+        {(["input", "monthly", "summary"] as TabView[]).map((tab) => (
+          <button key={tab} onClick={() => setActiveTab(tab)}
+            className={`rounded-lg px-4 py-2 text-sm font-medium capitalize transition-colors whitespace-nowrap ${activeTab === tab ? "bg-amber-400 text-black" : "hover:bg-muted text-muted-foreground"}`}>
+            {tab === "input" ? "Month Input" : tab === "monthly" ? "Monthly View" : "Summary"}
+          </button>
+        ))}
+      </div>
+
+      {/* INPUT TAB */}
+      {activeTab === "input" && (
+        <div className="space-y-4">
+          {/* Opening Cash & Contingency */}
+          <div className="rounded-2xl border border-border bg-card p-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-xs text-muted-foreground mb-1">Opening Cash</label>
+              <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">$</span>
+              <input type="number" value={openingCash || ""} onChange={(e) => { setOpeningCash(parseFloat(e.target.value) || 0); setSaved(false); }}
+                placeholder="100000" className="w-full rounded-lg border border-border bg-input pl-7 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/50" /></div>
+            </div>
+            <div>
+              <label className="block text-xs text-muted-foreground mb-1">Contingency %</label>
+              <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
+              <input type="number" value={contingencyPct || ""} onChange={(e) => { setContingencyPct(parseFloat(e.target.value) || 15); setSaved(false); }}
+                placeholder="15" className="w-full rounded-lg border border-border bg-input pl-7 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/50" /></div>
+            </div>
+          </div>
+
+          {/* Month tabs */}
+          <div className="flex gap-1 overflow-x-auto pb-2">
+            {MONTHS_ORDER.map((m) => (
+              <button key={m} onClick={() => setActiveMonth(m)}
+                className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${activeMonth === m ? "bg-amber-400 text-black" : "bg-card border border-border hover:bg-muted"}`}>
+                {m}
+              </button>
+            ))}
+          </div>
+
+          <div className="rounded-2xl border border-border bg-card p-5" data-inputs>
+            <h3 className="font-semibold text-sm mb-3">{activeMonth} Inputs</h3>
+            <div className="space-y-4">
+              {categories.map((cat) => (
+                <div key={cat}>
+                  <p className="text-xs font-medium text-muted-foreground mb-2">{cat}</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {INPUT_FIELDS.filter((f) => f.category === cat).map((field) => (
+                      <div key={field.key}>
+                        <label className="block text-xs text-muted-foreground mb-1">{field.label}</label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">{field.prefix}</span>
+                          <input type="number" data-field={field.key}
+                            value={monthsData[activeMonth]?.[field.key] || ""}
+                            onChange={(e) => handleInputChange(field.key, e.target.value)}
+                            onKeyDown={handleKeyDown}
+                            placeholder="0"
+                            className="w-full rounded-lg border border-border bg-input pl-7 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/50"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex gap-3">
+            <button onClick={handleCalculate} className="flex-1 rounded-lg bg-amber-400 text-black py-2.5 text-sm font-semibold hover:bg-amber-300 transition-colors">
+              Calculate Funding
+            </button>
+            <button onClick={handleReset} className="rounded-lg border border-border px-4 py-2.5 text-sm hover:bg-muted transition-colors">
+              <RotateCcw className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* MONTHLY TAB */}
+      {activeTab === "monthly" && results && (
+        <div className="rounded-2xl border border-border bg-card overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-border bg-background/50">
+                  <th className="text-left px-3 py-2.5 text-muted-foreground font-semibold sticky left-0 bg-background/50">Line Item</th>
+                  {results.monthsAdded.map((m) => (
+                    <th key={m} className="text-right px-3 py-2.5 text-muted-foreground font-semibold whitespace-nowrap">{m}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {OUTPUT_FIELDS.map((field) => (
+                  <tr key={field.key} className={`border-b border-border/30 ${field.bold ? "font-semibold" : ""}`}>
+                    <td className="px-3 py-2 sticky left-0 bg-card">{field.label}</td>
+                    {results.monthsAdded.map((m) => (
+                      <td key={m} className={`text-right px-3 py-2 whitespace-nowrap ${
+                        (Number(results.monthlyData[m]?.[field.key]) || 0) < 0 ? "text-danger" : ""
+                      }`}>
+                        {formatCurrency(Number(results.monthlyData[m]?.[field.key]) || 0)}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+      {activeTab === "monthly" && !results && (
+        <div className="text-center py-16 text-muted-foreground text-sm">Enter inputs and click Calculate Funding first.</div>
+      )}
+
+      {/* SUMMARY TAB */}
+      {activeTab === "summary" && results && (
+        <div className="space-y-6">
+          <div className="rounded-2xl border-2 border-amber-400/30 bg-amber-400/5 p-6 text-center">
+            <p className="text-sm text-muted-foreground mb-2">Total Funding Required (incl. {results.summary.contingencyPct}% contingency)</p>
+            <p className="text-3xl font-bold text-amber-400">{formatCurrency(results.summary.totalFunding)}</p>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            {([
+              { label: "Opening Cash", value: formatCurrency(results.summary.openingCash) },
+              { label: "Max Cash Deficit", value: formatCurrency(results.summary.maxCashDeficit) },
+              { label: "Funding Required", value: formatCurrency(results.summary.fundingRequired) },
+              { label: "Contingency", value: formatCurrency(results.summary.contingency) },
+            ]).map((card) => (
+              <div key={card.label} className="rounded-xl border border-border bg-card p-4">
+                <p className="text-[10px] text-muted-foreground uppercase font-semibold mb-1">{card.label}</p>
+                <p className="text-lg font-bold">{card.value}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {activeTab === "summary" && !results && (
+        <div className="text-center py-16 text-muted-foreground text-sm">Enter inputs and click Calculate Funding first.</div>
+      )}
+    </div>
+  );
+}

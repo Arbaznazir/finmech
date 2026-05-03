@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+
+# Environment
+.env
+.env.*
+
+# Build outputs
+frontend/.next/
+frontend/out/
+backend/generated/
+
+# Database
+backend/dev.db
+backend/dev.db-journal
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Debug
+npm-debug.log*
+yarn-debug.log*
+*.tsbuildinfo
+
+# Misc
+FINMECH-UPGRADED/
