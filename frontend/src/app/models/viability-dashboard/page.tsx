@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import {
   ArrowLeft, Activity, Save, RotateCcw,
@@ -9,6 +9,7 @@ import {
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
 import api from "@/lib/api";
+import { useSavedModel } from "@/lib/use-saved-model";
 import {
   calculateViability,
   type ViabilityInputs,
@@ -49,14 +50,19 @@ export default function ViabilityDashboardPage() {
     unitsSoldPerMonth: 0,
   });
   const [results, setResults] = useState<ViabilityResults | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const { save: persistState, reset: clearPersisted, saving, saved, markDirty } = useSavedModel({
+    modelSlug: "viability-dashboard",
+    onLoad: (data: Record<string, unknown>) => {
+      if (data.inputs) setInputs(data.inputs as ViabilityInputs);
+    },
+    getState: useCallback(() => ({ inputs }), [inputs]),
+  });
 
   useEffect(() => { hydrate(); }, [hydrate]);
 
   const handleChange = (key: keyof ViabilityInputs, value: string) => {
     setInputs((prev) => ({ ...prev, [key]: parseFloat(value) || 0 }));
-    setSaved(false);
+    markDirty();
   };
 
   const handleCalculate = () => {
@@ -67,12 +73,11 @@ export default function ViabilityDashboardPage() {
   const handleReset = () => {
     setInputs({ averagePricePerUnit: 0, variableCostPerUnit: 0, monthlyFixedCosts: 0, unitsSoldPerMonth: 0 });
     setResults(null);
-    setSaved(false);
+    clearPersisted();
   };
 
   const handleSave = async () => {
     if (!user || !results) return;
-    setSaving(true);
     try {
       await api.post("/calculations", {
         modelSlug: "viability-dashboard",
@@ -86,11 +91,9 @@ export default function ViabilityDashboardPage() {
           netProfitStatus: results.netProfitStatus,
         },
       });
-      setSaved(true);
+      await persistState();
     } catch (err) {
       console.error("Failed to save:", err);
-    } finally {
-      setSaving(false);
     }
   };
 

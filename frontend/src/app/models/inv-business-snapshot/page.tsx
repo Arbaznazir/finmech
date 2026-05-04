@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { ArrowLeft, LayoutDashboard, Save, RotateCcw, RefreshCw } from "lucide-react";
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
 import api from "@/lib/api";
 import { loadModelResults, saveModelResults, clearModelResults } from "@/lib/model-link";
+import { useSavedModel } from "@/lib/use-saved-model";
 
 interface SnapshotInputs {
   monthlyRevenue: number;
@@ -74,9 +75,15 @@ export default function InvBusinessSnapshotPage() {
   const { user, hydrate } = useAuth();
   const [inputs, setInputs] = useState<SnapshotInputs>(emptyInputs());
   const [results, setResults] = useState<SnapshotResults | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
   const [linkedSources, setLinkedSources] = useState<string[]>([]);
+
+  const { save: persistState, reset: clearPersisted, saving, saved, markDirty } = useSavedModel({
+    modelSlug: "inv-business-snapshot",
+    onLoad: (data: Record<string, unknown>) => {
+      if (data.inputs) setInputs(data.inputs as SnapshotInputs);
+    },
+    getState: useCallback(() => ({ inputs }), [inputs]),
+  });
 
   const loadFromLinkedModels = () => {
     const sources: string[] = [];
@@ -120,7 +127,7 @@ export default function InvBusinessSnapshotPage() {
 
   const handleChange = (key: keyof SnapshotInputs, value: string) => {
     setInputs((prev) => ({ ...prev, [key]: parseFloat(value) || 0 }));
-    setSaved(false);
+    markDirty();
   };
 
   const handleCalculate = () => {
@@ -130,18 +137,17 @@ export default function InvBusinessSnapshotPage() {
   };
 
   const handleReset = () => {
-    setInputs(emptyInputs()); setResults(null); setSaved(false); setLinkedSources([]);
+    setInputs(emptyInputs()); setResults(null); setLinkedSources([]);
     clearModelResults("inv-business-snapshot");
+    clearPersisted();
   };
 
   const handleSave = async () => {
     if (!user || !results) return;
-    setSaving(true);
     try {
       await api.post("/calculations", { modelSlug: "inv-business-snapshot", inputs, outputs: results });
-      setSaved(true);
+      await persistState();
     } catch (err) { console.error("Failed to save:", err); }
-    finally { setSaving(false); }
   };
 
   const fields: { key: keyof SnapshotInputs; label: string; prefix: string }[] = [

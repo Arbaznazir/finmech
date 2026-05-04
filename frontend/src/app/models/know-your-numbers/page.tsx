@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { ArrowLeft, BarChart3, Save, RotateCcw, CheckCircle, AlertTriangle, XCircle } from "lucide-react";
 import { useAuth } from "@/lib/store";
 import api from "@/lib/api";
+import { useSavedModel } from "@/lib/use-saved-model";
 import {
   QUESTIONS,
   SECTIONS,
@@ -23,28 +24,31 @@ export default function KnowYourNumbersPage() {
   const { user, hydrate } = useAuth();
   const [answers, setAnswers] = useState<Record<string, ChecklistResponse>>({});
   const [results, setResults] = useState<ChecklistResults | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const { save: persistState, reset: clearPersisted, saving, saved, markDirty } = useSavedModel({
+    modelSlug: "know-your-numbers",
+    onLoad: (data: Record<string, unknown>) => {
+      if (data.answers) setAnswers(data.answers as Record<string, ChecklistResponse>);
+    },
+    getState: useCallback(() => ({ answers }), [answers]),
+  });
 
   useEffect(() => { hydrate(); }, [hydrate]);
 
   const handleAnswer = (qId: string, response: ChecklistResponse) => {
     setAnswers((prev) => ({ ...prev, [qId]: response }));
-    setSaved(false);
+    markDirty();
   };
 
   const handleCalculate = () => setResults(calculateChecklist(answers));
 
-  const handleReset = () => { setAnswers({}); setResults(null); setSaved(false); };
+  const handleReset = () => { setAnswers({}); setResults(null); clearPersisted(); };
 
   const handleSave = async () => {
     if (!user || !results) return;
-    setSaving(true);
     try {
       await api.post("/calculations", { modelSlug: "know-your-numbers", inputs: answers, outputs: results });
-      setSaved(true);
+      await persistState();
     } catch (err) { console.error("Failed to save:", err); }
-    finally { setSaving(false); }
   };
 
   const answeredCount = Object.keys(answers).length;

@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { ArrowLeft, Calculator, Save, RotateCcw, ArrowRight, ArrowLeftRight } from "lucide-react";
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
 import api from "@/lib/api";
 import { loadModelResults, saveModelResults, clearModelResults } from "@/lib/model-link";
+import { useSavedModel } from "@/lib/use-saved-model";
 import { type RevenueResults } from "@/lib/revenue-free-model";
 import {
   FIXED_COST_FIELDS,
@@ -21,9 +22,15 @@ export default function CostingModelPage() {
   const { user, hydrate } = useAuth();
   const [inputs, setInputs] = useState<CostingInputs>(createEmptyCostingInputs());
   const [results, setResults] = useState<CostingResults | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
   const [revenueLinked, setRevenueLinked] = useState(false);
+
+  const { save: persistState, reset: clearPersisted, saving, saved, markDirty } = useSavedModel({
+    modelSlug: "costing-model",
+    onLoad: (data: Record<string, unknown>) => {
+      if (data.inputs) setInputs(data.inputs as CostingInputs);
+    },
+    getState: useCallback(() => ({ inputs }), [inputs]),
+  });
 
   useEffect(() => {
     hydrate();
@@ -36,7 +43,7 @@ export default function CostingModelPage() {
 
   const handleChange = (key: keyof CostingInputs, value: string) => {
     setInputs((prev) => ({ ...prev, [key]: parseFloat(value) || 0 }));
-    setSaved(false);
+    markDirty();
   };
 
   const handleCalculate = () => {
@@ -45,16 +52,14 @@ export default function CostingModelPage() {
     saveModelResults("costing-model", r);
   };
 
-  const handleReset = () => { setInputs(createEmptyCostingInputs()); setResults(null); setSaved(false); setRevenueLinked(false); clearModelResults("costing-model"); };
+  const handleReset = () => { setInputs(createEmptyCostingInputs()); setResults(null); setRevenueLinked(false); clearModelResults("costing-model"); clearPersisted(); };
 
   const handleSave = async () => {
     if (!user || !results) return;
-    setSaving(true);
     try {
       await api.post("/calculations", { modelSlug: "costing-model", inputs, outputs: results });
-      setSaved(true);
+      await persistState();
     } catch (err) { console.error("Failed to save:", err); }
-    finally { setSaving(false); }
   };
 
   return (

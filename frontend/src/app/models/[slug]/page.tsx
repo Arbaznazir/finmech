@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+import { useState, useEffect, use, useCallback } from "react";
 import Link from "next/link";
 import {
   TrendingUp, Calculator, DollarSign, BarChart3, FileText, Scale,
@@ -12,6 +12,7 @@ import { calculateModel } from "@/lib/calculations";
 import { useAuth } from "@/lib/store";
 import { formatCurrency, formatNumber, formatPercent } from "@/lib/utils";
 import api from "@/lib/api";
+import { useSavedModel } from "@/lib/use-saved-model";
 
 const ICONS: Record<string, any> = {
   TrendingUp, Calculator, DollarSign, BarChart3, FileText, Scale,
@@ -109,10 +110,21 @@ export default function ModelCalculatorPage({ params }: { params: Promise<{ slug
   const { user, hydrate } = useAuth();
   const [inputs, setInputs] = useState<Record<string, string>>({});
   const [outputs, setOutputs] = useState<Record<string, number | string> | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
-
   const model = MODELS[slug];
+
+  const { save: persistState, reset: clearPersisted, saving, saved, markDirty } = useSavedModel({
+    modelSlug: slug,
+    onLoad: (data: Record<string, unknown>) => {
+      if (data.inputs) {
+        const restored: Record<string, string> = {};
+        Object.entries(data.inputs as Record<string, string>).forEach(([k, v]) => {
+          restored[k] = String(v ?? "");
+        });
+        setInputs(restored);
+      }
+    },
+    getState: useCallback(() => ({ inputs }), [inputs]),
+  });
 
   useEffect(() => { hydrate(); }, [hydrate]);
 
@@ -150,7 +162,7 @@ export default function ModelCalculatorPage({ params }: { params: Promise<{ slug
     });
     const result = calculateModel(slug, numericInputs);
     setOutputs(result);
-    setSaved(false);
+    markDirty();
   };
 
   const handleReset = () => {
@@ -158,23 +170,20 @@ export default function ModelCalculatorPage({ params }: { params: Promise<{ slug
     model.fields.forEach((f) => { empty[f.key] = ""; });
     setInputs(empty);
     setOutputs(null);
-    setSaved(false);
+    clearPersisted();
   };
 
   const handleSave = async () => {
     if (!user || !outputs) return;
-    setSaving(true);
     try {
       await api.post("/calculations", {
         modelSlug: slug,
         inputs,
         outputs,
       });
-      setSaved(true);
+      await persistState();
     } catch (err) {
       console.error("Failed to save:", err);
-    } finally {
-      setSaving(false);
     }
   };
 

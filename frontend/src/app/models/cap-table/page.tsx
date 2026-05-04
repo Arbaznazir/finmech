@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import {
   ArrowLeft, PieChart, Save, RotateCcw, Plus, Trash2, Play,
@@ -8,6 +8,7 @@ import {
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
 import api from "@/lib/api";
+import { useSavedModel } from "@/lib/use-saved-model";
 import {
   buildCapTable,
   type InitialShareholder,
@@ -31,8 +32,15 @@ export default function CapTablePage() {
   const [exitValue, setExitValue] = useState(0);
   const [results, setResults] = useState<CapTableResults | null>(null);
   const [activeTab, setActiveTab] = useState<TabView>("shareholders");
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const { save: persistState, reset: clearPersisted, saving, saved, markDirty } = useSavedModel({
+    modelSlug: "cap-table",
+    onLoad: (data: Record<string, unknown>) => {
+      if (data.shareholders) setShareholders(data.shareholders as InitialShareholder[]);
+      if (Array.isArray(data.rounds)) setRounds(data.rounds as typeof rounds);
+      if (typeof data.exitValue === "number") setExitValue(data.exitValue);
+    },
+    getState: useCallback(() => ({ shareholders, rounds, exitValue }), [shareholders, rounds, exitValue]),
+  });
 
   useEffect(() => { hydrate(); }, [hydrate]);
 
@@ -48,12 +56,11 @@ export default function CapTablePage() {
     setRounds([]);
     setExitValue(0);
     setResults(null);
-    setSaved(false);
+    clearPersisted();
   };
 
   const handleSave = async () => {
     if (!user || !results) return;
-    setSaving(true);
     try {
       await api.post("/calculations", {
         modelSlug: "cap-table",
@@ -65,11 +72,9 @@ export default function CapTablePage() {
           exitValue: results.exit?.exitValue,
         },
       });
-      setSaved(true);
+      await persistState();
     } catch (err) {
       console.error("Failed to save:", err);
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -82,7 +87,7 @@ export default function CapTablePage() {
       next[i] = { ...next[i], [key]: value };
       return next;
     });
-    setSaved(false);
+    markDirty();
   };
 
   // Round helpers
@@ -94,7 +99,7 @@ export default function CapTablePage() {
       next[i] = { ...next[i], [key]: value };
       return next;
     });
-    setSaved(false);
+    markDirty();
   };
 
   return (
@@ -395,7 +400,7 @@ export default function CapTablePage() {
                 <input
                   type="number"
                   value={exitValue || ""}
-                  onChange={(e) => { setExitValue(parseFloat(e.target.value) || 0); setSaved(false); }}
+                  onChange={(e) => { setExitValue(parseFloat(e.target.value) || 0); markDirty(); }}
                   placeholder="30000000"
                   className="w-full rounded-lg border border-border bg-input pl-7 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
                 />

@@ -9,6 +9,7 @@ import {
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
 import api from "@/lib/api";
+import { useSavedModel } from "@/lib/use-saved-model";
 import {
   MONTHS_ORDER,
   INPUT_FIELDS,
@@ -58,8 +59,14 @@ export default function BurnRunwayPage() {
   const [openingCash, setOpeningCash] = useState(100000);
   const [results, setResults] = useState<BurnRunwayResults | null>(null);
   const [activeTab, setActiveTab] = useState<TabView>("input");
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const { save: persistState, reset: clearPersisted, saving, saved, markDirty } = useSavedModel({
+    modelSlug: "burn-runway",
+    onLoad: (data: Record<string, unknown>) => {
+      if (data.monthsData) setMonthsData(data.monthsData as Record<string, Record<string, number>>);
+      if (typeof data.openingCash === "number") setOpeningCash(data.openingCash);
+    },
+    getState: useCallback(() => ({ monthsData, openingCash }), [monthsData, openingCash]),
+  });
 
   useEffect(() => { hydrate(); }, [hydrate]);
 
@@ -73,7 +80,7 @@ export default function BurnRunwayPage() {
         [key]: parseFloat(value) || 0,
       },
     }));
-    setSaved(false);
+    markDirty();
   };
 
   const handleCalculate = useCallback(() => {
@@ -87,7 +94,7 @@ export default function BurnRunwayPage() {
     setMonthsData({});
     setResults(null);
     setActiveTab("input");
-    setSaved(false);
+    clearPersisted();
   };
 
   const handleResetMonth = () => {
@@ -96,12 +103,11 @@ export default function BurnRunwayPage() {
       delete next[activeMonth];
       return next;
     });
-    setSaved(false);
+    markDirty();
   };
 
   const handleSave = async () => {
     if (!user || !results) return;
-    setSaving(true);
     try {
       await api.post("/calculations", {
         modelSlug: "burn-runway",
@@ -111,11 +117,9 @@ export default function BurnRunwayPage() {
           status: results.status,
         },
       });
-      setSaved(true);
+      await persistState();
     } catch (err) {
       console.error("Failed to save:", err);
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -233,7 +237,7 @@ export default function BurnRunwayPage() {
                 <input
                   type="number"
                   value={openingCash || ""}
-                  onChange={(e) => { setOpeningCash(parseFloat(e.target.value) || 0); setSaved(false); }}
+                  onChange={(e) => { setOpeningCash(parseFloat(e.target.value) || 0); markDirty(); }}
                   placeholder="100000"
                   className="w-full rounded-lg border border-border bg-input pl-7 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
                 />

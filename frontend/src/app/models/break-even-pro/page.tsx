@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import {
   ArrowLeft, TrendingUp, Save, RotateCcw,
@@ -9,6 +9,7 @@ import {
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
 import api from "@/lib/api";
+import { useSavedModel } from "@/lib/use-saved-model";
 import {
   calculateBreakEven,
   type BreakEvenInputs,
@@ -24,14 +25,19 @@ export default function BreakEvenPage() {
     unitsSoldForProjection: 0,
   });
   const [results, setResults] = useState<BreakEvenResults | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const { save: persistState, reset: clearPersisted, saving, saved, markDirty } = useSavedModel({
+    modelSlug: "break-even-pro",
+    onLoad: (data: Record<string, unknown>) => {
+      if (data.inputs) setInputs(data.inputs as BreakEvenInputs);
+    },
+    getState: useCallback(() => ({ inputs }), [inputs]),
+  });
 
   useEffect(() => { hydrate(); }, [hydrate]);
 
   const handleChange = (key: keyof BreakEvenInputs, value: string) => {
     setInputs((prev) => ({ ...prev, [key]: parseFloat(value) || 0 }));
-    setSaved(false);
+    markDirty();
   };
 
   const handleCalculate = () => {
@@ -42,12 +48,11 @@ export default function BreakEvenPage() {
   const handleReset = () => {
     setInputs({ pricePerUnit: 0, variableCostPerUnit: 0, fixedCostMonthly: 0, unitsSoldForProjection: 0 });
     setResults(null);
-    setSaved(false);
+    clearPersisted();
   };
 
   const handleSave = async () => {
     if (!user || !results) return;
-    setSaving(true);
     try {
       await api.post("/calculations", {
         modelSlug: "break-even-pro",
@@ -60,11 +65,9 @@ export default function BreakEvenPage() {
           status: results.status,
         },
       });
-      setSaved(true);
+      await persistState();
     } catch (err) {
       console.error("Failed to save:", err);
-    } finally {
-      setSaving(false);
     }
   };
 

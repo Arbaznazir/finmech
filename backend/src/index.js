@@ -9,6 +9,7 @@ import authRoutes from './routes/auth.js';
 import modelRoutes from './routes/models.js';
 import calculationRoutes from './routes/calculations.js';
 import userRoutes from './routes/user.js';
+import savedModelRoutes from './routes/saved-models.js';
 
 const app = express();
 
@@ -25,6 +26,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/models', modelRoutes);
 app.use('/api/calculations', calculationRoutes);
 app.use('/api/user', userRoutes);
+app.use('/api/saved-models', savedModelRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });

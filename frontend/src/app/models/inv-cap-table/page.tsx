@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { ArrowLeft, PieChart, Save, RotateCcw, Plus, Trash2, Play } from "lucide-react";
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
 import api from "@/lib/api";
 import { loadModelResults, saveModelResults, clearModelResults } from "@/lib/model-link";
+import { useSavedModel } from "@/lib/use-saved-model";
 import {
   buildCapTable,
   type InitialShareholder,
@@ -27,9 +28,17 @@ export default function InvCapTablePage() {
   const [exitValue, setExitValue] = useState(0);
   const [results, setResults] = useState<CapTableResults | null>(null);
   const [activeTab, setActiveTab] = useState<TabView>("shareholders");
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
   const [hubLinked, setHubLinked] = useState(false);
+
+  const { save: persistState, reset: clearPersisted, saving, saved, markDirty } = useSavedModel({
+    modelSlug: "inv-cap-table",
+    onLoad: (data: Record<string, unknown>) => {
+      if (data.shareholders) setShareholders(data.shareholders as InitialShareholder[]);
+      if (Array.isArray(data.rounds)) setRounds(data.rounds as typeof rounds);
+      if (typeof data.exitValue === "number") setExitValue(data.exitValue);
+    },
+    getState: useCallback(() => ({ shareholders, rounds, exitValue }), [shareholders, rounds, exitValue]),
+  });
 
   useEffect(() => {
     hydrate();
@@ -51,31 +60,30 @@ export default function InvCapTablePage() {
 
   const handleReset = () => {
     setShareholders([{ ...EMPTY_SHAREHOLDER }]); setRounds([]); setExitValue(0);
-    setResults(null); setSaved(false); setHubLinked(false);
+    setResults(null); setHubLinked(false);
     clearModelResults("inv-cap-table");
+    clearPersisted();
   };
 
   const handleSave = async () => {
     if (!user || !results) return;
-    setSaving(true);
     try {
       await api.post("/calculations", { modelSlug: "inv-cap-table", inputs: { shareholders, rounds, exitValue }, outputs: { totalShares: results.totalShares, shareholderCount: results.shareholders.length, roundCount: results.rounds.length, exitValue: results.exit?.exitValue } });
-      setSaved(true);
+      await persistState();
     } catch (err) { console.error("Failed to save:", err); }
-    finally { setSaving(false); }
   };
 
   const addShareholder = () => setShareholders((prev) => [...prev, { ...EMPTY_SHAREHOLDER }]);
   const removeShareholder = (i: number) => setShareholders((prev) => prev.filter((_, idx) => idx !== i));
   const updateShareholder = (i: number, key: keyof InitialShareholder, value: string | number) => {
     setShareholders((prev) => { const next = [...prev]; next[i] = { ...next[i], [key]: value }; return next; });
-    setSaved(false);
+    markDirty();
   };
   const addRound = () => setRounds((prev) => [...prev, { ...EMPTY_ROUND }]);
   const removeRound = (i: number) => setRounds((prev) => prev.filter((_, idx) => idx !== i));
   const updateRound = (i: number, key: string, value: string | number) => {
     setRounds((prev) => { const next = [...prev]; next[i] = { ...next[i], [key]: value }; return next; });
-    setSaved(false);
+    markDirty();
   };
 
   return (
@@ -209,7 +217,7 @@ export default function InvCapTablePage() {
             <div className="max-w-sm">
               <label className="block text-xs text-muted-foreground mb-1">Exit Value ($)</label>
               <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">$</span>
-              <input type="number" value={exitValue || ""} onChange={(e) => { setExitValue(parseFloat(e.target.value) || 0); setSaved(false); }} placeholder="30000000" className="w-full rounded-lg border border-border bg-input pl-7 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/50" /></div>
+              <input type="number" value={exitValue || ""} onChange={(e) => { setExitValue(parseFloat(e.target.value) || 0); markDirty(); }} placeholder="30000000" className="w-full rounded-lg border border-border bg-input pl-7 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/50" /></div>
             </div>
             <button onClick={handleCalculate} disabled={exitValue <= 0} className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-amber-400 text-black px-6 py-2.5 text-sm font-semibold hover:bg-amber-300 transition-colors disabled:opacity-50">
               <Play className="h-4 w-4" /> Run Exit Waterfall

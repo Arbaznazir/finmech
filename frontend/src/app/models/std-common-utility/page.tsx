@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { ArrowLeft, Settings, Save, RotateCcw, ArrowRight } from "lucide-react";
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
 import api from "@/lib/api";
 import { saveModelResults, clearModelResults } from "@/lib/model-link";
+import { useSavedModel } from "@/lib/use-saved-model";
 import {
   MONTHS_ORDER,
   INPUT_FIELDS,
@@ -28,8 +29,13 @@ export default function StdCommonUtilityPage() {
     return d;
   });
   const [activeMonth, setActiveMonth] = useState<MonthName>("Apr");
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const { save: persistState, reset: clearPersisted, saving, saved, markDirty } = useSavedModel({
+    modelSlug: "std-common-utility",
+    onLoad: (data: Record<string, unknown>) => {
+      if (data.monthData) setMonthData(data.monthData as Record<string, Record<string, number>>);
+    },
+    getState: useCallback(() => ({ monthData }), [monthData]),
+  });
 
   useEffect(() => { hydrate(); }, [hydrate]);
 
@@ -40,7 +46,7 @@ export default function StdCommonUtilityPage() {
       ...prev,
       [activeMonth]: { ...prev[activeMonth], [field]: parseFloat(value) || 0 },
     }));
-    setSaved(false);
+    markDirty();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -82,13 +88,12 @@ export default function StdCommonUtilityPage() {
     const d: Record<string, Record<string, number>> = {};
     MONTHS_ORDER.forEach((m) => { d[m] = emptyMonth(); });
     setMonthData(d);
-    setSaved(false);
     clearModelResults("std-common-utility");
+    clearPersisted();
   };
 
   const handleSave = async () => {
     if (!user) return;
-    setSaving(true);
     persistResults();
     try {
       await api.post("/calculations", {
@@ -96,9 +101,8 @@ export default function StdCommonUtilityPage() {
         inputs: monthData,
         outputs: { monthlyData: isResult.monthlyData, annual: isResult.annual },
       });
-      setSaved(true);
+      await persistState();
     } catch (err) { console.error("Failed to save:", err); }
-    finally { setSaving(false); }
   };
 
   const cur = isResult.monthlyData[activeMonth];

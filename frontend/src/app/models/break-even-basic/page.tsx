@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { ArrowLeft, TrendingUp, Save, RotateCcw, ArrowRight } from "lucide-react";
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
 import api from "@/lib/api";
 import { loadModelResults } from "@/lib/model-link";
+import { useSavedModel } from "@/lib/use-saved-model";
 import { type RevenueResults } from "@/lib/revenue-free-model";
 import { type CostingResults } from "@/lib/costing-free-model";
 import {
@@ -21,9 +22,15 @@ export default function BreakEvenBasicPage() {
   const { user, hydrate } = useAuth();
   const [inputs, setInputs] = useState<BreakEvenFreeInputs>(createEmptyBreakEvenInputs());
   const [results, setResults] = useState<BreakEvenFreeResults | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
   const [linkedFields, setLinkedFields] = useState<Set<string>>(new Set());
+
+  const { save: persistState, reset: clearPersisted, saving, saved, markDirty } = useSavedModel({
+    modelSlug: "break-even-basic",
+    onLoad: (data: Record<string, unknown>) => {
+      if (data.inputs) setInputs(data.inputs as BreakEvenFreeInputs);
+    },
+    getState: useCallback(() => ({ inputs }), [inputs]),
+  });
 
   useEffect(() => {
     hydrate();
@@ -51,21 +58,19 @@ export default function BreakEvenBasicPage() {
 
   const handleChange = (key: keyof BreakEvenFreeInputs, value: string) => {
     setInputs((prev) => ({ ...prev, [key]: parseFloat(value) || 0 }));
-    setSaved(false);
+    markDirty();
   };
 
   const handleCalculate = () => setResults(calculateBreakEvenFree(inputs));
 
-  const handleReset = () => { setInputs(createEmptyBreakEvenInputs()); setResults(null); setSaved(false); };
+  const handleReset = () => { setInputs(createEmptyBreakEvenInputs()); setResults(null); clearPersisted(); };
 
   const handleSave = async () => {
     if (!user || !results) return;
-    setSaving(true);
     try {
       await api.post("/calculations", { modelSlug: "break-even-basic", inputs, outputs: results });
-      setSaved(true);
+      await persistState();
     } catch (err) { console.error("Failed to save:", err); }
-    finally { setSaving(false); }
   };
 
   return (

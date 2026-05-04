@@ -31,11 +31,14 @@ COPY prisma ./prisma
 COPY prisma.config.ts ./
 COPY src ./src
 
-# Create data directory for SQLite and set permissions
-RUN mkdir -p /app/data && chown -R appuser:appgroup /app/data
+# Copy startup script
+COPY start.sh ./
+RUN chmod +x start.sh
+
+RUN chown -R appuser:appgroup /app
 
 USER appuser
 
 EXPOSE 5000
 
-CMD ["node", "--experimental-strip-types", "src/index.js"]
+CMD ["./start.sh"]

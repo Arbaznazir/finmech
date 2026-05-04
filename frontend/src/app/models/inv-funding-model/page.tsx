@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { ArrowLeft, Rocket, Save, RotateCcw } from "lucide-react";
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
 import api from "@/lib/api";
 import { loadModelResults, saveModelResults, clearModelResults } from "@/lib/model-link";
+import { useSavedModel } from "@/lib/use-saved-model";
 import {
   MONTHS_ORDER,
   INPUT_FIELDS,
@@ -31,9 +32,17 @@ export default function InvFundingModelPage() {
   const [contingencyPct, setContingencyPct] = useState(15);
   const [results, setResults] = useState<FundingResults | null>(null);
   const [activeTab, setActiveTab] = useState<TabView>("input");
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
   const [hubLinked, setHubLinked] = useState(false);
+
+  const { save: persistState, reset: clearPersisted, saving, saved, markDirty } = useSavedModel({
+    modelSlug: "inv-funding-model",
+    onLoad: (data: Record<string, unknown>) => {
+      if (data.monthsData) setMonthsData(data.monthsData as Record<string, Record<string, number>>);
+      if (typeof data.openingCash === "number") setOpeningCash(data.openingCash);
+      if (typeof data.contingencyPct === "number") setContingencyPct(data.contingencyPct);
+    },
+    getState: useCallback(() => ({ monthsData, openingCash, contingencyPct }), [monthsData, openingCash, contingencyPct]),
+  });
 
   useEffect(() => {
     hydrate();
@@ -57,7 +66,7 @@ export default function InvFundingModelPage() {
       ...prev,
       [activeMonth]: { ...prev[activeMonth], [key]: parseFloat(value) || 0 },
     }));
-    setSaved(false);
+    markDirty();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -88,19 +97,17 @@ export default function InvFundingModelPage() {
     setOpeningCash(0);
     setContingencyPct(15);
     setResults(null);
-    setSaved(false);
     setHubLinked(false);
     clearModelResults("inv-funding-model");
+    clearPersisted();
   };
 
   const handleSave = async () => {
     if (!user || !results) return;
-    setSaving(true);
     try {
       await api.post("/calculations", { modelSlug: "inv-funding-model", inputs: { openingCash, contingencyPct, monthsData }, outputs: results.summary });
-      setSaved(true);
+      await persistState();
     } catch (err) { console.error("Failed to save:", err); }
-    finally { setSaving(false); }
   };
 
   const categories = [...new Set(INPUT_FIELDS.map((f) => f.category))];
@@ -160,13 +167,13 @@ export default function InvFundingModelPage() {
             <div>
               <label className="block text-xs text-muted-foreground mb-1">Opening Cash</label>
               <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">$</span>
-              <input type="number" value={openingCash || ""} onChange={(e) => { setOpeningCash(parseFloat(e.target.value) || 0); setSaved(false); }}
+              <input type="number" value={openingCash || ""} onChange={(e) => { setOpeningCash(parseFloat(e.target.value) || 0); markDirty(); }}
                 placeholder="100000" className="w-full rounded-lg border border-border bg-input pl-7 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/50" /></div>
             </div>
             <div>
               <label className="block text-xs text-muted-foreground mb-1">Contingency %</label>
               <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
-              <input type="number" value={contingencyPct || ""} onChange={(e) => { setContingencyPct(parseFloat(e.target.value) || 15); setSaved(false); }}
+              <input type="number" value={contingencyPct || ""} onChange={(e) => { setContingencyPct(parseFloat(e.target.value) || 15); markDirty(); }}
                 placeholder="15" className="w-full rounded-lg border border-border bg-input pl-7 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/50" /></div>
             </div>
           </div>

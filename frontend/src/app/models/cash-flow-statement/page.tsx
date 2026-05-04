@@ -9,6 +9,7 @@ import {
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
 import api from "@/lib/api";
+import { useSavedModel } from "@/lib/use-saved-model";
 import {
   MONTHS_ORDER,
   INPUT_FIELDS,
@@ -57,9 +58,16 @@ export default function CashFlowStatementPage() {
   const [openingCash, setOpeningCash] = useState(0);
   const [results, setResults] = useState<CashFlowResults | null>(null);
   const [activeTab, setActiveTab] = useState<TabView>("input");
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
   const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({});
+
+  const { save: persistState, reset: clearPersisted, saving, saved, markDirty } = useSavedModel({
+    modelSlug: "cash-flow-statement",
+    onLoad: (data: Record<string, unknown>) => {
+      if (data.monthsData) setMonthsData(data.monthsData as Record<string, Record<string, number>>);
+      if (typeof data.openingCash === "number") setOpeningCash(data.openingCash);
+    },
+    getState: useCallback(() => ({ monthsData, openingCash }), [monthsData, openingCash]),
+  });
 
   useEffect(() => { hydrate(); }, [hydrate]);
 
@@ -73,7 +81,7 @@ export default function CashFlowStatementPage() {
         [key]: parseFloat(value) || 0,
       },
     }));
-    setSaved(false);
+    markDirty();
   };
 
   const handleCalculate = useCallback(() => {
@@ -87,7 +95,7 @@ export default function CashFlowStatementPage() {
     setMonthsData({});
     setResults(null);
     setActiveTab("input");
-    setSaved(false);
+    clearPersisted();
   };
 
   const handleResetMonth = () => {
@@ -96,12 +104,11 @@ export default function CashFlowStatementPage() {
       delete next[activeMonth];
       return next;
     });
-    setSaved(false);
+    markDirty();
   };
 
   const handleSave = async () => {
     if (!user || !results) return;
-    setSaving(true);
     try {
       await api.post("/calculations", {
         modelSlug: "cash-flow-statement",
@@ -112,11 +119,9 @@ export default function CashFlowStatementPage() {
           status: results.status,
         },
       });
-      setSaved(true);
+      await persistState();
     } catch (err) {
       console.error("Failed to save:", err);
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -237,7 +242,7 @@ export default function CashFlowStatementPage() {
                 <input
                   type="number"
                   value={openingCash || ""}
-                  onChange={(e) => { setOpeningCash(parseFloat(e.target.value) || 0); setSaved(false); }}
+                  onChange={(e) => { setOpeningCash(parseFloat(e.target.value) || 0); markDirty(); }}
                   placeholder="0"
                   className="w-full rounded-lg border border-border bg-input pl-7 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
                 />

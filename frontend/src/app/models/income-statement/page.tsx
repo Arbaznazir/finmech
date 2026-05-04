@@ -9,6 +9,7 @@ import {
 import { useAuth } from "@/lib/store";
 import { formatCurrency, formatPercent } from "@/lib/utils";
 import api from "@/lib/api";
+import { useSavedModel } from "@/lib/use-saved-model";
 import {
   MONTHS_ORDER,
   INPUT_FIELDS,
@@ -27,9 +28,15 @@ export default function IncomeStatementPage() {
   const [monthsData, setMonthsData] = useState<Record<string, Record<string, number>>>({});
   const [results, setResults] = useState<IncomeStatementResults | null>(null);
   const [activeTab, setActiveTab] = useState<TabView>("input");
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
   const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({});
+
+  const { save: persistState, reset: clearPersisted, saving, saved, markDirty } = useSavedModel({
+    modelSlug: "income-statement",
+    onLoad: (data: Record<string, unknown>) => {
+      if (data.monthsData) setMonthsData(data.monthsData as Record<string, Record<string, number>>);
+    },
+    getState: useCallback(() => ({ monthsData }), [monthsData]),
+  });
 
   useEffect(() => { hydrate(); }, [hydrate]);
 
@@ -43,7 +50,7 @@ export default function IncomeStatementPage() {
         [key]: parseFloat(value) || 0,
       },
     }));
-    setSaved(false);
+    markDirty();
   };
 
   const handleCalculate = useCallback(() => {
@@ -57,7 +64,7 @@ export default function IncomeStatementPage() {
     setMonthsData({});
     setResults(null);
     setActiveTab("input");
-    setSaved(false);
+    clearPersisted();
   };
 
   const handleResetMonth = () => {
@@ -66,12 +73,11 @@ export default function IncomeStatementPage() {
       delete next[activeMonth];
       return next;
     });
-    setSaved(false);
+    markDirty();
   };
 
   const handleSave = async () => {
     if (!user || !results) return;
-    setSaving(true);
     try {
       await api.post("/calculations", {
         modelSlug: "income-statement",
@@ -83,11 +89,9 @@ export default function IncomeStatementPage() {
           status: results.status,
         },
       });
-      setSaved(true);
+      await persistState();
     } catch (err) {
       console.error("Failed to save:", err);
-    } finally {
-      setSaving(false);
     }
   };
 

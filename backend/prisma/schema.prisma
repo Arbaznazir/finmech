@@ -4,7 +4,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
 }
 
 model User {
@@ -32,6 +32,8 @@ model Calculation {
   createdAt   DateTime @default(now())
 
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, modelSlug])
 }
 
 model SavedModel {
@@ -44,4 +46,6 @@ model SavedModel {
   updatedAt   DateTime @updatedAt
 
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, modelSlug])
 }

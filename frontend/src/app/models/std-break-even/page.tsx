@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { ArrowLeft, TrendingUp, Save, RotateCcw, CheckCircle, XCircle } from "lucide-react";
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
 import api from "@/lib/api";
 import { loadModelResults, saveModelResults, clearModelResults } from "@/lib/model-link";
+import { useSavedModel } from "@/lib/use-saved-model";
 import {
   calculateBreakEven,
   type BreakEvenInputs,
@@ -19,9 +20,15 @@ export default function StdBreakEvenPage() {
     pricePerUnit: 0, variableCostPerUnit: 0, fixedCostMonthly: 0, unitsSoldForProjection: 0,
   });
   const [results, setResults] = useState<BreakEvenResults | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
   const [linkedFields, setLinkedFields] = useState<Set<string>>(new Set());
+
+  const { save: persistState, reset: clearPersisted, saving, saved, markDirty } = useSavedModel({
+    modelSlug: "std-break-even",
+    onLoad: (data: Record<string, unknown>) => {
+      if (data.inputs) setInputs(data.inputs as BreakEvenInputs);
+    },
+    getState: useCallback(() => ({ inputs }), [inputs]),
+  });
 
   useEffect(() => {
     hydrate();
@@ -39,7 +46,7 @@ export default function StdBreakEvenPage() {
 
   const handleChange = (key: keyof BreakEvenInputs, value: string) => {
     setInputs((prev) => ({ ...prev, [key]: parseFloat(value) || 0 }));
-    setSaved(false);
+    markDirty();
   };
 
   const handleCalculate = () => {
@@ -55,18 +62,17 @@ export default function StdBreakEvenPage() {
 
   const handleReset = () => {
     setInputs({ pricePerUnit: 0, variableCostPerUnit: 0, fixedCostMonthly: 0, unitsSoldForProjection: 0 });
-    setResults(null); setSaved(false); setLinkedFields(new Set());
+    setResults(null); setLinkedFields(new Set());
     clearModelResults("std-break-even");
+    clearPersisted();
   };
 
   const handleSave = async () => {
     if (!user || !results) return;
-    setSaving(true);
     try {
       await api.post("/calculations", { modelSlug: "std-break-even", inputs, outputs: results });
-      setSaved(true);
+      await persistState();
     } catch (err) { console.error("Failed to save:", err); }
-    finally { setSaving(false); }
   };
 
   const fields: { key: keyof BreakEvenInputs; label: string; prefix: string; linked?: boolean }[] = [

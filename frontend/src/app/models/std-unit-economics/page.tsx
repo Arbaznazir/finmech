@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { ArrowLeft, Users, Save, RotateCcw } from "lucide-react";
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
 import api from "@/lib/api";
 import { loadModelResults, saveModelResults, clearModelResults } from "@/lib/model-link";
+import { useSavedModel } from "@/lib/use-saved-model";
 import {
   MONTHS_ORDER,
   INPUT_FIELDS,
@@ -24,9 +25,15 @@ export default function StdUnitEconomicsPage() {
     return d;
   });
   const [activeMonth, setActiveMonth] = useState<MonthName>("Apr");
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
   const [hubLinked, setHubLinked] = useState(false);
+
+  const { save: persistState, reset: clearPersisted, saving, saved, markDirty } = useSavedModel({
+    modelSlug: "std-unit-economics",
+    onLoad: (data: Record<string, unknown>) => {
+      if (data.monthData) setMonthData(data.monthData as Record<string, Record<string, number>>);
+    },
+    getState: useCallback(() => ({ monthData }), [monthData]),
+  });
 
   useEffect(() => {
     hydrate();
@@ -48,7 +55,7 @@ export default function StdUnitEconomicsPage() {
       ...prev,
       [activeMonth]: { ...prev[activeMonth], [field]: parseFloat(value) || 0 },
     }));
-    setSaved(false);
+    markDirty();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -70,19 +77,17 @@ export default function StdUnitEconomicsPage() {
     const d: Record<string, Record<string, number>> = {};
     MONTHS_ORDER.forEach((m) => { d[m] = createEmptyInputs(); });
     setMonthData(d);
-    setSaved(false);
     setHubLinked(false);
     clearModelResults("std-unit-economics");
+    clearPersisted();
   };
 
   const handleSave = async () => {
     if (!user) return;
-    setSaving(true);
     try {
       await api.post("/calculations", { modelSlug: "std-unit-economics", inputs: monthData, outputs: results });
-      setSaved(true);
+      await persistState();
     } catch (err) { console.error("Failed to save:", err); }
-    finally { setSaving(false); }
   };
 
   const cur = results.monthlyData[activeMonth];

@@ -9,7 +9,7 @@ services:
     environment:
       - PORT=5000
       - NODE_ENV=production
-      - DATABASE_URL=file:/app/data/finmech.db
+      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:postgres@localhost:5432/finmech?schema=public}
       - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
       - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
     volumes:

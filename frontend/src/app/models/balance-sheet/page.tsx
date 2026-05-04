@@ -9,6 +9,7 @@ import {
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
 import api from "@/lib/api";
+import { useSavedModel } from "@/lib/use-saved-model";
 import {
   MONTHS_ORDER,
   INPUT_FIELDS,
@@ -35,9 +36,15 @@ export default function BalanceSheetPage() {
   const [monthsData, setMonthsData] = useState<Record<string, Record<string, number>>>({});
   const [results, setResults] = useState<BalanceSheetResults | null>(null);
   const [activeTab, setActiveTab] = useState<TabView>("input");
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
   const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({});
+
+  const { save: persistState, reset: clearPersisted, saving, saved, markDirty } = useSavedModel({
+    modelSlug: "balance-sheet",
+    onLoad: (data: Record<string, unknown>) => {
+      if (data.monthsData) setMonthsData(data.monthsData as Record<string, Record<string, number>>);
+    },
+    getState: useCallback(() => ({ monthsData }), [monthsData]),
+  });
 
   useEffect(() => { hydrate(); }, [hydrate]);
 
@@ -51,7 +58,7 @@ export default function BalanceSheetPage() {
         [key]: parseFloat(value) || 0,
       },
     }));
-    setSaved(false);
+    markDirty();
   };
 
   const handleCalculate = useCallback(() => {
@@ -65,7 +72,7 @@ export default function BalanceSheetPage() {
     setMonthsData({});
     setResults(null);
     setActiveTab("input");
-    setSaved(false);
+    clearPersisted();
   };
 
   const handleResetMonth = () => {
@@ -74,12 +81,11 @@ export default function BalanceSheetPage() {
       delete next[activeMonth];
       return next;
     });
-    setSaved(false);
+    markDirty();
   };
 
   const handleSave = async () => {
     if (!user || !results) return;
-    setSaving(true);
     try {
       await api.post("/calculations", {
         modelSlug: "balance-sheet",
@@ -90,11 +96,9 @@ export default function BalanceSheetPage() {
           status: results.status,
         },
       });
-      setSaved(true);
+      await persistState();
     } catch (err) {
       console.error("Failed to save:", err);
-    } finally {
-      setSaving(false);
     }
   };
 

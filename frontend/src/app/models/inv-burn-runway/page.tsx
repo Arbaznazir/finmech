@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { ArrowLeft, Flame, Save, RotateCcw } from "lucide-react";
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
 import api from "@/lib/api";
 import { loadModelResults, saveModelResults, clearModelResults } from "@/lib/model-link";
+import { useSavedModel } from "@/lib/use-saved-model";
 import {
   MONTHS_ORDER,
   INPUT_FIELDS,
@@ -24,9 +25,16 @@ export default function InvBurnRunwayPage() {
   });
   const [activeMonth, setActiveMonth] = useState<MonthName>("April");
   const [openingCash, setOpeningCash] = useState(0);
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
   const [hubLinked, setHubLinked] = useState(false);
+
+  const { save: persistState, reset: clearPersisted, saving, saved, markDirty } = useSavedModel({
+    modelSlug: "inv-burn-runway",
+    onLoad: (data: Record<string, unknown>) => {
+      if (data.monthData) setMonthData(data.monthData as Record<string, Record<string, number>>);
+      if (typeof data.openingCash === "number") setOpeningCash(data.openingCash);
+    },
+    getState: useCallback(() => ({ monthData, openingCash }), [monthData, openingCash]),
+  });
 
   useEffect(() => {
     hydrate();
@@ -55,7 +63,7 @@ export default function InvBurnRunwayPage() {
       ...prev,
       [activeMonth]: { ...prev[activeMonth], [field]: parseFloat(value) || 0 },
     }));
-    setSaved(false);
+    markDirty();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -74,19 +82,17 @@ export default function InvBurnRunwayPage() {
     MONTHS_ORDER.forEach((m) => { d[m] = createEmptyInputs() as Record<string, number>; });
     setMonthData(d);
     setOpeningCash(0);
-    setSaved(false);
     setHubLinked(false);
     clearModelResults("inv-burn-runway");
+    clearPersisted();
   };
 
   const handleSave = async () => {
     if (!user) return;
-    setSaving(true);
     try {
       await api.post("/calculations", { modelSlug: "inv-burn-runway", inputs: { openingCash, monthData }, outputs: results });
-      setSaved(true);
+      await persistState();
     } catch (err) { console.error("Failed to save:", err); }
-    finally { setSaving(false); }
   };
 
   const cur = results.monthlyData[activeMonth];
@@ -141,7 +147,7 @@ export default function InvBurnRunwayPage() {
         <label className="block text-xs text-muted-foreground mb-1">Opening Cash Balance</label>
         <div className="relative max-w-xs">
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">$</span>
-          <input type="number" value={openingCash || ""} onChange={(e) => { setOpeningCash(parseFloat(e.target.value) || 0); setSaved(false); }}
+          <input type="number" value={openingCash || ""} onChange={(e) => { setOpeningCash(parseFloat(e.target.value) || 0); markDirty(); }}
             placeholder="100000" className="w-full rounded-lg border border-border bg-input pl-7 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/50" />
         </div>
       </div>
