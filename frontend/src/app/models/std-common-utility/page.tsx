@@ -61,13 +61,41 @@ export default function StdCommonUtilityPage() {
   };
 
   const persistResults = () => {
-    // Find the latest month that actually has data (non-zero revenue)
+    // Build per-month mapped data for downstream models
+    const months: Record<string, Record<string, number>> = {};
+    MONTHS_ORDER.forEach((m) => {
+      const d = isResult.monthlyData[m];
+      if (!d) return;
+      months[m] = {
+        revenue: d["Gross Revenue"] ?? 0,
+        recurringRevenue: d["Operational Revenue (Recurring Receipts)"] ?? 0,
+        variableRevenue: d["Operational Revenue (Variable revenue including interest income)"] ?? 0,
+        cogs: d["Total of COGS"] ?? 0,
+        grossProfit: d["Gross Profit"] ?? 0,
+        grossMargin: d["Gross Margin %"] ?? 0,
+        totalFixedCosts: d["Total Fixed Costs"] ?? 0,
+        totalVariableCosts: d["Total variable Costs"] ?? 0,
+        totalOpex: d["Total Operating Expenses"] ?? 0,
+        marketingSpend: d["Marketing & Advertising"] ?? 0,
+        salaries: d["Salaries & Benefits"] ?? 0,
+        rent: d["Rent & Utilities"] ?? 0,
+        ebitda: d["EBITDA"] ?? 0,
+        ebitdaMargin: d["EBITDA Margin %"] ?? 0,
+        netProfit: d["Net Profit"] ?? 0,
+        netMargin: d["Net Margin %"] ?? 0,
+      };
+    });
+
+    // Find the latest month with data for backward-compat summary
     let latestMonth = isResult.monthlyData[MONTHS_ORDER[0]];
     for (let i = MONTHS_ORDER.length - 1; i >= 0; i--) {
       const m = isResult.monthlyData[MONTHS_ORDER[i]];
       if (m && (m["Gross Revenue"] || 0) > 0) { latestMonth = m; break; }
     }
     saveModelResults("std-common-utility", {
+      // Full monthly data for downstream models
+      months,
+      // Summary (backward compat)
       monthlyRevenue: latestMonth?.["Gross Revenue"] ?? 0,
       monthlyExpenses: latestMonth?.["Total Operating Expenses"] ?? 0,
       grossMargin: latestMonth?.["Gross Margin %"] ?? 0,
@@ -77,6 +105,7 @@ export default function StdCommonUtilityPage() {
       totalVariableCosts: latestMonth?.["Total variable Costs"] ?? 0,
       annualRevenue: isResult.annual["Gross Revenue"] ?? 0,
       annualNetProfit: isResult.annual["Net Profit"] ?? 0,
+      annualEBITDA: isResult.annual["EBITDA"] ?? 0,
     });
   };
 
@@ -128,7 +157,7 @@ export default function StdCommonUtilityPage() {
               Central Income Statement hub — feeds data into all other Standard models.
             </p>
             <p className="text-xs text-blue-400 mt-1 flex items-center gap-1">
-              <ArrowRight className="h-3 w-3" /> Break-even, Burn &amp; Runway, Unit Economics, Cap Table, Business Snapshot
+              <ArrowRight className="h-3 w-3" /> Break-even, Burn &amp; Runway, Unit Economics, Movements, Business Snapshot
             </p>
           </div>
         </div>
@@ -247,7 +276,7 @@ export default function StdCommonUtilityPage() {
               <ArrowRight className="h-3.5 w-3.5" /> Data flows to linked models
             </p>
             <p className="text-xs text-muted-foreground">
-              Revenue, costs, and margins auto-fill into Break-even, Burn &amp; Runway, Unit Economics, and Business Snapshot.
+              Revenue, costs, and margins auto-fill into Break-even, Burn &amp; Runway, Unit Economics, Movements, and Business Snapshot.
             </p>
           </div>
         </div>

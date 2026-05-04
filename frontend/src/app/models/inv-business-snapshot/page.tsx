@@ -21,6 +21,10 @@ interface SnapshotInputs {
   arr: number;
   nrr: number;
   enterpriseValue: number;
+  receivables: number;
+  inventory: number;
+  payables: number;
+  changeInWC: number;
 }
 
 interface SnapshotResults {
@@ -68,7 +72,7 @@ function calculateSnapshot(inp: SnapshotInputs): SnapshotResults {
 }
 
 const emptyInputs = (): SnapshotInputs => ({
-  monthlyRevenue: 0, grossMargin: 0, netMargin: 0, cashBalance: 0, burnRate: 0, totalCustomers: 0, ltv: 0, cac: 0, arr: 0, nrr: 0, enterpriseValue: 0,
+  monthlyRevenue: 0, grossMargin: 0, netMargin: 0, cashBalance: 0, burnRate: 0, totalCustomers: 0, ltv: 0, cac: 0, arr: 0, nrr: 0, enterpriseValue: 0, receivables: 0, inventory: 0, payables: 0, changeInWC: 0,
 });
 
 export default function InvBusinessSnapshotPage() {
@@ -76,6 +80,7 @@ export default function InvBusinessSnapshotPage() {
   const [inputs, setInputs] = useState<SnapshotInputs>(emptyInputs());
   const [results, setResults] = useState<SnapshotResults | null>(null);
   const [linkedSources, setLinkedSources] = useState<string[]>([]);
+  const [lockedFields, setLockedFields] = useState<Set<string>>(new Set());
 
   const { save: persistState, reset: clearPersisted, saving, saved, markDirty } = useSavedModel({
     modelSlug: "inv-business-snapshot",
@@ -87,37 +92,73 @@ export default function InvBusinessSnapshotPage() {
 
   const loadFromLinkedModels = () => {
     const sources: string[] = [];
-    const hub = loadModelResults<Record<string, number>>("inv-common-utility");
+    const locked = new Set<string>();
+    const hub = loadModelResults<Record<string, unknown>>("inv-common-utility");
     const burn = loadModelResults<Record<string, unknown>>("inv-burn-runway");
-    const dcf = loadModelResults<Record<string, number>>("inv-dcf-valuation");
+    const dcf = loadModelResults<Record<string, unknown>>("inv-dcf-valuation");
+    const ue = loadModelResults<Record<string, unknown>>("inv-unit-economics");
 
     setInputs((prev) => {
       const next = { ...prev };
       if (hub) {
-        if (hub.monthlyRevenue > 0) { next.monthlyRevenue = hub.monthlyRevenue; sources.push("Common Utility"); }
-        if (hub.grossMargin > 0) next.grossMargin = hub.grossMargin;
-        if (hub.netMargin > 0) next.netMargin = hub.netMargin;
-        if (hub.annualRevenue > 0) next.arr = hub.annualRevenue;
+        if (typeof hub.monthlyRevenue === "number" && (hub.monthlyRevenue as number) > 0) { next.monthlyRevenue = hub.monthlyRevenue as number; locked.add("monthlyRevenue"); }
+        if (typeof hub.grossMargin === "number" && (hub.grossMargin as number) > 0) { next.grossMargin = hub.grossMargin as number; locked.add("grossMargin"); }
+        if (typeof hub.netMargin === "number" && (hub.netMargin as number) > 0) { next.netMargin = hub.netMargin as number; locked.add("netMargin"); }
+        if (typeof hub.annualRevenue === "number" && (hub.annualRevenue as number) > 0) { next.arr = hub.annualRevenue as number; locked.add("arr"); }
+        sources.push("Common Utility");
       }
       if (burn) {
-        const bd = burn as Record<string, Record<string, Record<string, number>>>;
+        const bd = burn as Record<string, unknown>;
         if (bd.monthlyData) {
-          const keys = Object.keys(bd.monthlyData);
-          const lastKey = keys[keys.length - 1];
-          if (lastKey) {
-            const last = bd.monthlyData[lastKey];
-            if (last?.["Cumulative Cash"] > 0) next.cashBalance = last["Cumulative Cash"];
-            if (last?.["Net Burn"] > 0) next.burnRate = last["Net Burn"];
-            sources.push("Burn & Runway");
+          const months = bd.monthlyData as Record<string, Record<string, number>>;
+          const keys = Object.keys(months);
+          for (let i = keys.length - 1; i >= 0; i--) {
+            const last = months[keys[i]];
+            if (last && (last["Total Revenue"] > 0 || last["Cumulative Cash"] !== 0)) {
+              if (last["Cumulative Cash"] > 0) { next.cashBalance = last["Cumulative Cash"]; locked.add("cashBalance"); }
+              if (last["Net Burn"] > 0) { next.burnRate = last["Net Burn"]; locked.add("burnRate"); }
+              break;
+            }
           }
+          sources.push("Burn & Runway");
         }
       }
+      if (ue) {
+        const ueData = ue as Record<string, unknown>;
+        if (ueData.monthlyData) {
+          const months = ueData.monthlyData as Record<string, Record<string, number>>;
+          const keys = Object.keys(months);
+          for (let i = keys.length - 1; i >= 0; i--) {
+            const last = months[keys[i]];
+            if (last && last["Total Active Customers (Monthly)"] > 0) {
+              next.totalCustomers = last["Total Active Customers (Monthly)"]; locked.add("totalCustomers");
+              if (last["LTV"] > 0) { next.ltv = last["LTV"]; locked.add("ltv"); }
+              if (last["CAC"] > 0) { next.cac = last["CAC"]; locked.add("cac"); }
+              break;
+            }
+          }
+        }
+        sources.push("Unit Economics");
+      }
       if (dcf) {
-        if (dcf.enterpriseValue > 0) { next.enterpriseValue = dcf.enterpriseValue; sources.push("DCF Valuation"); }
+        if (typeof dcf.enterpriseValue === "number" && (dcf.enterpriseValue as number) > 0) { next.enterpriseValue = dcf.enterpriseValue as number; locked.add("enterpriseValue"); sources.push("DCF Valuation"); }
+      }
+      // Pull from Movements model
+      const mov = loadModelResults<Record<string, unknown>>("inv-movements");
+      if (mov) {
+        const movAnnual = mov.annual as Record<string, number> | undefined;
+        if (movAnnual) {
+          if (movAnnual.closingReceivables > 0) { next.receivables = movAnnual.closingReceivables; locked.add("receivables"); }
+          if (movAnnual.closingInventory > 0) { next.inventory = movAnnual.closingInventory; locked.add("inventory"); }
+          if (movAnnual.closingPayables > 0) { next.payables = movAnnual.closingPayables; locked.add("payables"); }
+          if (movAnnual.totalChangeInWC !== 0) { next.changeInWC = movAnnual.totalChangeInWC; locked.add("changeInWC"); }
+          sources.push("Movements");
+        }
       }
       return next;
     });
     setLinkedSources(sources);
+    setLockedFields(locked);
   };
 
   useEffect(() => {
@@ -162,6 +203,10 @@ export default function InvBusinessSnapshotPage() {
     { key: "arr", label: "ARR", prefix: "$" },
     { key: "nrr", label: "NRR %", prefix: "%" },
     { key: "enterpriseValue", label: "Enterprise Value", prefix: "$" },
+    { key: "receivables", label: "Trade Receivables", prefix: "$" },
+    { key: "inventory", label: "Inventory", prefix: "$" },
+    { key: "payables", label: "Trade Payables", prefix: "$" },
+    { key: "changeInWC", label: "Δ Working Capital", prefix: "$" },
   ];
 
   const ragColor = (status: string) =>
@@ -207,7 +252,7 @@ export default function InvBusinessSnapshotPage() {
       {linkedSources.length > 0 && (
         <div className="rounded-xl bg-success/5 border border-success/20 p-3 mb-6">
           <p className="text-xs text-success font-medium">
-            Data imported from: {linkedSources.join(", ")}. You can override any value.
+            Data imported from: {linkedSources.join(", ")}. Linked fields are locked.
           </p>
         </div>
       )}
@@ -217,14 +262,20 @@ export default function InvBusinessSnapshotPage() {
         <div className="rounded-2xl border border-border bg-card p-6" data-inputs>
           <h2 className="font-semibold mb-5">Business Metrics</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {fields.map((field) => (
+            {fields.map((field) => {
+              const isLocked = lockedFields.has(field.key);
+              return (
               <div key={field.key}>
-                <label className="block text-xs text-muted-foreground mb-1">{field.label}</label>
+                <label className="block text-xs text-muted-foreground mb-1">
+                  {field.label}
+                  {isLocked && <span className="ml-1 text-[10px] text-amber-400/70">(auto-filled)</span>}
+                </label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">{field.prefix}</span>
                   <input type="number" step="0.01" data-field={field.key}
                     value={inputs[field.key] || ""}
                     onChange={(e) => handleChange(field.key, e.target.value)}
+                    disabled={isLocked}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
                         e.preventDefault();
@@ -235,11 +286,12 @@ export default function InvBusinessSnapshotPage() {
                       }
                     }}
                     placeholder="0"
-                    className="w-full rounded-lg border border-border bg-input pl-7 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/50"
+                    className={`w-full rounded-lg border border-border pl-7 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/50 ${isLocked ? "bg-muted text-muted-foreground cursor-not-allowed opacity-60" : "bg-input"}`}
                   />
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
           <div className="flex gap-3 mt-6 pt-4 border-t border-border">
             <button onClick={handleCalculate} className="flex-1 rounded-lg bg-amber-400 text-black py-2.5 text-sm font-semibold hover:bg-amber-300 transition-colors">

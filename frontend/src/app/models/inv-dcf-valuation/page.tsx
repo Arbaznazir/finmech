@@ -22,6 +22,7 @@ export default function InvDCFValuationPage() {
   const [results, setResults] = useState<DCFResults | null>(null);
   const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({});
   const [hubLinked, setHubLinked] = useState(false);
+  const [lockedFields, setLockedFields] = useState<Set<string>>(new Set());
 
   const { save: persistState, reset: clearPersisted, saving, saved, markDirty } = useSavedModel({
     modelSlug: "inv-dcf-valuation",
@@ -33,15 +34,16 @@ export default function InvDCFValuationPage() {
 
   useEffect(() => {
     hydrate();
-    const hub = loadModelResults<Record<string, number>>("inv-common-utility");
-    if (hub) {
-      setInputs((prev) => {
-        const next = { ...prev };
-        if (hub.annualRevenue > 0) { next.baseYearRevenue = hub.annualRevenue; setHubLinked(true); }
-        if (hub.ebitdaMargin > 0) next.ebitdaMargin = hub.ebitdaMargin;
-        return next;
-      });
-    }
+    const hub = loadModelResults<Record<string, unknown>>("inv-common-utility");
+    if (!hub) return;
+    const locked = new Set<string>();
+    setInputs((prev) => {
+      const next = { ...prev };
+      if (typeof hub.annualRevenue === "number" && (hub.annualRevenue as number) > 0) { next.baseYearRevenue = hub.annualRevenue as number; locked.add("baseYearRevenue"); }
+      if (typeof hub.ebitdaMargin === "number" && (hub.ebitdaMargin as number) > 0) { next.ebitdaMargin = hub.ebitdaMargin as number; locked.add("ebitdaMargin"); }
+      return next;
+    });
+    if (locked.size > 0) { setHubLinked(true); setLockedFields(locked); }
   }, [hydrate]);
 
   const handleChange = (key: keyof DCFInputs, value: string) => {
@@ -126,9 +128,14 @@ export default function InvDCFValuationPage() {
                 </button>
                 {!collapsed && (
                   <div className="px-5 pb-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {INPUT_FIELDS.filter((f) => f.category === cat).map((field) => (
+                    {INPUT_FIELDS.filter((f) => f.category === cat).map((field) => {
+                      const isLocked = lockedFields.has(field.key);
+                      return (
                       <div key={field.key}>
-                        <label className="block text-xs text-muted-foreground mb-1">{field.label}</label>
+                        <label className="block text-xs text-muted-foreground mb-1">
+                          {field.label}
+                          {isLocked && <span className="ml-1 text-[10px] text-amber-400/70">(auto-filled)</span>}
+                        </label>
                         <div className="relative">
                           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
                             {field.type === "currency" ? "$" : field.type === "percent" ? "%" : ""}
@@ -136,12 +143,14 @@ export default function InvDCFValuationPage() {
                           <input type="number" step={field.type === "decimal" ? "0.01" : "1"}
                             value={inputs[field.key] || ""}
                             onChange={(e) => handleChange(field.key, e.target.value)}
+                            disabled={isLocked}
                             placeholder="0"
-                            className="w-full rounded-lg border border-border bg-input pl-7 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/50"
+                            className={`w-full rounded-lg border border-border pl-7 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/50 ${isLocked ? "bg-muted text-muted-foreground cursor-not-allowed opacity-60" : "bg-input"}`}
                           />
                         </div>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>

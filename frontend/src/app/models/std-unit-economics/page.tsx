@@ -26,6 +26,7 @@ export default function StdUnitEconomicsPage() {
   });
   const [activeMonth, setActiveMonth] = useState<MonthName>("Apr");
   const [hubLinked, setHubLinked] = useState(false);
+  const [lockedFields, setLockedFields] = useState<Set<string>>(new Set());
 
   const { save: persistState, reset: clearPersisted, saving, saved, markDirty } = useSavedModel({
     modelSlug: "std-unit-economics",
@@ -37,15 +38,28 @@ export default function StdUnitEconomicsPage() {
 
   useEffect(() => {
     hydrate();
-    const hub = loadModelResults<Record<string, number>>("std-common-utility");
-    if (hub && hub.monthlyRevenue > 0) {
-      setMonthData((prev) => {
-        const next = { ...prev };
-        next["Apr"] = { ...next["Apr"], "Sales Revenue": hub.monthlyRevenue };
-        return next;
-      });
-      setHubLinked(true);
-    }
+    const hub = loadModelResults<Record<string, unknown>>("std-common-utility");
+    if (!hub) return;
+    const hubMonths = hub.months as Record<string, Record<string, number>> | undefined;
+    const locked = new Set<string>();
+
+    setMonthData((prev) => {
+      const next = { ...prev };
+      if (hubMonths) {
+        MONTHS_ORDER.forEach((m) => {
+          const data = hubMonths[m];
+          if (!data || !next[m]) return;
+          next[m] = { ...next[m] };
+          if (data.revenue > 0) { next[m]["Sales Revenue"] = data.revenue; locked.add(`${m}::Sales Revenue`); }
+          if (data.marketingSpend > 0) { next[m]["Marketing Spend"] = data.marketingSpend; locked.add(`${m}::Marketing Spend`); }
+        });
+      } else if (typeof hub.monthlyRevenue === "number" && (hub.monthlyRevenue as number) > 0) {
+        next["Apr"] = { ...next["Apr"], "Sales Revenue": hub.monthlyRevenue as number };
+        locked.add("Apr::Sales Revenue");
+      }
+      return next;
+    });
+    if (locked.size > 0) { setHubLinked(true); setLockedFields(locked); }
   }, [hydrate]);
 
   const results = useMemo(() => calculateUnitEconomics(monthData), [monthData]);
@@ -147,7 +161,7 @@ export default function StdUnitEconomicsPage() {
 
       {hubLinked && (
         <div className="rounded-xl bg-success/5 border border-success/20 p-3 mb-6">
-          <p className="text-xs text-success font-medium">Revenue auto-filled from Common Utility for April. You can override it.</p>
+          <p className="text-xs text-success font-medium">Revenue &amp; Marketing Spend auto-filled from Common Utility. Linked fields are locked.</p>
         </div>
       )}
 
@@ -156,21 +170,28 @@ export default function StdUnitEconomicsPage() {
         <div className="rounded-2xl border border-border bg-card p-5" data-inputs>
           <h3 className="font-semibold text-sm mb-4">{activeMonth} Inputs</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {INPUT_FIELDS.map((field) => (
+            {INPUT_FIELDS.map((field) => {
+              const isLocked = lockedFields.has(`${activeMonth}::${field.key}`);
+              return (
               <div key={field.key}>
-                <label className="block text-xs text-muted-foreground mb-1">{field.label}</label>
+                <label className="block text-xs text-muted-foreground mb-1">
+                  {field.label}
+                  {isLocked && <span className="ml-1 text-[10px] text-primary/70">(auto-filled)</span>}
+                </label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">{field.prefix}</span>
                   <input type="number" data-field={field.key}
                     value={monthData[activeMonth][field.key] || ""}
                     onChange={(e) => handleChange(field.key, e.target.value)}
                     onKeyDown={handleKeyDown}
+                    disabled={isLocked}
                     placeholder="0"
-                    className="w-full rounded-lg border border-border bg-input pl-7 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    className={`w-full rounded-lg border border-border pl-7 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 ${isLocked ? "bg-muted text-muted-foreground cursor-not-allowed opacity-60" : "bg-input"}`}
                   />
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
           <div className="flex gap-3 mt-5">
             <button onClick={handleReset} className="rounded-lg border border-border px-4 py-2 text-sm hover:bg-muted transition-colors flex items-center gap-1.5">

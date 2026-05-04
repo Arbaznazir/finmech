@@ -11,10 +11,11 @@ import { useSavedModel } from "@/lib/use-saved-model";
 import {
   MONTHS_ORDER,
   INPUT_FIELDS,
-  calculateUnitEconomics,
+  OUTPUT_FIELDS,
+  calculateUnitEconomicsAdvanced,
   createEmptyInputs,
   type MonthName,
-} from "@/lib/unit-economics-model";
+} from "@/lib/unit-economics-advanced-model";
 
 export default function InvUnitEconomicsPage() {
   const { user, hydrate } = useAuth();
@@ -25,6 +26,7 @@ export default function InvUnitEconomicsPage() {
   });
   const [activeMonth, setActiveMonth] = useState<MonthName>("Apr");
   const [hubLinked, setHubLinked] = useState(false);
+  const [lockedFields, setLockedFields] = useState<Set<string>>(new Set());
 
   const { save: persistState, reset: clearPersisted, saving, saved, markDirty } = useSavedModel({
     modelSlug: "inv-unit-economics",
@@ -36,20 +38,27 @@ export default function InvUnitEconomicsPage() {
 
   useEffect(() => {
     hydrate();
-    const hub = loadModelResults<Record<string, number>>("inv-common-utility");
-    if (hub && hub.monthlyRevenue > 0) {
-      setHubLinked(true);
-      setMonthData((prev) => {
-        const next = { ...prev };
+    const hub = loadModelResults<Record<string, unknown>>("inv-common-utility");
+    if (!hub) return;
+    const hubMonths = hub.months as Record<string, Record<string, number>> | undefined;
+    const locked = new Set<string>();
+
+    setMonthData((prev) => {
+      const next = { ...prev };
+      if (hubMonths) {
         MONTHS_ORDER.forEach((m) => {
-          next[m] = { ...next[m], "Sales Revenue": hub.monthlyRevenue };
+          const data = hubMonths[m];
+          if (!data || !next[m]) return;
+          next[m] = { ...next[m] };
+          if (data.marketingSpend > 0) { next[m]["Marketing Spend"] = data.marketingSpend; locked.add(`${m}::Marketing Spend`); }
         });
-        return next;
-      });
-    }
+      }
+      return next;
+    });
+    if (locked.size > 0) { setHubLinked(true); setLockedFields(locked); }
   }, [hydrate]);
 
-  const results = useMemo(() => calculateUnitEconomics(monthData), [monthData]);
+  const results = useMemo(() => calculateUnitEconomicsAdvanced(monthData), [monthData]);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { saveModelResults("inv-unit-economics", results); }, [results]);
@@ -78,6 +87,7 @@ export default function InvUnitEconomicsPage() {
     MONTHS_ORDER.forEach((m) => { d[m] = createEmptyInputs(); });
     setMonthData(d);
     setHubLinked(false);
+    setLockedFields(new Set());
     clearModelResults("inv-unit-economics");
     clearPersisted();
   };
@@ -91,14 +101,23 @@ export default function InvUnitEconomicsPage() {
   };
 
   const cur = results.monthlyData[activeMonth];
-  const fmt = (key: string, format: string) => {
-    const v = Number(cur?.[key]) || 0;
-    if (format === "$") return formatCurrency(v);
-    if (format === "%") return `${v.toFixed(1)}%`;
-    if (format === "x") return `${v.toFixed(2)}x`;
-    if (format === "mo") return `${v.toFixed(1)} mo`;
-    return v.toLocaleString();
+  const categories = [...new Set(INPUT_FIELDS.map((f) => f.category))];
+
+  const fmtOutput = (key: string, format: string) => {
+    if (!cur) return "—";
+    const v = Number(cur[key]) || 0;
+    if (format === "currency") return formatCurrency(v);
+    if (format === "percent") return `${(v * 100).toFixed(1)}%`;
+    if (format === "ratio") return `${v.toFixed(2)}x`;
+    if (format === "months") return `${v.toFixed(1)} mo`;
+    if (format === "rag") return String(cur[key] || "—");
+    return v.toLocaleString(undefined, { maximumFractionDigits: 0 });
   };
+
+  const ragColor = (status: string) =>
+    status === "GREEN" ? "text-success bg-success/10 border-success/30" :
+    status === "AMBER" ? "text-amber-400 bg-amber-400/10 border-amber-400/30" :
+    "text-danger bg-danger/10 border-danger/30";
 
   return (
     <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-8">
@@ -117,8 +136,7 @@ export default function InvUnitEconomicsPage() {
               <span className="rounded px-2 py-0.5 text-xs font-medium uppercase bg-amber-400/10 text-amber-400">Investor Grade</span>
             </div>
             <p className="text-muted-foreground mt-1">
-              Advanced unit economics with cohort analysis and payback curves.
-              <span className="text-amber-400 ml-2 text-xs font-medium">&larr; Common Utility</span>
+              Full Excel match — CAC, LTV, MRR, GRR, NRR, Rule of 40, Contribution Margin &amp; more.
             </p>
           </div>
         </div>
@@ -133,36 +151,60 @@ export default function InvUnitEconomicsPage() {
 
       {hubLinked && (
         <div className="rounded-xl bg-success/5 border border-success/20 p-3 mb-6">
-          <p className="text-xs text-success font-medium">Auto-filled from Common Utility — Sales Revenue loaded for all months.</p>
+          <p className="text-xs text-success font-medium">Auto-filled from Common Utility. Linked fields are locked.</p>
         </div>
       )}
 
       {/* Month tabs */}
       <div className="flex gap-1 overflow-x-auto pb-2 mb-6">
-        {MONTHS_ORDER.map((m) => (
-          <button key={m} onClick={() => setActiveMonth(m)}
-            className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${activeMonth === m ? "bg-amber-400 text-black" : "bg-card border border-border hover:bg-muted"}`}>
-            {m}
-          </button>
-        ))}
+        {MONTHS_ORDER.map((m) => {
+          const mStatus = results.status.find((s) => s.month === m);
+          return (
+            <button key={m} onClick={() => setActiveMonth(m)}
+              className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+                activeMonth === m ? "bg-amber-400 text-black" :
+                mStatus ? (mStatus.rag === "GREEN" ? "bg-success/10 border border-success/30 text-success" :
+                  mStatus.rag === "AMBER" ? "bg-amber-400/10 border border-amber-400/30 text-amber-400" :
+                  "bg-danger/10 border border-danger/30 text-danger") :
+                "bg-card border border-border hover:bg-muted"
+              }`}>
+              {m}
+            </button>
+          );
+        })}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6">
+        {/* Inputs */}
         <div className="rounded-2xl border border-border bg-card p-5" data-inputs>
           <h3 className="font-semibold text-sm mb-3">{activeMonth} Inputs</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {INPUT_FIELDS.map((field) => (
-              <div key={field.key}>
-                <label className="block text-xs text-muted-foreground mb-1">{field.label}</label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">{field.prefix}</span>
-                  <input type="number" data-field={field.key}
-                    value={monthData[activeMonth][field.key] || ""}
-                    onChange={(e) => handleChange(field.key, e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    placeholder="0"
-                    className="w-full rounded-lg border border-border bg-input pl-7 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/50"
-                  />
+          <div className="space-y-4">
+            {categories.map((cat) => (
+              <div key={cat}>
+                <p className="text-xs font-medium text-muted-foreground mb-2">{cat}</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {INPUT_FIELDS.filter((f) => f.category === cat).map((field) => {
+                    const isLocked = lockedFields.has(`${activeMonth}::${field.key}`);
+                    return (
+                    <div key={field.key}>
+                      <label className="block text-xs text-muted-foreground mb-1">
+                        {field.label}
+                        {isLocked && <span className="ml-1 text-[10px] text-amber-400/70">(auto-filled)</span>}
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">{field.prefix}</span>
+                        <input type="number" data-field={field.key}
+                          value={monthData[activeMonth][field.key] || ""}
+                          onChange={(e) => handleChange(field.key, e.target.value)}
+                          onKeyDown={handleKeyDown}
+                          disabled={isLocked}
+                          placeholder="0"
+                          className={`w-full rounded-lg border border-border pl-7 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/50 ${isLocked ? "bg-muted text-muted-foreground cursor-not-allowed opacity-60" : "bg-input"}`}
+                        />
+                      </div>
+                    </div>
+                    );
+                  })}
                 </div>
               </div>
             ))}
@@ -174,42 +216,97 @@ export default function InvUnitEconomicsPage() {
           </div>
         </div>
 
-        {/* Summary */}
+        {/* Results Panel */}
         <div className="space-y-4 h-fit sticky top-8">
+          {/* Monthly Metrics */}
           <div className="rounded-2xl border border-border bg-card p-5">
             <h3 className="font-semibold text-sm mb-3">{activeMonth} Metrics</h3>
-            <div className="space-y-2 text-xs">
-              {([
-                { label: "CAC", key: "CAC", f: "$" },
-                { label: "LTV", key: "LTV", f: "$" },
-                { label: "ARPU", key: "ARPU", f: "$" },
-                { label: "Churn Rate", key: "Churn Rate", f: "%" },
-                { label: "Growth Rate", key: "Growth Rate", f: "%" },
-                { label: "LTV/CAC Ratio", key: "LTV/CAC", f: "x" },
-                { label: "CAC Payback", key: "CAC Payback Period (months)", f: "mo" },
-                { label: "End Customers", key: "End Customers", f: "#" },
-              ]).map((row) => (
-                <div key={row.label} className="flex justify-between rounded-lg px-3 py-1.5 bg-background/50 border border-border/50">
-                  <span className="text-muted-foreground">{row.label}</span>
-                  <span className="font-semibold">{fmt(row.key, row.f)}</span>
-                </div>
-              ))}
-            </div>
+            {cur ? (
+              <div className="space-y-1.5">
+                {OUTPUT_FIELDS.map((f) => {
+                  if (f.format === "rag") {
+                    const rag = String(cur[f.key] || "");
+                    return (
+                      <div key={f.key} className={`rounded-lg px-3 py-1.5 text-center text-xs font-semibold border ${ragColor(rag)}`}>
+                        {rag === "GREEN" ? "GREEN — Healthy Economics" : rag === "AMBER" ? "AMBER — Watch Closely" : "RED — Economics Need Fixing"}
+                      </div>
+                    );
+                  }
+                  return (
+                    <div key={f.key} className="flex justify-between text-xs rounded-lg px-3 py-1.5 bg-background/50 border border-border/50">
+                      <span className="text-muted-foreground">{f.label}</span>
+                      <span className="font-semibold">{fmtOutput(f.key, f.format)}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Enter inputs to see metrics.</p>
+            )}
           </div>
 
-          {cur && cur["RAG Status"] && (
-            <div className={`rounded-xl border p-4 text-center ${
-              cur["RAG Status"] === 1 ? "bg-success/5 border-success/20" :
-              cur["RAG Status"] === 2 ? "bg-amber-400/5 border-amber-400/20" :
-              "bg-danger/5 border-danger/20"
-            }`}>
-              <p className={`text-xs font-semibold ${
-                cur["RAG Status"] === 1 ? "text-success" :
-                cur["RAG Status"] === 2 ? "text-amber-400" :
-                "text-danger"
-              }`}>
-                {cur["RAG Status"] === 1 ? "GREEN — Healthy Economics" : cur["RAG Status"] === 2 ? "AMBER — Watch Closely" : "RED — Economics Need Fixing"}
-              </p>
+          {/* Annual Summary */}
+          {results.monthsAdded.length > 0 && (
+            <div className="rounded-2xl border border-border bg-card p-5">
+              <h3 className="font-semibold text-sm mb-3">Annual Summary</h3>
+              <div className="space-y-1.5 text-xs">
+                <div className="flex justify-between px-3 py-1">
+                  <span className="text-muted-foreground">Total Revenue</span>
+                  <span className="font-semibold">{formatCurrency(results.summary.totalRevenue)}</span>
+                </div>
+                <div className="flex justify-between px-3 py-1">
+                  <span className="text-muted-foreground">Total Contribution Margin</span>
+                  <span className="font-semibold">{formatCurrency(results.summary.totalContributionMargin)}</span>
+                </div>
+                <div className="flex justify-between px-3 py-1">
+                  <span className="text-muted-foreground">Ending Customers</span>
+                  <span className="font-semibold">{results.summary.endingCustomers.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between px-3 py-1">
+                  <span className="text-muted-foreground">Ending MRR</span>
+                  <span className="font-semibold">{formatCurrency(results.summary.endingMRR)}</span>
+                </div>
+                <div className="border-t border-border pt-1.5 mt-1.5">
+                  <div className="flex justify-between px-3 py-1">
+                    <span className="text-muted-foreground">Avg CAC</span>
+                    <span className="font-semibold">{formatCurrency(results.summary.avgCAC)}</span>
+                  </div>
+                  <div className="flex justify-between px-3 py-1">
+                    <span className="text-muted-foreground">Avg LTV</span>
+                    <span className="font-semibold">{formatCurrency(results.summary.avgLTV)}</span>
+                  </div>
+                  <div className="flex justify-between px-3 py-1">
+                    <span className="text-muted-foreground">Avg LTV/CAC</span>
+                    <span className="font-semibold">{results.summary.avgLTVCAC.toFixed(2)}x</span>
+                  </div>
+                  <div className="flex justify-between px-3 py-1">
+                    <span className="text-muted-foreground">Avg Churn Rate</span>
+                    <span className="font-semibold">{(results.summary.avgChurnRate * 100).toFixed(1)}%</span>
+                  </div>
+                </div>
+                <div className="border-t border-border pt-1.5 mt-1.5">
+                  <div className="flex justify-between px-3 py-1">
+                    <span className="text-muted-foreground">Avg GRR</span>
+                    <span className="font-semibold">{(results.summary.avgGRR * 100).toFixed(1)}%</span>
+                  </div>
+                  <div className="flex justify-between px-3 py-1">
+                    <span className="text-muted-foreground">Avg NRR</span>
+                    <span className={`font-semibold ${results.summary.avgNRR < 1 ? "text-danger" : "text-success"}`}>
+                      {(results.summary.avgNRR * 100).toFixed(1)}%
+                    </span>
+                  </div>
+                  <div className="flex justify-between px-3 py-1">
+                    <span className="text-muted-foreground">Avg Contribution Margin</span>
+                    <span className="font-semibold">{(results.summary.avgContributionMargin * 100).toFixed(1)}%</span>
+                  </div>
+                  <div className="flex justify-between px-3 py-1">
+                    <span className="text-muted-foreground">Avg Rule of 40</span>
+                    <span className={`font-semibold ${results.summary.avgRuleOf40 >= 0.40 ? "text-success" : results.summary.avgRuleOf40 >= 0.20 ? "text-amber-400" : "text-danger"}`}>
+                      {(results.summary.avgRuleOf40 * 100).toFixed(1)}%
+                    </span>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
         </div>

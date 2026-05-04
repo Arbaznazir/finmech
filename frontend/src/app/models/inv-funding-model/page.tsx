@@ -33,6 +33,7 @@ export default function InvFundingModelPage() {
   const [results, setResults] = useState<FundingResults | null>(null);
   const [activeTab, setActiveTab] = useState<TabView>("input");
   const [hubLinked, setHubLinked] = useState(false);
+  const [lockedFields, setLockedFields] = useState<Set<string>>(new Set());
 
   const { save: persistState, reset: clearPersisted, saving, saved, markDirty } = useSavedModel({
     modelSlug: "inv-funding-model",
@@ -46,19 +47,48 @@ export default function InvFundingModelPage() {
 
   useEffect(() => {
     hydrate();
-    const hub = loadModelResults<Record<string, number>>("inv-common-utility");
-    if (hub && hub.monthlyRevenue > 0) {
-      setHubLinked(true);
-      setMonthsData((prev) => {
-        const next = { ...prev };
+    const hub = loadModelResults<Record<string, unknown>>("inv-common-utility");
+    const locked = new Set<string>();
+
+    setMonthsData((prev) => {
+      const hubMonths = hub?.months as Record<string, Record<string, number>> | undefined;
+      const next = { ...prev };
+      if (hubMonths) {
         MONTHS_ORDER.forEach((m) => {
-          next[m] = { ...next[m], Revenue: hub.monthlyRevenue };
-          if (hub.totalFixedCosts > 0) next[m]["Fixed Cost"] = hub.totalFixedCosts;
-          if (hub.totalVariableCosts > 0) next[m]["Variable Cost"] = hub.totalVariableCosts;
+          const data = hubMonths[m];
+          if (!data || !next[m]) return;
+          next[m] = { ...next[m] };
+          if (data.revenue > 0) { next[m]["Revenue"] = data.revenue; locked.add(`${m}::Revenue`); }
+          if (data.cogs > 0) { next[m]["Cost of Goods Sold (COGS)"] = data.cogs; locked.add(`${m}::Cost of Goods Sold (COGS)`); }
+          if (data.totalVariableCosts > 0) { next[m]["Variable Cost"] = data.totalVariableCosts; locked.add(`${m}::Variable Cost`); }
+          if (data.totalFixedCosts > 0) { next[m]["Fixed Cost"] = data.totalFixedCosts; locked.add(`${m}::Fixed Cost`); }
         });
-        return next;
-      });
-    }
+      } else if (hub && typeof hub.monthlyRevenue === "number" && (hub.monthlyRevenue as number) > 0) {
+        MONTHS_ORDER.forEach((m) => {
+          next[m] = { ...next[m], Revenue: hub.monthlyRevenue as number };
+          if ((hub.totalFixedCosts as number) > 0) next[m]["Fixed Cost"] = hub.totalFixedCosts as number;
+          if ((hub.totalVariableCosts as number) > 0) next[m]["Variable Cost"] = hub.totalVariableCosts as number;
+          locked.add(`${m}::Revenue`); locked.add(`${m}::Fixed Cost`); locked.add(`${m}::Variable Cost`);
+        });
+      }
+      // Pull working capital fields from Movements model
+      const mov = loadModelResults<Record<string, unknown>>("inv-movements");
+      if (mov && mov.monthlyData) {
+        const movMonths = mov.monthlyData as Record<string, Record<string, number>>;
+        MONTHS_ORDER.forEach((m) => {
+          const md = movMonths[m];
+          if (!md || !next[m]) return;
+          next[m] = { ...next[m] };
+          if (md["Trade Receivables (Closing)"] > 0) { next[m]["Trade Receivables"] = md["Trade Receivables (Closing)"]; locked.add(`${m}::Trade Receivables`); }
+          if (md["Inventory (Closing)"] > 0) { next[m]["Inventory"] = md["Inventory (Closing)"]; locked.add(`${m}::Inventory`); }
+          if (md["Trade Payables (Closing)"] > 0) { next[m]["Trade Payables"] = md["Trade Payables (Closing)"]; locked.add(`${m}::Trade Payables`); }
+          if (md["Change in Working Capital"] !== undefined && md["Change in Working Capital"] !== 0) { next[m]["Change in WC"] = md["Change in Working Capital"]; locked.add(`${m}::Change in WC`); }
+        });
+      }
+
+      return next;
+    });
+    if (locked.size > 0) { setHubLinked(true); setLockedFields(locked); }
   }, [hydrate]);
 
   const handleInputChange = (key: string, value: string) => {
@@ -145,7 +175,7 @@ export default function InvFundingModelPage() {
 
       {hubLinked && (
         <div className="rounded-xl bg-success/5 border border-success/20 p-3 mb-6">
-          <p className="text-xs text-success font-medium">Auto-filled from Common Utility — Revenue &amp; Costs loaded for all months.</p>
+          <p className="text-xs text-success font-medium">Auto-filled from Common Utility &amp; Movements. Only CapEx, Opening Cash &amp; Contingency % are manual.</p>
         </div>
       )}
 
@@ -195,21 +225,28 @@ export default function InvFundingModelPage() {
                 <div key={cat}>
                   <p className="text-xs font-medium text-muted-foreground mb-2">{cat}</p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {INPUT_FIELDS.filter((f) => f.category === cat).map((field) => (
+                    {INPUT_FIELDS.filter((f) => f.category === cat).map((field) => {
+                      const isLocked = lockedFields.has(`${activeMonth}::${field.key}`);
+                      return (
                       <div key={field.key}>
-                        <label className="block text-xs text-muted-foreground mb-1">{field.label}</label>
+                        <label className="block text-xs text-muted-foreground mb-1">
+                          {field.label}
+                          {isLocked && <span className="ml-1 text-[10px] text-amber-400/70">(auto-filled)</span>}
+                        </label>
                         <div className="relative">
                           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">{field.prefix}</span>
                           <input type="number" data-field={field.key}
                             value={monthsData[activeMonth]?.[field.key] || ""}
                             onChange={(e) => handleInputChange(field.key, e.target.value)}
                             onKeyDown={handleKeyDown}
+                            disabled={isLocked}
                             placeholder="0"
-                            className="w-full rounded-lg border border-border bg-input pl-7 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/50"
+                            className={`w-full rounded-lg border border-border pl-7 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/50 ${isLocked ? "bg-muted text-muted-foreground cursor-not-allowed opacity-60" : "bg-input"}`}
                           />
                         </div>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               ))}

@@ -117,9 +117,9 @@ export default function InvBreakEvenPage() {
               <div key={field.key}>
                 <div className="flex items-center gap-2 mb-1">
                   <label className="text-xs text-muted-foreground">{field.label}</label>
-                  {field.linked && (
+                  {field.linked && linkedFields.has(field.key) && (
                     <span className="text-[10px] rounded px-1.5 py-0.5 bg-success/10 text-success font-medium">
-                      Auto-filled from Common Utility
+                      Auto-filled
                     </span>
                   )}
                 </div>
@@ -129,13 +129,10 @@ export default function InvBreakEvenPage() {
                     onChange={(e) => {
                       setInputs((prev) => ({ ...prev, [field.key]: parseFloat(e.target.value) || 0 }));
                       markDirty();
-                      if (field.linked) {
-                        if (!confirm("This value comes from Common Utility. Do you still want to override it?")) return;
-                        setLinkedFields((prev) => { const n = new Set(prev); n.delete(field.key); return n; });
-                      }
                     }}
+                    disabled={linkedFields.has(field.key)}
                     placeholder="0"
-                    className={`w-full rounded-lg border bg-input pl-7 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/50 ${field.linked ? "border-success/30" : "border-border"}`}
+                    className={`w-full rounded-lg border pl-7 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/50 ${linkedFields.has(field.key) ? "bg-muted text-muted-foreground cursor-not-allowed opacity-60 border-border" : "bg-input border-border"}`}
                   />
                 </div>
               </div>

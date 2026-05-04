@@ -121,9 +121,9 @@ export default function StdBreakEvenPage() {
               <div key={field.key}>
                 <div className="flex items-center gap-2 mb-1">
                   <label className="block text-xs text-muted-foreground">{field.label}</label>
-                  {field.linked && (
-                    <span className={`text-[10px] rounded px-1.5 py-0.5 ${linkedFields.has(field.key) ? "text-success bg-success/10" : "text-blue-400 bg-blue-400/10"}`}>
-                      {linkedFields.has(field.key) ? "Auto-filled from Common Utility" : "From Common Utility"}
+                  {field.linked && linkedFields.has(field.key) && (
+                    <span className="text-[10px] rounded px-1.5 py-0.5 text-success bg-success/10">
+                      Auto-filled
                     </span>
                   )}
                 </div>
@@ -132,6 +132,7 @@ export default function StdBreakEvenPage() {
                   <input type="number" step="0.01" data-field={field.key}
                     value={inputs[field.key] || ""}
                     onChange={(e) => handleChange(field.key, e.target.value)}
+                    disabled={linkedFields.has(field.key)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
                         e.preventDefault();
@@ -142,7 +143,7 @@ export default function StdBreakEvenPage() {
                       }
                     }}
                     placeholder="0"
-                    className="w-full rounded-lg border border-border bg-input pl-7 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    className={`w-full rounded-lg border border-border pl-7 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 ${linkedFields.has(field.key) ? "bg-muted text-muted-foreground cursor-not-allowed opacity-60" : "bg-input"}`}
                   />
                 </div>
               </div>

@@ -28,6 +28,9 @@ router.post('/', authenticate, async (req, res) => {
     res.status(201).json(calculation);
   } catch (err) {
     console.error(err);
+    if (err.code === 'P2003') {
+      return res.status(401).json({ error: 'User account not found. Please sign up or log in again.' });
+    }
     res.status(500).json({ error: 'Failed to save calculation' });
   }
 });

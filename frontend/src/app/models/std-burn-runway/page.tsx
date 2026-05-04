@@ -27,6 +27,7 @@ export default function StdBurnRunwayPage() {
   });
   const [activeMonth, setActiveMonth] = useState<MonthName>("April");
   const [hubLinked, setHubLinked] = useState(false);
+  const [lockedFields, setLockedFields] = useState<Set<string>>(new Set());
 
   const { save: persistState, reset: clearPersisted, saving, saved, markDirty } = useSavedModel({
     modelSlug: "std-burn-runway",
@@ -37,24 +38,40 @@ export default function StdBurnRunwayPage() {
     getState: useCallback(() => ({ monthData, openingCash }), [monthData, openingCash]),
   });
 
+  // Map Common Utility short month names to Burn & Runway month names
+  const HUB_TO_BURN_MONTH: Record<string, string> = {
+    Apr: "April", May: "May", Jun: "June", Jul: "July",
+    Aug: "Aug", Sep: "Sep", Oct: "Oct", Nov: "Nov",
+    Dec: "Dec", Jan: "Jan", Feb: "Feb", Mar: "Mar",
+  };
+
   useEffect(() => {
     hydrate();
-    const hub = loadModelResults<Record<string, number>>("std-common-utility");
-    if (hub) {
-      if (hub.monthlyRevenue > 0) {
-        setMonthData((prev) => {
-          const next = { ...prev };
-          next["April"] = {
-            ...next["April"],
-            "Recurring Revenue": hub.monthlyRevenue,
-            "Fixed Expenses": hub.totalFixedCosts ?? 0,
-            "Variable Expenses": hub.totalVariableCosts ?? 0,
-          };
-          return next;
+    const hub = loadModelResults<Record<string, unknown>>("std-common-utility");
+    if (!hub) return;
+    const hubMonths = hub.months as Record<string, Record<string, number>> | undefined;
+    const locked = new Set<string>();
+
+    setMonthData((prev) => {
+      const next = { ...prev };
+      if (hubMonths) {
+        Object.entries(hubMonths).forEach(([shortM, data]) => {
+          const burnM = HUB_TO_BURN_MONTH[shortM];
+          if (!burnM || !next[burnM]) return;
+          next[burnM] = { ...next[burnM] };
+          if (data.recurringRevenue > 0) { next[burnM]["Recurring Revenue"] = data.recurringRevenue; locked.add(`${burnM}::Recurring Revenue`); }
+          if (data.variableRevenue > 0) { next[burnM]["Miscll. revenue"] = data.variableRevenue; locked.add(`${burnM}::Miscll. revenue`); }
+          if (data.totalFixedCosts > 0) { next[burnM]["Fixed Expenses"] = data.totalFixedCosts; locked.add(`${burnM}::Fixed Expenses`); }
+          if (data.totalVariableCosts > 0) { next[burnM]["Variable Expenses"] = data.totalVariableCosts; locked.add(`${burnM}::Variable Expenses`); }
         });
-        setHubLinked(true);
+      } else if (typeof hub.monthlyRevenue === "number" && (hub.monthlyRevenue as number) > 0) {
+        // Backward compat: fill April only
+        next["April"] = { ...next["April"], "Recurring Revenue": hub.monthlyRevenue as number, "Fixed Expenses": (hub.totalFixedCosts as number) ?? 0, "Variable Expenses": (hub.totalVariableCosts as number) ?? 0 };
+        locked.add("April::Recurring Revenue"); locked.add("April::Fixed Expenses"); locked.add("April::Variable Expenses");
       }
-    }
+      return next;
+    });
+    if (locked.size > 0) { setHubLinked(true); setLockedFields(locked); }
   }, [hydrate]);
 
   const results = useMemo(() => calculateBurnRunway(monthData, openingCash), [monthData, openingCash]);
@@ -172,7 +189,7 @@ export default function StdBurnRunwayPage() {
 
       {hubLinked && (
         <div className="rounded-xl bg-success/5 border border-success/20 p-3 mb-6">
-          <p className="text-xs text-success font-medium">Revenue &amp; costs auto-filled from Common Utility for April. You can override.</p>
+          <p className="text-xs text-success font-medium">Revenue &amp; costs auto-filled from Common Utility. Linked fields are locked.</p>
         </div>
       )}
 
@@ -181,21 +198,28 @@ export default function StdBurnRunwayPage() {
         <div className="rounded-2xl border border-border bg-card p-5" data-inputs>
           <h3 className="font-semibold text-sm mb-4">{activeMonth} Inputs</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {INPUT_FIELDS.map((field) => (
+            {INPUT_FIELDS.map((field) => {
+              const isLocked = lockedFields.has(`${activeMonth}::${field.key}`);
+              return (
               <div key={field.key}>
-                <label className="block text-xs text-muted-foreground mb-1">{field.label}</label>
+                <label className="block text-xs text-muted-foreground mb-1">
+                  {field.label}
+                  {isLocked && <span className="ml-1 text-[10px] text-primary/70">(auto-filled)</span>}
+                </label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">$</span>
                   <input type="number" data-field={field.key}
                     value={monthData[activeMonth][field.key] || ""}
                     onChange={(e) => handleChange(field.key, e.target.value)}
                     onKeyDown={handleKeyDown}
+                    disabled={isLocked}
                     placeholder="0"
-                    className="w-full rounded-lg border border-border bg-input pl-7 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    className={`w-full rounded-lg border border-border pl-7 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 ${isLocked ? "bg-muted text-muted-foreground cursor-not-allowed opacity-60" : "bg-input"}`}
                   />
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
           <div className="flex gap-3 mt-5">
             <button onClick={handleReset} className="rounded-lg border border-border px-4 py-2 text-sm hover:bg-muted transition-colors flex items-center gap-1.5">

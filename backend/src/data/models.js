@@ -361,6 +361,17 @@ export const MODELS = {
     ],
     calculate: null,
   },
+  'std-movements': {
+    slug: 'std-movements',
+    name: 'Working Capital Movements',
+    description: 'Month-by-month Receivables, Inventory & Payables tracking with Working Capital, CFO, FCF & Cash Conversion Cycle.',
+    tier: 'standard',
+    category: 'Cash Management',
+    icon: 'ArrowRightLeft',
+    linkedModels: ['std-common-utility', 'std-business-snapshot'],
+    fields: [],
+    calculate: null,
+  },
   'std-business-snapshot': {
     slug: 'std-business-snapshot',
     name: 'Business Snapshot',
@@ -368,7 +379,7 @@ export const MODELS = {
     tier: 'standard',
     category: 'Overview',
     icon: 'LayoutDashboard',
-    linkedModels: ['std-common-utility', 'std-break-even', 'std-burn-runway', 'std-unit-economics'],
+    linkedModels: ['std-common-utility', 'std-break-even', 'std-burn-runway', 'std-unit-economics', 'std-movements'],
     fields: [
       { key: 'monthlyRevenue', label: 'Monthly Revenue', type: 'currency', placeholder: '100000' },
       { key: 'grossMargin', label: 'Gross Margin %', type: 'percent', placeholder: '65' },
@@ -512,6 +523,17 @@ export const MODELS = {
     ],
     calculate: null,
   },
+  'inv-movements': {
+    slug: 'inv-movements',
+    name: 'Working Capital Movements',
+    description: 'Month-by-month Receivables, Inventory & Payables tracking with Working Capital, CFO, FCF & Cash Conversion Cycle.',
+    tier: 'investor',
+    category: 'Cash Management',
+    icon: 'ArrowRightLeft',
+    linkedModels: ['inv-common-utility', 'inv-business-snapshot', 'inv-funding-model'],
+    fields: [],
+    calculate: null,
+  },
   'inv-business-snapshot': {
     slug: 'inv-business-snapshot',
     name: 'Business Snapshot',
@@ -519,7 +541,7 @@ export const MODELS = {
     tier: 'investor',
     category: 'Overview',
     icon: 'LayoutDashboard',
-    linkedModels: ['inv-common-utility', 'inv-break-even', 'inv-burn-runway', 'inv-unit-economics', 'inv-dcf-valuation'],
+    linkedModels: ['inv-common-utility', 'inv-break-even', 'inv-burn-runway', 'inv-unit-economics', 'inv-movements', 'inv-dcf-valuation'],
     fields: [
       { key: 'monthlyRevenue', label: 'Monthly Revenue', type: 'currency', placeholder: '100000' },
       { key: 'grossMargin', label: 'Gross Margin %', type: 'percent', placeholder: '65' },
