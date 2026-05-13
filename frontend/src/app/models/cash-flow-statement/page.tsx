@@ -1,11 +1,13 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import {
   ArrowLeft, ArrowRightLeft, Save, RotateCcw, ChevronDown, ChevronUp,
   CheckCircle, AlertTriangle, XCircle, Info,
 } from "lucide-react";
+const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
 import api from "@/lib/api";
@@ -437,6 +439,90 @@ export default function CashFlowStatementPage() {
                   );
                 })}
               </div>
+            </div>
+
+            {/* CFO / CFI / CFF Stacked Bar */}
+            <div className="rounded-2xl border border-border bg-card p-5">
+              <h3 className="font-semibold text-sm mb-3">Monthly CFO, CFI & CFF</h3>
+              <ReactECharts
+                style={{ height: 260 }}
+                option={{
+                  tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+                  legend: { data: ["CFO", "CFI", "CFF"], textStyle: { color: "#aaa", fontSize: 10 }, top: 0 },
+                  grid: { top: 30, right: 15, bottom: 30, left: 55 },
+                  xAxis: { type: "category", data: results.monthsAdded, axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
+                  yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
+                  series: [
+                    { name: "CFO", type: "bar", stack: "cf", data: results.monthsAdded.map(m => results.monthlyData[m]?.["Net Cash Flow from Operating Activities (CFO)"] || 0), itemStyle: { color: "#22d3ee" } },
+                    { name: "CFI", type: "bar", stack: "cf", data: results.monthsAdded.map(m => results.monthlyData[m]?.["Cash Flow from Investing Activities (CFI)"] || 0), itemStyle: { color: "#a78bfa" } },
+                    { name: "CFF", type: "bar", stack: "cf", data: results.monthsAdded.map(m => results.monthlyData[m]?.["Cash Flow from Financing Activities (CFF)"] || 0), itemStyle: { color: "#f59e0b" } },
+                  ],
+                }}
+              />
+            </div>
+
+            {/* Ending Cash Line */}
+            <div className="rounded-2xl border border-border bg-card p-5">
+              <h3 className="font-semibold text-sm mb-3">Ending Cash Trend</h3>
+              <ReactECharts
+                style={{ height: 220 }}
+                option={{
+                  tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+                  grid: { top: 15, right: 15, bottom: 30, left: 55 },
+                  xAxis: { type: "category", data: results.monthsAdded, axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
+                  yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
+                  series: [{
+                    type: "line", smooth: true,
+                    data: results.monthsAdded.map(m => results.monthlyData[m]?.["Ending Cash"] || 0),
+                    areaStyle: { color: { type: "linear", x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: "rgba(34,211,238,0.3)" }, { offset: 1, color: "rgba(34,211,238,0)" }] } },
+                    lineStyle: { color: "#22d3ee", width: 2 },
+                    itemStyle: { color: "#22d3ee" },
+                    symbol: "circle", symbolSize: 5,
+                    markLine: { data: [{ yAxis: 0, lineStyle: { color: "#ef4444", type: "dashed" } }], label: { show: false }, symbol: "none" },
+                  }],
+                }}
+              />
+            </div>
+
+            {/* Annual CF Breakdown Donut */}
+            <div className="rounded-2xl border border-border bg-card p-5">
+              <h3 className="font-semibold text-sm mb-3">Annual Cash Flow Composition</h3>
+              <ReactECharts
+                style={{ height: 240 }}
+                option={{
+                  tooltip: { trigger: "item", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+                  series: [{
+                    type: "pie", radius: ["40%", "68%"], center: ["50%", "50%"],
+                    label: { color: "#ccc", fontSize: 10, formatter: "{b}\n{d}%" },
+                    data: [
+                      { value: Math.abs(results.annual["Net Cash Flow from Operating Activities (CFO)"] || 0), name: "CFO", itemStyle: { color: "#22d3ee" } },
+                      { value: Math.abs(results.annual["Cash Flow from Investing Activities (CFI)"] || 0), name: "CFI", itemStyle: { color: "#a78bfa" } },
+                      { value: Math.abs(results.annual["Cash Flow from Financing Activities (CFF)"] || 0), name: "CFF", itemStyle: { color: "#f59e0b" } },
+                    ].filter(d => d.value > 0),
+                  }],
+                }}
+              />
+            </div>
+
+            {/* Net Cash Flow Bar (per month) */}
+            <div className="rounded-2xl border border-border bg-card p-5">
+              <h3 className="font-semibold text-sm mb-3">Monthly Net Cash Flow</h3>
+              <ReactECharts
+                style={{ height: 220 }}
+                option={{
+                  tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+                  grid: { top: 15, right: 15, bottom: 30, left: 55 },
+                  xAxis: { type: "category", data: results.monthsAdded, axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
+                  yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => `$${(v/1000).toFixed(0)}k` }, splitLine: { lineStyle: { color: "#222" } } },
+                  series: [{
+                    type: "bar",
+                    data: results.monthsAdded.map(m => {
+                      const val = results.monthlyData[m]?.["Net Cash Flow"] || 0;
+                      return { value: val, itemStyle: { color: val >= 0 ? "#34d399" : "#ef4444", borderRadius: [4, 4, 0, 0] } };
+                    }),
+                  }],
+                }}
+              />
             </div>
 
             <div className="rounded-2xl border border-border bg-card p-6">

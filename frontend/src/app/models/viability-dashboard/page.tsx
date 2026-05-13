@@ -1,11 +1,13 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import {
   ArrowLeft, Activity, Save, RotateCcw,
   CheckCircle, AlertTriangle, XCircle, Lightbulb,
 } from "lucide-react";
+const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
 import api from "@/lib/api";
@@ -264,6 +266,109 @@ export default function ViabilityDashboardPage() {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+
+          {/* Charts */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* RAG Radar */}
+            <div className="rounded-2xl border border-border bg-card p-5">
+              <h3 className="font-semibold text-sm mb-3">Viability Radar</h3>
+              <ReactECharts
+                style={{ height: 280 }}
+                option={{
+                  radar: {
+                    indicator: [
+                      { name: "Contribution\nMargin", max: 50 },
+                      { name: "Net Profit\nMargin", max: 30 },
+                      { name: "Margin of\nSafety", max: 50 },
+                      { name: "BE Utilisation\n(inv)", max: 100 },
+                    ],
+                    axisName: { color: "#aaa", fontSize: 9 },
+                    splitArea: { areaStyle: { color: ["rgba(255,255,255,0.02)", "rgba(255,255,255,0.04)"] } },
+                    splitLine: { lineStyle: { color: "#333" } },
+                    axisLine: { lineStyle: { color: "#444" } },
+                  },
+                  series: [{
+                    type: "radar",
+                    data: [{
+                      value: [
+                        Math.max(0, results.contributionMarginPct),
+                        Math.max(0, results.netProfitMarginPct),
+                        Math.max(0, results.marginOfSafetyPct),
+                        Math.max(0, 100 - results.breakEvenUtilisationPct),
+                      ],
+                      name: "Viability",
+                      areaStyle: { color: "rgba(139,92,246,0.2)" },
+                      lineStyle: { color: "#8b5cf6", width: 2 },
+                      itemStyle: { color: "#8b5cf6" },
+                    }],
+                  }],
+                }}
+              />
+            </div>
+
+            {/* Margin Comparison Horizontal Bar */}
+            <div className="rounded-2xl border border-border bg-card p-5">
+              <h3 className="font-semibold text-sm mb-3">Margin Overview</h3>
+              <ReactECharts
+                style={{ height: 200 }}
+                option={{
+                  tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+                  grid: { top: 10, right: 15, bottom: 25, left: 120 },
+                  xAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: "{value}%" }, splitLine: { lineStyle: { color: "#222" } } },
+                  yAxis: { type: "category", data: ["Margin of Safety", "Net Profit Margin", "Contribution Margin"], axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
+                  series: [{
+                    type: "bar", barWidth: 18,
+                    data: [
+                      { value: results.marginOfSafetyPct, itemStyle: { color: results.marginOfSafetyPct > 20 ? "#34d399" : results.marginOfSafetyPct > 0 ? "#f59e0b" : "#ef4444", borderRadius: [0, 4, 4, 0] } },
+                      { value: results.netProfitMarginPct, itemStyle: { color: results.netProfitMarginPct > 0 ? "#34d399" : results.netProfitMarginPct > -10 ? "#f59e0b" : "#ef4444", borderRadius: [0, 4, 4, 0] } },
+                      { value: results.contributionMarginPct, itemStyle: { color: results.contributionMarginPct > 20 ? "#34d399" : results.contributionMarginPct > 10 ? "#f59e0b" : "#ef4444", borderRadius: [0, 4, 4, 0] } },
+                    ],
+                    label: { show: true, position: "right", color: "#aaa", fontSize: 10, formatter: (p: any) => p.value.toFixed(1) + "%" },
+                  }],
+                }}
+              />
+            </div>
+
+            {/* Revenue Composition Donut */}
+            <div className="rounded-2xl border border-border bg-card p-5">
+              <h3 className="font-semibold text-sm mb-3">Revenue Composition</h3>
+              <ReactECharts
+                style={{ height: 220 }}
+                option={{
+                  tooltip: { trigger: "item", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+                  series: [{
+                    type: "pie", radius: ["40%", "68%"], center: ["50%", "50%"],
+                    label: { color: "#ccc", fontSize: 10, formatter: "{b}\n{d}%" },
+                    data: [
+                      { value: results.totalVariableCost, name: "Variable Cost", itemStyle: { color: "#ef4444" } },
+                      { value: results.monthlyFixedCosts, name: "Fixed Cost", itemStyle: { color: "#f59e0b" } },
+                      { value: Math.max(0, results.netProfitLoss), name: "Net Profit", itemStyle: { color: "#34d399" } },
+                    ].filter(d => d.value > 0),
+                  }],
+                }}
+              />
+            </div>
+
+            {/* Break-Even Utilisation Gauge */}
+            <div className="rounded-2xl border border-border bg-card p-5">
+              <h3 className="font-semibold text-sm mb-3">Break-Even Utilisation</h3>
+              <ReactECharts
+                style={{ height: 220 }}
+                option={{
+                  series: [{
+                    type: "gauge", startAngle: 200, endAngle: -20, min: 0, max: 150,
+                    pointer: { show: true, length: "60%", width: 4, itemStyle: { color: "#8b5cf6" } },
+                    axisLine: { lineStyle: { width: 20, color: [[0.53, "#34d399"], [0.67, "#f59e0b"], [1, "#ef4444"]] } },
+                    axisTick: { show: false },
+                    splitLine: { show: false },
+                    axisLabel: { color: "#888", fontSize: 9, distance: 25 },
+                    detail: { valueAnimation: true, formatter: "{value}%", color: "#e0e0e0", fontSize: 18, offsetCenter: [0, "70%"] },
+                    data: [{ value: Math.round(results.breakEvenUtilisationPct * 10) / 10 }],
+                  }],
+                }}
+              />
             </div>
           </div>
 

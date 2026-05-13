@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ArrowLeft, PieChart, Save, RotateCcw, Plus, Trash2, Play } from "lucide-react";
+const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
 import api from "@/lib/api";
@@ -253,6 +255,126 @@ export default function InvCapTablePage() {
         <div className="mt-8 rounded-2xl bg-amber-400/5 border border-amber-400/20 p-6 text-center">
           <p className="text-muted-foreground mb-3">Sign up to save your Cap Table</p>
           <Link href="/signup" className="inline-block rounded-lg bg-amber-400 text-black px-6 py-2.5 text-sm font-semibold hover:bg-amber-300 transition-colors">Create Free Account</Link>
+        </div>
+      )}
+
+      {/* ============ CHARTS ============ */}
+      {results && results.shareholders.length > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+          {/* Ownership Pie */}
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <h3 className="font-semibold text-sm mb-3">Ownership Distribution</h3>
+            <ReactECharts style={{ height: 260 }} option={{
+              tooltip: { trigger: "item", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+              series: [{ type: "pie", radius: ["35%", "65%"], center: ["50%", "50%"],
+                label: { color: "#ccc", fontSize: 10, formatter: "{b}\n{d}%" },
+                data: results.shareholders.map((s, i) => ({
+                  value: s.ownershipPct, name: s.name,
+                  itemStyle: { color: ["#60a5fa", "#34d399", "#f59e0b", "#a78bfa", "#ec4899", "#22d3ee", "#84cc16", "#ef4444"][i % 8] },
+                })),
+              }],
+            }} />
+          </div>
+
+          {/* Investment Bar */}
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <h3 className="font-semibold text-sm mb-3">Investment by Shareholder</h3>
+            <ReactECharts style={{ height: 260 }} option={{
+              tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+              grid: { top: 15, right: 15, bottom: 40, left: 55 },
+              xAxis: { type: "category", data: results.shareholders.map(s => s.name), axisLabel: { color: "#888", fontSize: 9, rotate: 20 }, axisLine: { lineStyle: { color: "#333" } } },
+              yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
+              series: [{ type: "bar", barWidth: 28,
+                data: results.shareholders.map((s, i) => ({
+                  value: s.investment,
+                  itemStyle: { color: ["#60a5fa", "#34d399", "#f59e0b", "#a78bfa", "#ec4899", "#22d3ee", "#84cc16", "#ef4444"][i % 8], borderRadius: [4, 4, 0, 0] },
+                })),
+                label: { show: true, position: "top", color: "#aaa", fontSize: 9, formatter: (p: any) => `$${p.value.toLocaleString()}` },
+              }],
+            }} />
+          </div>
+
+          {/* Share Class Distribution */}
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <h3 className="font-semibold text-sm mb-3">Share Class Distribution</h3>
+            <ReactECharts style={{ height: 220 }} option={{
+              tooltip: { trigger: "item", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+              series: [{ type: "pie", radius: ["40%", "68%"], center: ["50%", "50%"],
+                label: { color: "#ccc", fontSize: 10, formatter: "{b}\n{c} shares" },
+                data: (() => {
+                  const classes: Record<string, number> = {};
+                  results.shareholders.forEach(s => { classes[s.shareClass] = (classes[s.shareClass] || 0) + s.shares; });
+                  const colors: Record<string, string> = { Common: "#60a5fa", Preferred: "#34d399", "Series A": "#f59e0b", "Series B": "#a78bfa" };
+                  return Object.entries(classes).map(([cls, shares]) => ({
+                    value: shares, name: cls, itemStyle: { color: colors[cls] || "#ec4899" },
+                  }));
+                })(),
+              }],
+            }} />
+          </div>
+
+          {/* Founders vs Investors Ownership */}
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <h3 className="font-semibold text-sm mb-3">Founders vs Investors</h3>
+            <ReactECharts style={{ height: 220 }} option={{
+              tooltip: { trigger: "item", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+              series: [{ type: "pie", radius: ["40%", "68%"], center: ["50%", "50%"],
+                label: { color: "#ccc", fontSize: 10, formatter: "{b}\n{d}%" },
+                data: (() => {
+                  let founderPct = 0, investorPct = 0;
+                  results.shareholders.forEach(s => {
+                    if (s.role === "Founder" || s.role === "Co-Founder") founderPct += s.ownershipPct;
+                    else investorPct += s.ownershipPct;
+                  });
+                  return [
+                    { value: founderPct, name: "Founders", itemStyle: { color: "#60a5fa" } },
+                    { value: investorPct, name: "Investors", itemStyle: { color: "#f59e0b" } },
+                  ].filter(d => d.value > 0);
+                })(),
+              }],
+            }} />
+          </div>
+
+          {/* Exit Payouts */}
+          {results.exit && results.exit.payouts.length > 0 && (
+            <div className="rounded-2xl border border-border bg-card p-5">
+              <h3 className="font-semibold text-sm mb-3">Exit Payouts</h3>
+              <ReactECharts style={{ height: 240 }} option={{
+                tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+                grid: { top: 15, right: 15, bottom: 40, left: 55 },
+                xAxis: { type: "category", data: results.exit.payouts.map(p => p.name), axisLabel: { color: "#888", fontSize: 9, rotate: 20 }, axisLine: { lineStyle: { color: "#333" } } },
+                yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
+                series: [{ type: "bar", barWidth: 28,
+                  data: results.exit.payouts.map((p, i) => ({
+                    value: p.payout,
+                    itemStyle: { color: ["#60a5fa", "#34d399", "#f59e0b", "#a78bfa", "#ec4899", "#22d3ee"][i % 6], borderRadius: [4, 4, 0, 0] },
+                  })),
+                  label: { show: true, position: "top", color: "#aaa", fontSize: 9, formatter: (p: any) => `$${(p.value/1000).toFixed(0)}k` },
+                }],
+              }} />
+            </div>
+          )}
+
+          {/* ROI Multiple */}
+          {results.exit && results.exit.payouts.length > 0 && (
+            <div className="rounded-2xl border border-border bg-card p-5">
+              <h3 className="font-semibold text-sm mb-3">ROI Multiple</h3>
+              <ReactECharts style={{ height: 240 }} option={{
+                tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+                grid: { top: 15, right: 15, bottom: 40, left: 55 },
+                xAxis: { type: "category", data: results.exit.payouts.map(p => p.name), axisLabel: { color: "#888", fontSize: 9, rotate: 20 }, axisLine: { lineStyle: { color: "#333" } } },
+                yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: "{value}x" }, splitLine: { lineStyle: { color: "#222" } } },
+                series: [{ type: "bar", barWidth: 28,
+                  data: results.exit.payouts.map(p => ({
+                    value: p.multiple ?? 0,
+                    itemStyle: { color: (p.multiple ?? 0) >= 1 ? "#34d399" : "#ef4444", borderRadius: [4, 4, 0, 0] },
+                  })),
+                  markLine: { data: [{ yAxis: 1, lineStyle: { color: "#f59e0b", type: "dashed" } }], label: { formatter: "1x", color: "#f59e0b", fontSize: 9 }, symbol: "none" },
+                  label: { show: true, position: "top", color: "#aaa", fontSize: 9, formatter: (p: any) => `${p.value.toFixed(1)}x` },
+                }],
+              }} />
+            </div>
+          )}
         </div>
       )}
     </div>

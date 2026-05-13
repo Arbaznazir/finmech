@@ -212,14 +212,21 @@ function sumMonths(
 }
 
 export function calculateBalanceSheet(
-  monthsData: Record<string, Record<string, number>>
+  monthsData: Record<string, Record<string, number>>,
+  cumulativeNetProfits?: Record<string, number>,
 ): BalanceSheetResults {
   const computed: Record<string, ComputedBSMonth> = {};
   const addedMonths: string[] = [];
 
   MONTHS_ORDER.forEach((month) => {
     if (monthsData[month]) {
-      computed[month] = computeMonth(monthsData[month]);
+      const mData = { ...monthsData[month] };
+      // Add cumulative net profit to Retained Earnings if provided
+      if (cumulativeNetProfits?.[month] !== undefined) {
+        mData["Reserves & Surplus / Retained Earnings"] =
+          (mData["Reserves & Surplus / Retained Earnings"] || 0) + cumulativeNetProfits[month];
+      }
+      computed[month] = computeMonth(mData);
       addedMonths.push(month);
     }
   });
@@ -238,7 +245,7 @@ export function calculateBalanceSheet(
     balanceCheck: computed[month]["BALANCE CHECK"],
     workingCapital: computed[month]["Working Capital"],
     currentRatio: computed[month]["Current Ratio"],
-    status: computed[month]["BALANCE CHECK"] === 0 ? "GREEN" as const : "RED" as const,
+    status: Math.abs(computed[month]["BALANCE CHECK"]) < 1 ? "GREEN" as const : "RED" as const,
   }));
 
   return { monthlyData: computed, quarters, annual, status, monthsAdded: addedMonths };

@@ -1,11 +1,13 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import {
-  ArrowLeft, Gem, Save, RotateCcw,
-  ChevronDown, ChevronUp,
+  ArrowLeft, Calculator, Save, RotateCcw,
+  ChevronDown, ChevronUp, Info, Gem,
 } from "lucide-react";
+const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
 import api from "@/lib/api";
@@ -298,6 +300,92 @@ export default function DCFValuationPage() {
           </div>
         )}
       </div>
+
+      {/* ============ CHARTS ============ */}
+      {results && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+          {/* 5-Year FCFF Bar */}
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <h3 className="font-semibold text-sm mb-3">5-Year FCFF Projection</h3>
+            <ReactECharts
+              style={{ height: 240 }}
+              option={{
+                tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+                legend: { data: ["FCFF", "PV of FCFF"], textStyle: { color: "#aaa", fontSize: 10 }, top: 0 },
+                grid: { top: 30, right: 15, bottom: 25, left: 55 },
+                xAxis: { type: "category", data: results.projection.map(p => p.year), axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
+                yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000000 ? `$${(v/1000000).toFixed(1)}M` : v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
+                series: [
+                  { name: "FCFF", type: "bar", data: results.projection.map(p => p.fcff), itemStyle: { color: "#60a5fa", borderRadius: [4, 4, 0, 0] } },
+                  { name: "PV of FCFF", type: "bar", data: results.projection.map(p => p.pvOfFCFF), itemStyle: { color: "#a78bfa", borderRadius: [4, 4, 0, 0] } },
+                ],
+              }}
+            />
+          </div>
+
+          {/* Revenue Growth Trend */}
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <h3 className="font-semibold text-sm mb-3">Revenue & EBITDA Trend</h3>
+            <ReactECharts
+              style={{ height: 240 }}
+              option={{
+                tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+                legend: { data: ["Revenue", "EBITDA"], textStyle: { color: "#aaa", fontSize: 10 }, top: 0 },
+                grid: { top: 30, right: 15, bottom: 25, left: 55 },
+                xAxis: { type: "category", data: results.projection.map(p => p.year), axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
+                yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000000 ? `$${(v/1000000).toFixed(1)}M` : `$${(v/1000).toFixed(0)}k` }, splitLine: { lineStyle: { color: "#222" } } },
+                series: [
+                  { name: "Revenue", type: "line", data: results.projection.map(p => p.revenue), smooth: true, lineStyle: { color: "#60a5fa", width: 2 }, itemStyle: { color: "#60a5fa" }, symbol: "circle", symbolSize: 5 },
+                  { name: "EBITDA", type: "line", data: results.projection.map(p => p.ebitda), smooth: true, lineStyle: { color: "#34d399", width: 2 }, itemStyle: { color: "#34d399" }, symbol: "circle", symbolSize: 5 },
+                ],
+              }}
+            />
+          </div>
+
+          {/* Valuation Waterfall */}
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <h3 className="font-semibold text-sm mb-3">Valuation Breakdown</h3>
+            <ReactECharts
+              style={{ height: 220 }}
+              option={{
+                tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+                grid: { top: 15, right: 15, bottom: 35, left: 55 },
+                xAxis: { type: "category", data: ["PV of FCFFs", "PV of TV", "Enterprise Value", "Equity Value"], axisLabel: { color: "#888", fontSize: 9 }, axisLine: { lineStyle: { color: "#333" } } },
+                yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000000 ? `$${(v/1000000).toFixed(1)}M` : `$${(v/1000).toFixed(0)}k` }, splitLine: { lineStyle: { color: "#222" } } },
+                series: [{
+                  type: "bar", barWidth: 32,
+                  data: [
+                    { value: results.totalPVOfFCFF, itemStyle: { color: "#60a5fa", borderRadius: [4, 4, 0, 0] } },
+                    { value: results.pvOfTerminalValue, itemStyle: { color: "#a78bfa", borderRadius: [4, 4, 0, 0] } },
+                    { value: results.enterpriseValue, itemStyle: { color: "#22d3ee", borderRadius: [4, 4, 0, 0] } },
+                    { value: results.equityValue, itemStyle: { color: "#34d399", borderRadius: [4, 4, 0, 0] } },
+                  ],
+                  label: { show: true, position: "top", color: "#aaa", fontSize: 9, formatter: (p: any) => p.value >= 1000000 ? `$${(p.value/1000000).toFixed(1)}M` : `$${(p.value/1000).toFixed(0)}k` },
+                }],
+              }}
+            />
+          </div>
+
+          {/* EV Composition Donut */}
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <h3 className="font-semibold text-sm mb-3">Enterprise Value Composition</h3>
+            <ReactECharts
+              style={{ height: 220 }}
+              option={{
+                tooltip: { trigger: "item", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+                series: [{
+                  type: "pie", radius: ["40%", "68%"], center: ["50%", "50%"],
+                  label: { color: "#ccc", fontSize: 10, formatter: "{b}\n{d}%" },
+                  data: [
+                    { value: Math.abs(results.totalPVOfFCFF), name: "PV of FCFFs", itemStyle: { color: "#60a5fa" } },
+                    { value: Math.abs(results.pvOfTerminalValue), name: "PV of Terminal Value", itemStyle: { color: "#a78bfa" } },
+                  ].filter(d => d.value > 0),
+                }],
+              }}
+            />
+          </div>
+        </div>
+      )}
 
       {!user && results && (
         <div className="mt-8 rounded-2xl bg-primary/5 border border-primary/20 p-6 text-center">

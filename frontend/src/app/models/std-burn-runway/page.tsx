@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ArrowLeft, Flame, Save, RotateCcw } from "lucide-react";
+const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
 import api from "@/lib/api";
@@ -247,6 +249,100 @@ export default function StdBurnRunwayPage() {
           </div>
         </div>
       </div>
+
+      {/* ============ CHARTS ============ */}
+      {results.status.length > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+          {/* Cumulative Cash Area */}
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <h3 className="font-semibold text-sm mb-3">Cumulative Cash Position</h3>
+            <ReactECharts
+              style={{ height: 240 }}
+              option={{
+                tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+                grid: { top: 15, right: 15, bottom: 30, left: 55 },
+                xAxis: { type: "category", data: results.status.map(s => s.month), axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
+                yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
+                series: [{
+                  type: "line", smooth: true,
+                  data: results.status.map(s => s.cumulativeCash),
+                  areaStyle: { color: { type: "linear", x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: "rgba(96,165,250,0.3)" }, { offset: 1, color: "rgba(96,165,250,0)" }] } },
+                  lineStyle: { color: "#60a5fa", width: 2 },
+                  itemStyle: { color: "#60a5fa" },
+                  markLine: { data: [{ yAxis: 0, lineStyle: { color: "#ef4444", type: "dashed" } }], label: { show: false }, symbol: "none" },
+                }],
+              }}
+            />
+          </div>
+
+          {/* Monthly Net Burn Bar */}
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <h3 className="font-semibold text-sm mb-3">Monthly Net Burn</h3>
+            <ReactECharts
+              style={{ height: 240 }}
+              option={{
+                tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+                grid: { top: 15, right: 15, bottom: 30, left: 55 },
+                xAxis: { type: "category", data: results.status.map(s => s.month), axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
+                yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
+                series: [{
+                  type: "bar",
+                  data: results.status.map(s => ({
+                    value: s.netBurn,
+                    itemStyle: { color: s.netBurn <= 0 ? "#34d399" : "#ef4444", borderRadius: [4, 4, 0, 0] },
+                  })),
+                }],
+              }}
+            />
+          </div>
+
+          {/* Runway Gauge (latest month) */}
+          {(() => {
+            const last = results.status[results.status.length - 1];
+            const rwy = last.runway === Infinity ? 24 : Math.min(24, last.runway);
+            return (
+              <div className="rounded-2xl border border-border bg-card p-5">
+                <h3 className="font-semibold text-sm mb-3">Current Runway</h3>
+                <ReactECharts
+                  style={{ height: 220 }}
+                  option={{
+                    series: [{
+                      type: "gauge", startAngle: 200, endAngle: -20, min: 0, max: 24,
+                      pointer: { show: true, length: "60%", width: 4, itemStyle: { color: "#60a5fa" } },
+                      axisLine: { lineStyle: { width: 20, color: [[0.25, "#ef4444"], [0.5, "#f59e0b"], [1, "#34d399"]] } },
+                      axisTick: { show: false },
+                      splitLine: { show: false },
+                      axisLabel: { color: "#888", fontSize: 9, distance: 25 },
+                      detail: { valueAnimation: true, formatter: last.runway === Infinity ? "∞" : "{value} mo", color: "#e0e0e0", fontSize: 18, offsetCenter: [0, "70%"] },
+                      data: [{ value: Math.round(rwy * 10) / 10 }],
+                    }],
+                  }}
+                />
+              </div>
+            );
+          })()}
+
+          {/* Classification Distribution Donut */}
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <h3 className="font-semibold text-sm mb-3">Month Classification</h3>
+            <ReactECharts
+              style={{ height: 220 }}
+              option={{
+                tooltip: { trigger: "item", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+                series: [{
+                  type: "pie", radius: ["40%", "68%"], center: ["50%", "50%"],
+                  label: { color: "#ccc", fontSize: 10, formatter: "{b}\n{c} mo" },
+                  data: [
+                    { value: results.status.filter(s => s.classification === "GREEN").length, name: "Green", itemStyle: { color: "#34d399" } },
+                    { value: results.status.filter(s => s.classification === "AMBER").length, name: "Amber", itemStyle: { color: "#f59e0b" } },
+                    { value: results.status.filter(s => s.classification === "RED").length, name: "Red", itemStyle: { color: "#ef4444" } },
+                  ].filter(d => d.value > 0),
+                }],
+              }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

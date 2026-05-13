@@ -1,11 +1,13 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import {
   ArrowLeft, TrendingUp, Save, RotateCcw,
   CheckCircle, XCircle,
 } from "lucide-react";
+const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
 import api from "@/lib/api";
@@ -260,6 +262,95 @@ export default function BreakEvenPage() {
           </div>
         )}
       </div>
+
+      {/* ============ CHARTS ============ */}
+      {results && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+          {/* Revenue vs Total Cost Crossover */}
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <h3 className="font-semibold text-sm mb-3">Revenue vs Total Cost</h3>
+            <ReactECharts
+              style={{ height: 260 }}
+              option={{
+                tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+                legend: { data: ["Revenue", "Total Cost"], textStyle: { color: "#aaa", fontSize: 10 }, top: 0 },
+                grid: { top: 30, right: 15, bottom: 30, left: 55 },
+                xAxis: { type: "category", name: "Units", nameTextStyle: { color: "#888", fontSize: 10 }, data: results.projection.map(r => r.units.toLocaleString()), axisLabel: { color: "#888", fontSize: 9, rotate: 30 }, axisLine: { lineStyle: { color: "#333" } } },
+                yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
+                series: [
+                  { name: "Revenue", type: "line", data: results.projection.map(r => r.revenue), smooth: true, lineStyle: { color: "#60a5fa", width: 2 }, itemStyle: { color: "#60a5fa" }, symbol: "circle", symbolSize: 4 },
+                  { name: "Total Cost", type: "line", data: results.projection.map(r => r.totalCost), smooth: true, lineStyle: { color: "#ef4444", width: 2 }, itemStyle: { color: "#ef4444" }, symbol: "circle", symbolSize: 4 },
+                ],
+              }}
+            />
+          </div>
+
+          {/* Profit/Loss Area */}
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <h3 className="font-semibold text-sm mb-3">Profit / Loss by Units</h3>
+            <ReactECharts
+              style={{ height: 260 }}
+              option={{
+                tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+                grid: { top: 15, right: 15, bottom: 30, left: 55 },
+                xAxis: { type: "category", data: results.projection.map(r => r.units.toLocaleString()), axisLabel: { color: "#888", fontSize: 9, rotate: 30 }, axisLine: { lineStyle: { color: "#333" } } },
+                yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => `$${(v/1000).toFixed(0)}k` }, splitLine: { lineStyle: { color: "#222" } } },
+                series: [{
+                  type: "bar",
+                  data: results.projection.map(r => ({
+                    value: r.profit,
+                    itemStyle: { color: r.profit >= 0 ? "#34d399" : "#ef4444", borderRadius: [4, 4, 0, 0] },
+                  })),
+                }],
+              }}
+            />
+          </div>
+
+          {/* Contribution Waterfall */}
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <h3 className="font-semibold text-sm mb-3">Contribution Waterfall</h3>
+            <ReactECharts
+              style={{ height: 220 }}
+              option={{
+                tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+                grid: { top: 15, right: 15, bottom: 35, left: 55 },
+                xAxis: { type: "category", data: ["Price/Unit", "Var Cost", "Contribution", "Fixed Cost", "Profit"], axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
+                yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => `$${v.toLocaleString()}` }, splitLine: { lineStyle: { color: "#222" } } },
+                series: [
+                  { type: "bar", stack: "w", itemStyle: { borderColor: "transparent", color: "transparent" }, emphasis: { itemStyle: { borderColor: "transparent", color: "transparent" } },
+                    data: [0, results.pricePerUnit - results.variableCostPerUnit, 0, Math.max(0, results.contributionPerUnit - results.fixedCostMonthly / Math.max(1, results.unitsSoldForProjection)), 0] },
+                  { type: "bar", stack: "w", data: [
+                    { value: results.pricePerUnit, itemStyle: { color: "#60a5fa", borderRadius: [4, 4, 0, 0] } },
+                    { value: results.variableCostPerUnit, itemStyle: { color: "#ef4444", borderRadius: [4, 4, 0, 0] } },
+                    { value: results.contributionPerUnit, itemStyle: { color: "#34d399", borderRadius: [4, 4, 0, 0] } },
+                    { value: results.fixedCostMonthly / Math.max(1, results.unitsSoldForProjection), itemStyle: { color: "#f59e0b", borderRadius: [4, 4, 0, 0] } },
+                    { value: Math.abs(results.profitAtUnits / Math.max(1, results.unitsSoldForProjection)), itemStyle: { color: results.profitAtUnits >= 0 ? "#34d399" : "#ef4444", borderRadius: [4, 4, 0, 0] } },
+                  ] },
+                ],
+              }}
+            />
+          </div>
+
+          {/* Cost Structure Donut */}
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <h3 className="font-semibold text-sm mb-3">Cost Structure at Projection</h3>
+            <ReactECharts
+              style={{ height: 220 }}
+              option={{
+                tooltip: { trigger: "item", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+                series: [{
+                  type: "pie", radius: ["40%", "68%"], center: ["50%", "50%"],
+                  label: { color: "#ccc", fontSize: 10, formatter: "{b}\n{d}%" },
+                  data: [
+                    { value: results.fixedCostMonthly, name: "Fixed Costs", itemStyle: { color: "#f59e0b" } },
+                    { value: results.variableCostPerUnit * results.unitsSoldForProjection, name: "Variable Costs", itemStyle: { color: "#ef4444" } },
+                  ].filter(d => d.value > 0),
+                }],
+              }}
+            />
+          </div>
+        </div>
+      )}
 
       {!user && results && (
         <div className="mt-8 rounded-2xl bg-primary/5 border border-primary/20 p-6 text-center">

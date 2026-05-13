@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ArrowLeft, Calculator, Save, RotateCcw, ArrowRight, ArrowLeftRight } from "lucide-react";
+const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
 import api from "@/lib/api";
@@ -222,6 +224,51 @@ export default function CostingModelPage() {
                 <p className="text-xs text-muted-foreground mb-1">Units Sold</p>
                 <p className="text-lg font-bold">{results.unitsSold.toLocaleString()}</p>
               </div>
+            </div>
+
+            {/* Fixed vs Variable Donut */}
+            <div className="rounded-2xl border border-border bg-card p-5">
+              <h3 className="font-semibold text-sm mb-3">Fixed vs Variable Costs</h3>
+              <ReactECharts
+                style={{ height: 220 }}
+                option={{
+                  tooltip: { trigger: "item", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 }, formatter: (p: any) => `${p.name}: $${p.value.toLocaleString()} (${p.percent}%)` },
+                  series: [{
+                    type: "pie", radius: ["45%", "72%"], center: ["50%", "50%"],
+                    label: { color: "#ccc", fontSize: 10, formatter: "{b}\n{d}%" },
+                    data: [
+                      { value: results.totalFixedCosts, name: "Fixed Costs", itemStyle: { color: "#f59e0b" } },
+                      { value: results.totalVariableCost, name: "Variable Costs", itemStyle: { color: "#ef4444" } },
+                    ],
+                  }],
+                }}
+              />
+            </div>
+
+            {/* Cost Breakdown Bar */}
+            <div className="rounded-2xl border border-border bg-card p-5">
+              <h3 className="font-semibold text-sm mb-3">Cost Breakdown</h3>
+              <ReactECharts
+                style={{ height: 200 }}
+                option={{
+                  tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+                  grid: { top: 10, right: 15, bottom: 25, left: 90 },
+                  xAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => `$${v >= 1000 ? (v/1000).toFixed(0) + "k" : v}` }, splitLine: { lineStyle: { color: "#222" } } },
+                  yAxis: { type: "category", data: ["Salaries", "Rent", "Utilities", "Software", "Admin", "Other Fixed"], axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
+                  series: [{
+                    type: "bar", barWidth: 14,
+                    data: [
+                      { value: inputs.salaries, itemStyle: { color: "#f59e0b" } },
+                      { value: inputs.officeRent, itemStyle: { color: "#fb923c" } },
+                      { value: inputs.utilities, itemStyle: { color: "#fbbf24" } },
+                      { value: inputs.softwareSubscriptions, itemStyle: { color: "#a78bfa" } },
+                      { value: inputs.administrativeCosts, itemStyle: { color: "#60a5fa" } },
+                      { value: inputs.otherFixedCosts, itemStyle: { color: "#94a3b8" } },
+                    ],
+                    itemStyle: { borderRadius: [0, 4, 4, 0] },
+                  }],
+                }}
+              />
             </div>
 
             <div className="rounded-xl bg-blue-400/5 border border-blue-400/20 p-4">

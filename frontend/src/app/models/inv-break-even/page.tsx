@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ArrowLeft, TrendingUp, Save, RotateCcw } from "lucide-react";
+const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
 import api from "@/lib/api";
@@ -205,6 +207,91 @@ export default function InvBreakEvenPage() {
           </div>
         )}
       </div>
+
+      {/* ============ CHARTS ============ */}
+      {results && results.projection.length > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+          {/* Revenue vs Total Cost */}
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <h3 className="font-semibold text-sm mb-3">Revenue vs Total Cost</h3>
+            <ReactECharts style={{ height: 240 }} option={{
+              tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+              legend: { data: ["Revenue", "Total Cost"], textStyle: { color: "#aaa", fontSize: 10 }, top: 0 },
+              grid: { top: 30, right: 15, bottom: 25, left: 55 },
+              xAxis: { type: "category", name: "Units", nameTextStyle: { color: "#888", fontSize: 9 }, data: results.projection.map(r => r.units.toLocaleString()), axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
+              yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
+              series: [
+                { name: "Revenue", type: "line", data: results.projection.map(r => r.revenue), smooth: true, lineStyle: { color: "#34d399", width: 2 }, itemStyle: { color: "#34d399" }, symbol: "circle", symbolSize: 4 },
+                { name: "Total Cost", type: "line", data: results.projection.map(r => r.totalCost), smooth: true, lineStyle: { color: "#ef4444", width: 2 }, itemStyle: { color: "#ef4444" }, symbol: "circle", symbolSize: 4 },
+              ],
+            }} />
+          </div>
+
+          {/* Profit / Loss Bar */}
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <h3 className="font-semibold text-sm mb-3">Profit / Loss by Units</h3>
+            <ReactECharts style={{ height: 240 }} option={{
+              tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+              grid: { top: 15, right: 15, bottom: 25, left: 55 },
+              xAxis: { type: "category", data: results.projection.map(r => r.units.toLocaleString()), axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
+              yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
+              series: [{ type: "bar", data: results.projection.map(r => ({ value: r.profit, itemStyle: { color: r.profit >= 0 ? "#34d399" : "#ef4444", borderRadius: [4, 4, 0, 0] } })) }],
+            }} />
+          </div>
+
+          {/* Cost Structure Donut */}
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <h3 className="font-semibold text-sm mb-3">Cost Structure</h3>
+            <ReactECharts style={{ height: 220 }} option={{
+              tooltip: { trigger: "item", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+              series: [{ type: "pie", radius: ["40%", "68%"], center: ["50%", "50%"],
+                label: { color: "#ccc", fontSize: 10, formatter: "{b}\n{d}%" },
+                data: [
+                  { value: results.fixedCostMonthly, name: "Fixed Cost", itemStyle: { color: "#f59e0b" } },
+                  { value: results.variableCostPerUnit * (inputs.unitsSoldForProjection || results.breakEvenUnits), name: "Variable Cost", itemStyle: { color: "#ef4444" } },
+                ].filter(d => d.value > 0),
+              }],
+            }} />
+          </div>
+
+          {/* Contribution Breakdown */}
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <h3 className="font-semibold text-sm mb-3">Contribution Breakdown</h3>
+            <ReactECharts style={{ height: 220 }} option={{
+              tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+              grid: { top: 15, right: 15, bottom: 35, left: 55 },
+              xAxis: { type: "category", data: ["Price/Unit", "Var Cost/Unit", "Contribution/Unit", "Fixed Cost", "Profit/Loss"], axisLabel: { color: "#888", fontSize: 9 }, axisLine: { lineStyle: { color: "#333" } } },
+              yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
+              series: [{ type: "bar", barWidth: 28,
+                data: [
+                  { value: results.pricePerUnit, itemStyle: { color: "#60a5fa", borderRadius: [4, 4, 0, 0] } },
+                  { value: results.variableCostPerUnit, itemStyle: { color: "#ef4444", borderRadius: [4, 4, 0, 0] } },
+                  { value: results.contributionPerUnit, itemStyle: { color: "#34d399", borderRadius: [4, 4, 0, 0] } },
+                  { value: results.fixedCostMonthly, itemStyle: { color: "#f59e0b", borderRadius: [4, 4, 0, 0] } },
+                  { value: results.profitAtUnits, itemStyle: { color: results.profitAtUnits >= 0 ? "#34d399" : "#ef4444", borderRadius: [4, 4, 0, 0] } },
+                ],
+                label: { show: true, position: "top", color: "#aaa", fontSize: 9, formatter: (p: any) => `$${p.value.toLocaleString()}` },
+              }],
+            }} />
+          </div>
+
+          {/* CM Ratio Gauge */}
+          <div className="rounded-2xl border border-border bg-card p-5 lg:col-span-2">
+            <h3 className="font-semibold text-sm mb-3">Contribution Margin Ratio</h3>
+            <ReactECharts style={{ height: 200 }} option={{
+              series: [{
+                type: "gauge", startAngle: 200, endAngle: -20, min: 0, max: 100,
+                pointer: { show: true, length: "60%", width: 4, itemStyle: { color: "#60a5fa" } },
+                axisLine: { lineStyle: { width: 20, color: [[0.25, "#ef4444"], [0.5, "#f59e0b"], [1, "#34d399"]] } },
+                axisTick: { show: false }, splitLine: { show: false },
+                axisLabel: { color: "#888", fontSize: 9, distance: 25 },
+                detail: { valueAnimation: true, formatter: "{value}%", color: "#e0e0e0", fontSize: 20, offsetCenter: [0, "70%"] },
+                data: [{ value: results.pricePerUnit > 0 ? Math.round((results.contributionPerUnit / results.pricePerUnit) * 1000) / 10 : 0 }],
+              }],
+            }} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

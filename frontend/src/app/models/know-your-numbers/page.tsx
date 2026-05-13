@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ArrowLeft, BarChart3, Save, RotateCcw, CheckCircle, AlertTriangle, XCircle } from "lucide-react";
+const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
 import api from "@/lib/api";
 import { useSavedModel } from "@/lib/use-saved-model";
@@ -167,26 +169,72 @@ export default function KnowYourNumbersPage() {
             </p>
           </div>
 
-          {/* Score breakdown */}
+          {/* Readiness Gauge */}
           <div className="rounded-2xl border border-border bg-card p-6">
-            <h2 className="font-semibold mb-4">Score by Section</h2>
-            <div className="space-y-3">
-              {results.sectionScores.map((s) => {
-                const pct = s.percentage;
-                const barColor = pct >= 80 ? "bg-success" : pct >= 50 ? "bg-amber-400" : "bg-danger";
-                return (
-                  <div key={s.section}>
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm font-medium">{s.section}</span>
-                      <span className="text-xs text-muted-foreground">{s.score} / {s.maxPossible} ({pct.toFixed(0)}%)</span>
-                    </div>
-                    <div className="w-full h-2 rounded-full bg-background/80 border border-border/50">
-                      <div className={`h-full rounded-full transition-all ${barColor}`} style={{ width: `${Math.min(pct, 100)}%` }} />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+            <h2 className="font-semibold mb-2">Readiness Gauge</h2>
+            <ReactECharts
+              style={{ height: 220 }}
+              option={{
+                series: [{
+                  type: "gauge", startAngle: 200, endAngle: -20, min: 0, max: 100,
+                  pointer: { show: true, length: "60%", width: 5, itemStyle: { color: results.statusColor === "green" ? "#34d399" : results.statusColor === "amber" ? "#f59e0b" : "#ef4444" } },
+                  axisLine: { lineStyle: { width: 18, color: [[0.5, "#ef4444"], [0.8, "#f59e0b"], [1, "#34d399"]] } },
+                  axisTick: { show: false }, splitLine: { show: false },
+                  axisLabel: { color: "#888", fontSize: 10, distance: 25 },
+                  detail: { formatter: "{value}%", fontSize: 22, fontWeight: "bold", color: results.statusColor === "green" ? "#34d399" : results.statusColor === "amber" ? "#f59e0b" : "#ef4444", offsetCenter: [0, "40%"] },
+                  data: [{ value: Math.round(results.readinessPercentage) }],
+                }],
+              }}
+            />
+          </div>
+
+          {/* Radar Chart */}
+          <div className="rounded-2xl border border-border bg-card p-6">
+            <h2 className="font-semibold mb-2">Section Radar</h2>
+            <ReactECharts
+              style={{ height: 300 }}
+              option={{
+                radar: {
+                  indicator: results.sectionScores.map(s => ({ name: s.section, max: 100 })),
+                  axisName: { color: "#aaa", fontSize: 10 },
+                  splitArea: { areaStyle: { color: ["rgba(255,255,255,0.02)", "rgba(255,255,255,0.04)"] } },
+                  splitLine: { lineStyle: { color: "#333" } },
+                  axisLine: { lineStyle: { color: "#444" } },
+                },
+                series: [{
+                  type: "radar",
+                  data: [{
+                    value: results.sectionScores.map(s => Math.round(s.percentage)),
+                    name: "Score",
+                    areaStyle: { color: "rgba(167,139,250,0.2)" },
+                    lineStyle: { color: "#a78bfa", width: 2 },
+                    itemStyle: { color: "#a78bfa" },
+                  }],
+                }],
+              }}
+            />
+          </div>
+
+          {/* Score breakdown - Bar Chart */}
+          <div className="rounded-2xl border border-border bg-card p-6">
+            <h2 className="font-semibold mb-2">Score by Section</h2>
+            <ReactECharts
+              style={{ height: 260 }}
+              option={{
+                tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+                grid: { top: 10, right: 15, bottom: 30, left: 100 },
+                xAxis: { type: "value", max: 100, axisLabel: { color: "#888", fontSize: 10, formatter: "{value}%" }, splitLine: { lineStyle: { color: "#222" } } },
+                yAxis: { type: "category", data: results.sectionScores.map(s => s.section), axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
+                series: [{
+                  type: "bar", barWidth: 16,
+                  data: results.sectionScores.map(s => ({
+                    value: Math.round(s.percentage),
+                    itemStyle: { color: s.percentage >= 80 ? "#34d399" : s.percentage >= 50 ? "#f59e0b" : "#ef4444", borderRadius: [0, 4, 4, 0] },
+                  })),
+                  label: { show: true, position: "right", color: "#aaa", fontSize: 10, formatter: "{c}%" },
+                }],
+              }}
+            />
           </div>
 
           {/* Summary */}

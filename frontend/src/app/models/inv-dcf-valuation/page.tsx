@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ArrowLeft, Gem, Save, RotateCcw, ChevronDown, ChevronUp } from "lucide-react";
+const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
 import api from "@/lib/api";
@@ -244,6 +246,110 @@ export default function InvDCFValuationPage() {
           </div>
         )}
       </div>
+
+      {/* ============ CHARTS ============ */}
+      {results && results.projection.length > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+          {/* Revenue & EBITDA Projection */}
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <h3 className="font-semibold text-sm mb-3">Revenue & EBITDA Projection</h3>
+            <ReactECharts style={{ height: 240 }} option={{
+              tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+              legend: { data: ["Revenue", "EBITDA"], textStyle: { color: "#aaa", fontSize: 10 }, top: 0 },
+              grid: { top: 30, right: 15, bottom: 25, left: 55 },
+              xAxis: { type: "category", data: results.projection.map(r => r.year), axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
+              yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000000 ? `$${(v/1000000).toFixed(1)}M` : v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
+              series: [
+                { name: "Revenue", type: "bar", data: results.projection.map(r => r.revenue), itemStyle: { color: "#60a5fa", borderRadius: [4, 4, 0, 0] } },
+                { name: "EBITDA", type: "line", smooth: true, data: results.projection.map(r => r.ebitda), lineStyle: { color: "#34d399", width: 2 }, itemStyle: { color: "#34d399" }, symbol: "circle", symbolSize: 5 },
+              ],
+            }} />
+          </div>
+
+          {/* FCFF vs PV of FCFF */}
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <h3 className="font-semibold text-sm mb-3">FCFF vs Present Value</h3>
+            <ReactECharts style={{ height: 240 }} option={{
+              tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+              legend: { data: ["FCFF", "PV of FCFF"], textStyle: { color: "#aaa", fontSize: 10 }, top: 0 },
+              grid: { top: 30, right: 15, bottom: 25, left: 55 },
+              xAxis: { type: "category", data: results.projection.map(r => r.year), axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
+              yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000000 ? `$${(v/1000000).toFixed(1)}M` : v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
+              series: [
+                { name: "FCFF", type: "bar", data: results.projection.map(r => r.fcff), itemStyle: { color: "#f59e0b", borderRadius: [4, 4, 0, 0] } },
+                { name: "PV of FCFF", type: "bar", data: results.projection.map(r => r.pvOfFCFF), itemStyle: { color: "#a78bfa", borderRadius: [4, 4, 0, 0] } },
+              ],
+            }} />
+          </div>
+
+          {/* Valuation Waterfall */}
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <h3 className="font-semibold text-sm mb-3">Valuation Waterfall</h3>
+            <ReactECharts style={{ height: 240 }} option={{
+              tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+              grid: { top: 15, right: 15, bottom: 35, left: 60 },
+              xAxis: { type: "category", data: ["PV of FCFF", "PV of TV", "Enterprise", "- Debt", "Equity"], axisLabel: { color: "#888", fontSize: 9 }, axisLine: { lineStyle: { color: "#333" } } },
+              yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000000 ? `$${(v/1000000).toFixed(1)}M` : v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
+              series: [{ type: "bar", barWidth: 28,
+                data: [
+                  { value: results.totalPVOfFCFF, itemStyle: { color: "#60a5fa", borderRadius: [4, 4, 0, 0] } },
+                  { value: results.pvOfTerminalValue, itemStyle: { color: "#34d399", borderRadius: [4, 4, 0, 0] } },
+                  { value: results.enterpriseValue, itemStyle: { color: "#f59e0b", borderRadius: [4, 4, 0, 0] } },
+                  { value: -(results.enterpriseValue - results.equityValue), itemStyle: { color: "#ef4444", borderRadius: [4, 4, 0, 0] } },
+                  { value: results.equityValue, itemStyle: { color: "#a78bfa", borderRadius: [4, 4, 0, 0] } },
+                ],
+                label: { show: true, position: "top", color: "#aaa", fontSize: 8, formatter: (p: any) => p.value >= 1000000 ? `$${(p.value/1000000).toFixed(1)}M` : `$${(p.value/1000).toFixed(0)}k` },
+              }],
+            }} />
+          </div>
+
+          {/* WACC Composition */}
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <h3 className="font-semibold text-sm mb-3">WACC Composition</h3>
+            <ReactECharts style={{ height: 220 }} option={{
+              tooltip: { trigger: "item", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+              series: [{ type: "pie", radius: ["40%", "68%"], center: ["50%", "50%"],
+                label: { color: "#ccc", fontSize: 10, formatter: "{b}\n{d}%" },
+                data: [
+                  { value: Math.round(results.equityWeight * results.costOfEquity * 10000) / 100, name: `Equity (${(results.costOfEquity*100).toFixed(1)}%)`, itemStyle: { color: "#60a5fa" } },
+                  { value: Math.round(results.debtWeight * results.afterTaxCostOfDebt * 10000) / 100, name: `Debt (${(results.afterTaxCostOfDebt*100).toFixed(1)}%)`, itemStyle: { color: "#f59e0b" } },
+                ].filter(d => d.value > 0),
+              }],
+            }} />
+          </div>
+
+          {/* EV vs Equity Value */}
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <h3 className="font-semibold text-sm mb-3">Enterprise vs Equity Value</h3>
+            <ReactECharts style={{ height: 220 }} option={{
+              tooltip: { trigger: "item", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+              series: [{ type: "pie", radius: ["40%", "68%"], center: ["50%", "50%"],
+                label: { color: "#ccc", fontSize: 10, formatter: "{b}\n{d}%" },
+                data: [
+                  { value: results.equityValue, name: "Equity Value", itemStyle: { color: "#34d399" } },
+                  { value: (results.enterpriseValue - results.equityValue) > 0 ? (results.enterpriseValue - results.equityValue) : 0, name: "Net Debt", itemStyle: { color: "#ef4444" } },
+                ].filter(d => d.value > 0),
+              }],
+            }} />
+          </div>
+
+          {/* WACC Gauge */}
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <h3 className="font-semibold text-sm mb-3">WACC</h3>
+            <ReactECharts style={{ height: 220 }} option={{
+              series: [{
+                type: "gauge", startAngle: 200, endAngle: -20, min: 0, max: 25,
+                pointer: { show: true, length: "60%", width: 4, itemStyle: { color: "#60a5fa" } },
+                axisLine: { lineStyle: { width: 20, color: [[0.4, "#34d399"], [0.7, "#f59e0b"], [1, "#ef4444"]] } },
+                axisTick: { show: false }, splitLine: { show: false },
+                axisLabel: { color: "#888", fontSize: 9, distance: 25 },
+                detail: { valueAnimation: true, formatter: "{value}%", color: "#e0e0e0", fontSize: 20, offsetCenter: [0, "70%"] },
+                data: [{ value: Math.round(results.wacc * 1000) / 10 }],
+              }],
+            }} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

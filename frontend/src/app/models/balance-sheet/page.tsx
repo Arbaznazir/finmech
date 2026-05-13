@@ -1,11 +1,13 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import {
   ArrowLeft, Scale, Save, RotateCcw, ChevronDown, ChevronUp,
   CheckCircle, XCircle, Info,
 } from "lucide-react";
+const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
 import api from "@/lib/api";
@@ -398,6 +400,109 @@ export default function BalanceSheetPage() {
                 ))}
               </div>
             </div>
+
+            {/* Assets vs Liabilities Monthly Trend */}
+            <div className="rounded-2xl border border-border bg-card p-5">
+              <h3 className="font-semibold text-sm mb-3">Assets vs Liabilities Trend</h3>
+              <ReactECharts
+                style={{ height: 260 }}
+                option={{
+                  tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+                  legend: { data: ["Total Assets", "Total Liabilities", "Equity"], textStyle: { color: "#aaa", fontSize: 10 }, top: 0 },
+                  grid: { top: 30, right: 15, bottom: 30, left: 55 },
+                  xAxis: { type: "category", data: results.monthsAdded, axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
+                  yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
+                  series: [
+                    { name: "Total Assets", type: "bar", data: results.monthsAdded.map(m => results.monthlyData[m]?.["TOTAL ASSETS"] || 0), itemStyle: { color: "#60a5fa", borderRadius: [4, 4, 0, 0] } },
+                    { name: "Total Liabilities", type: "bar", data: results.monthsAdded.map(m => results.monthlyData[m]?.["TOTAL LIABILITIES"] || 0), itemStyle: { color: "#ef4444", borderRadius: [4, 4, 0, 0] } },
+                    { name: "Equity", type: "line", data: results.monthsAdded.map(m => results.monthlyData[m]?.["Total Equity"] || 0), smooth: true, lineStyle: { color: "#34d399", width: 2 }, itemStyle: { color: "#34d399" }, symbol: "circle", symbolSize: 5 },
+                  ],
+                }}
+              />
+            </div>
+
+            {/* Asset Composition Donut */}
+            <div className="rounded-2xl border border-border bg-card p-5">
+              <h3 className="font-semibold text-sm mb-3">Annual Asset Composition</h3>
+              <ReactECharts
+                style={{ height: 240 }}
+                option={{
+                  tooltip: { trigger: "item", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+                  series: [{
+                    type: "pie", radius: ["40%", "68%"], center: ["50%", "50%"],
+                    label: { color: "#ccc", fontSize: 10, formatter: "{b}\n{d}%" },
+                    data: [
+                      { value: Math.abs(results.annual["Total Non-Current Assets"] || 0), name: "Non-Current Assets", itemStyle: { color: "#a78bfa" } },
+                      { value: Math.abs(results.annual["Total Current Assets"] || 0), name: "Current Assets", itemStyle: { color: "#60a5fa" } },
+                      { value: Math.abs(results.annual["Total Equity"] || 0), name: "Equity", itemStyle: { color: "#34d399" } },
+                      { value: Math.abs(results.annual["Total Current Liabilities"] || 0), name: "Current Liabilities", itemStyle: { color: "#f59e0b" } },
+                      { value: Math.abs(results.annual["Total Non-Current Liabilities"] || 0), name: "Non-Current Liabilities", itemStyle: { color: "#ef4444" } },
+                    ].filter(d => d.value > 0),
+                  }],
+                }}
+              />
+            </div>
+
+            {/* Key Ratios Radar */}
+            <div className="rounded-2xl border border-border bg-card p-5">
+              <h3 className="font-semibold text-sm mb-3">Financial Ratios</h3>
+              <ReactECharts
+                style={{ height: 280 }}
+                option={{
+                  radar: {
+                    indicator: [
+                      { name: "Current Ratio", max: 5 },
+                      { name: "Quick Ratio", max: 5 },
+                      { name: "Debt/Equity", max: 5 },
+                      { name: "Proprietary", max: 2 },
+                    ],
+                    axisName: { color: "#aaa", fontSize: 10 },
+                    splitArea: { areaStyle: { color: ["rgba(255,255,255,0.02)", "rgba(255,255,255,0.04)"] } },
+                    splitLine: { lineStyle: { color: "#333" } },
+                    axisLine: { lineStyle: { color: "#444" } },
+                  },
+                  series: [{
+                    type: "radar",
+                    data: [{
+                      value: [
+                        Math.min(5, results.annual["Current Ratio"] || 0),
+                        Math.min(5, results.annual["Quick Ratio"] || 0),
+                        Math.min(5, results.annual["Debt/Equity Ratio"] || 0),
+                        Math.min(2, results.annual["Proprietary Ratio"] || 0),
+                      ],
+                      name: "Ratios",
+                      areaStyle: { color: "rgba(96,165,250,0.2)" },
+                      lineStyle: { color: "#60a5fa", width: 2 },
+                      itemStyle: { color: "#60a5fa" },
+                    }],
+                  }],
+                }}
+              />
+            </div>
+
+            {/* Working Capital Trend */}
+            {results.monthsAdded.length > 1 && (
+              <div className="rounded-2xl border border-border bg-card p-5">
+                <h3 className="font-semibold text-sm mb-3">Working Capital Trend</h3>
+                <ReactECharts
+                  style={{ height: 200 }}
+                  option={{
+                    tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+                    grid: { top: 15, right: 15, bottom: 30, left: 55 },
+                    xAxis: { type: "category", data: results.monthsAdded, axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
+                    yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => `$${(v/1000).toFixed(0)}k` }, splitLine: { lineStyle: { color: "#222" } } },
+                    series: [{
+                      type: "line", smooth: true,
+                      data: results.monthsAdded.map(m => (results.monthlyData[m]?.["Total Current Assets"] || 0) - (results.monthlyData[m]?.["Total Current Liabilities"] || 0)),
+                      areaStyle: { color: { type: "linear", x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: "rgba(52,211,153,0.3)" }, { offset: 1, color: "rgba(52,211,153,0)" }] } },
+                      lineStyle: { color: "#34d399", width: 2 },
+                      itemStyle: { color: "#34d399" },
+                      symbol: "circle", symbolSize: 5,
+                    }],
+                  }}
+                />
+              </div>
+            )}
 
             <div className="rounded-2xl border border-border bg-card p-6">
               <h2 className="font-semibold mb-3">Months Coverage</h2>

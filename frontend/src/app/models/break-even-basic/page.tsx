@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ArrowLeft, TrendingUp, Save, RotateCcw, ArrowRight } from "lucide-react";
+const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
 import api from "@/lib/api";
@@ -186,6 +188,56 @@ export default function BreakEvenBasicPage() {
                   </div>
                 ))}
               </div>
+            </div>
+
+            {/* Break-Even Line Chart */}
+            {results.breakEvenUnits > 0 && (
+              <div className="rounded-2xl border border-border bg-card p-5">
+                <h3 className="font-semibold text-sm mb-3">Break-Even Analysis</h3>
+                <ReactECharts
+                  style={{ height: 280 }}
+                  option={(() => {
+                    const maxUnits = Math.ceil(results.breakEvenUnits * 1.8);
+                    const step = Math.max(1, Math.floor(maxUnits / 10));
+                    const units = Array.from({ length: 11 }, (_, i) => i * step);
+                    return {
+                      tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+                      legend: { data: ["Revenue", "Total Cost"], textStyle: { color: "#aaa", fontSize: 10 }, top: 0 },
+                      grid: { top: 30, right: 15, bottom: 30, left: 55 },
+                      xAxis: { type: "category", name: "Units", data: units.map(String), axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
+                      yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
+                      series: [
+                        { name: "Revenue", type: "line", data: units.map(u => u * results.pricePerUnit), smooth: true, lineStyle: { color: "#34d399", width: 2 }, itemStyle: { color: "#34d399" }, symbol: "circle", symbolSize: 4 },
+                        { name: "Total Cost", type: "line", data: units.map(u => results.fixedCostMonthly + u * results.variableCostPerUnit), smooth: true, lineStyle: { color: "#ef4444", width: 2 }, itemStyle: { color: "#ef4444" }, symbol: "circle", symbolSize: 4 },
+                      ],
+                      markLine: { silent: true, data: [{ xAxis: String(Math.round(results.breakEvenUnits / step) * step) }], lineStyle: { color: "#f59e0b", type: "dashed" }, label: { color: "#f59e0b", fontSize: 10 } },
+                    };
+                  })()}
+                />
+              </div>
+            )}
+
+            {/* Contribution Analysis Bar */}
+            <div className="rounded-2xl border border-border bg-card p-5">
+              <h3 className="font-semibold text-sm mb-3">Contribution Analysis</h3>
+              <ReactECharts
+                style={{ height: 180 }}
+                option={{
+                  tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+                  grid: { top: 10, right: 15, bottom: 25, left: 100 },
+                  xAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
+                  yAxis: { type: "category", data: ["Price/Unit", "Variable Cost/Unit", "Contribution/Unit"], axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
+                  series: [{
+                    type: "bar", barWidth: 18,
+                    data: [
+                      { value: results.pricePerUnit, itemStyle: { color: "#34d399" } },
+                      { value: results.variableCostPerUnit, itemStyle: { color: "#ef4444" } },
+                      { value: results.contributionPerUnit, itemStyle: { color: "#a78bfa" } },
+                    ],
+                    itemStyle: { borderRadius: [0, 4, 4, 0] },
+                  }],
+                }}
+              />
             </div>
 
             {/* Projection */}

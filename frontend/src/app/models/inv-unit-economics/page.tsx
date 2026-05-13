@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ArrowLeft, Users, Save, RotateCcw } from "lucide-react";
+const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
 import api from "@/lib/api";
@@ -311,6 +313,155 @@ export default function InvUnitEconomicsPage() {
           )}
         </div>
       </div>
+
+      {/* ============ CHARTS ============ */}
+      {results && results.monthsAdded.length > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+          {/* CAC vs LTV Trend */}
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <h3 className="font-semibold text-sm mb-3">CAC vs LTV Trend</h3>
+            <ReactECharts style={{ height: 240 }} option={{
+              tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+              legend: { data: ["CAC", "LTV"], textStyle: { color: "#aaa", fontSize: 10 }, top: 0 },
+              grid: { top: 30, right: 15, bottom: 25, left: 55 },
+              xAxis: { type: "category", data: results.monthsAdded, axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
+              yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
+              series: [
+                { name: "CAC", type: "bar", data: results.monthsAdded.map(m => results.monthlyData[m]?.["CAC"] || 0), itemStyle: { color: "#ef4444", borderRadius: [4, 4, 0, 0] } },
+                { name: "LTV", type: "line", data: results.monthsAdded.map(m => results.monthlyData[m]?.["LTV"] || 0), smooth: true, lineStyle: { color: "#34d399", width: 2 }, itemStyle: { color: "#34d399" }, symbol: "circle", symbolSize: 5 },
+              ],
+            }} />
+          </div>
+
+          {/* LTV/CAC Ratio */}
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <h3 className="font-semibold text-sm mb-3">LTV/CAC Ratio</h3>
+            <ReactECharts style={{ height: 240 }} option={{
+              tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+              grid: { top: 15, right: 15, bottom: 25, left: 45 },
+              xAxis: { type: "category", data: results.status.map(s => s.month), axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
+              yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: "{value}x" }, splitLine: { lineStyle: { color: "#222" } } },
+              series: [{
+                type: "bar",
+                data: results.status.map(s => ({ value: s.ltvCacRatio, itemStyle: { color: s.ltvCacRatio >= 3 ? "#34d399" : s.ltvCacRatio >= 1 ? "#f59e0b" : "#ef4444", borderRadius: [4, 4, 0, 0] } })),
+                markLine: { data: [{ yAxis: 3, lineStyle: { color: "#34d399", type: "dashed" } }], label: { formatter: "3x", color: "#34d399", fontSize: 9 }, symbol: "none" },
+              }],
+            }} />
+          </div>
+
+          {/* Churn & Growth Rates */}
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <h3 className="font-semibold text-sm mb-3">Churn & Growth Rates</h3>
+            <ReactECharts style={{ height: 240 }} option={{
+              tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+              legend: { data: ["Churn %", "Growth %"], textStyle: { color: "#aaa", fontSize: 10 }, top: 0 },
+              grid: { top: 30, right: 15, bottom: 25, left: 45 },
+              xAxis: { type: "category", data: results.status.map(s => s.month), axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
+              yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: "{value}%" }, splitLine: { lineStyle: { color: "#222" } } },
+              series: [
+                { name: "Churn %", type: "line", data: results.status.map(s => (s.churnRate * 100)), smooth: true, lineStyle: { color: "#ef4444", width: 2 }, itemStyle: { color: "#ef4444" }, symbol: "circle", symbolSize: 4 },
+                { name: "Growth %", type: "line", data: results.status.map(s => (s.growthRate * 100)), smooth: true, lineStyle: { color: "#34d399", width: 2 }, itemStyle: { color: "#34d399" }, symbol: "circle", symbolSize: 4 },
+              ],
+            }} />
+          </div>
+
+          {/* NRR & GRR Trend */}
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <h3 className="font-semibold text-sm mb-3">NRR & GRR Trend</h3>
+            <ReactECharts style={{ height: 240 }} option={{
+              tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+              legend: { data: ["NRR", "GRR"], textStyle: { color: "#aaa", fontSize: 10 }, top: 0 },
+              grid: { top: 30, right: 15, bottom: 25, left: 45 },
+              xAxis: { type: "category", data: results.monthsAdded, axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
+              yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: "{value}%" }, splitLine: { lineStyle: { color: "#222" } } },
+              series: [
+                { name: "NRR", type: "line", data: results.monthsAdded.map(m => ((results.monthlyData[m]?.["Net Revenue Retention (NRR)"] || 0) * 100)), smooth: true, lineStyle: { color: "#60a5fa", width: 2 }, itemStyle: { color: "#60a5fa" }, symbol: "circle", symbolSize: 4 },
+                { name: "GRR", type: "line", data: results.monthsAdded.map(m => ((results.monthlyData[m]?.["Gross Revenue Retention (GRR)"] || 0) * 100)), smooth: true, lineStyle: { color: "#a78bfa", width: 2 }, itemStyle: { color: "#a78bfa" }, symbol: "circle", symbolSize: 4 },
+              ],
+              markLine: { data: [{ yAxis: 100, lineStyle: { color: "#f59e0b", type: "dashed" } }], label: { formatter: "100%", color: "#f59e0b", fontSize: 9 }, symbol: "none" },
+            }} />
+          </div>
+
+          {/* Rule of 40 Trend */}
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <h3 className="font-semibold text-sm mb-3">Rule of 40</h3>
+            <ReactECharts style={{ height: 240 }} option={{
+              tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+              grid: { top: 15, right: 15, bottom: 25, left: 45 },
+              xAxis: { type: "category", data: results.monthsAdded, axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
+              yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: "{value}%" }, splitLine: { lineStyle: { color: "#222" } } },
+              series: [{
+                type: "bar",
+                data: results.monthsAdded.map(m => {
+                  const v = results.monthlyData[m]?.["Rule of 40"] || 0;
+                  return { value: v, itemStyle: { color: v >= 40 ? "#34d399" : v >= 20 ? "#f59e0b" : "#ef4444", borderRadius: [4, 4, 0, 0] } };
+                }),
+                markLine: { data: [{ yAxis: 40, lineStyle: { color: "#34d399", type: "dashed" } }], label: { formatter: "40%", color: "#34d399", fontSize: 9 }, symbol: "none" },
+              }],
+            }} />
+          </div>
+
+          {/* RAG Status Donut */}
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <h3 className="font-semibold text-sm mb-3">RAG Status Distribution</h3>
+            <ReactECharts style={{ height: 240 }} option={{
+              tooltip: { trigger: "item", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+              series: [{ type: "pie", radius: ["40%", "68%"], center: ["50%", "50%"],
+                label: { color: "#ccc", fontSize: 10, formatter: "{b}\n{c} mo" },
+                data: [
+                  { value: results.status.filter(s => s.rag === "GREEN").length, name: "GREEN", itemStyle: { color: "#34d399" } },
+                  { value: results.status.filter(s => s.rag === "AMBER").length, name: "AMBER", itemStyle: { color: "#f59e0b" } },
+                  { value: results.status.filter(s => s.rag === "RED").length, name: "RED", itemStyle: { color: "#ef4444" } },
+                ].filter(d => d.value > 0),
+              }],
+            }} />
+          </div>
+
+          {/* KPI Radar (latest month) */}
+          {(() => {
+            const last = results.monthsAdded[results.monthsAdded.length - 1];
+            const d = last ? results.monthlyData[last] : null;
+            if (!d) return null;
+            return (
+              <div className="rounded-2xl border border-border bg-card p-5 lg:col-span-2">
+                <h3 className="font-semibold text-sm mb-3">Latest Month KPI Radar ({last})</h3>
+                <ReactECharts style={{ height: 260 }} option={{
+                  tooltip: { backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+                  radar: {
+                    indicator: [
+                      { name: "LTV/CAC", max: 6 },
+                      { name: "NRR %", max: 150 },
+                      { name: "GRR %", max: 110 },
+                      { name: "Rule of 40", max: 80 },
+                      { name: "CM %", max: 100 },
+                    ],
+                    axisName: { color: "#aaa", fontSize: 10 },
+                    splitArea: { areaStyle: { color: ["transparent"] } },
+                    splitLine: { lineStyle: { color: "#333" } },
+                    axisLine: { lineStyle: { color: "#444" } },
+                  },
+                  series: [{
+                    type: "radar",
+                    data: [{
+                      value: [
+                        d["LTV/CAC Ratio"] || 0,
+                        (d["Net Revenue Retention (NRR)"] || 0) * 100,
+                        (d["Gross Revenue Retention (GRR)"] || 0) * 100,
+                        d["Rule of 40"] || 0,
+                        (d["Contribution Margin %"] || 0) * 100,
+                      ],
+                      name: last,
+                      areaStyle: { color: "rgba(96,165,250,0.2)" },
+                      lineStyle: { color: "#60a5fa", width: 2 },
+                      itemStyle: { color: "#60a5fa" },
+                    }],
+                  }],
+                }} />
+              </div>
+            );
+          })()}
+        </div>
+      )}
     </div>
   );
 }

@@ -1,11 +1,13 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import {
   ArrowLeft, Rocket, Save, RotateCcw,
   CheckCircle, AlertTriangle, XCircle, Info,
 } from "lucide-react";
+const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
 import api from "@/lib/api";
@@ -391,6 +393,97 @@ export default function FundingModelPage() {
           <button onClick={() => setActiveTab("input")} className="text-primary hover:underline text-sm">
             Go to Enter Data
           </button>
+        </div>
+      )}
+
+      {/* ============ CHARTS ============ */}
+      {results && results.monthsAdded.length > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+          {/* Cumulative Cash Area */}
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <h3 className="font-semibold text-sm mb-3">Cumulative Cash Position</h3>
+            <ReactECharts
+              style={{ height: 240 }}
+              option={{
+                tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+                grid: { top: 15, right: 15, bottom: 30, left: 55 },
+                xAxis: { type: "category", data: results.monthsAdded, axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
+                yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
+                series: [{
+                  type: "line", smooth: true,
+                  data: results.monthsAdded.map(m => results.monthlyData[m]?.["Cumulative Cash"] || 0),
+                  areaStyle: { color: { type: "linear", x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: "rgba(96,165,250,0.3)" }, { offset: 1, color: "rgba(96,165,250,0)" }] } },
+                  lineStyle: { color: "#60a5fa", width: 2 },
+                  itemStyle: { color: "#60a5fa" },
+                  markLine: { data: [{ yAxis: 0, lineStyle: { color: "#ef4444", type: "dashed" } }], label: { show: false }, symbol: "none" },
+                }],
+              }}
+            />
+          </div>
+
+          {/* Revenue vs Total Costs Bar */}
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <h3 className="font-semibold text-sm mb-3">Revenue vs Costs</h3>
+            <ReactECharts
+              style={{ height: 240 }}
+              option={{
+                tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+                legend: { data: ["Revenue", "Total Costs"], textStyle: { color: "#aaa", fontSize: 10 }, top: 0 },
+                grid: { top: 30, right: 15, bottom: 30, left: 55 },
+                xAxis: { type: "category", data: results.monthsAdded, axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
+                yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
+                series: [
+                  { name: "Revenue", type: "bar", data: results.monthsAdded.map(m => results.monthlyData[m]?.["Revenue"] || 0), itemStyle: { color: "#60a5fa", borderRadius: [4, 4, 0, 0] } },
+                  { name: "Total Costs", type: "bar", data: results.monthsAdded.map(m => (results.monthlyData[m]?.["Cost of Goods Sold (COGS)"] || 0) + (results.monthlyData[m]?.["Variable Cost"] || 0) + (results.monthlyData[m]?.["Fixed Cost"] || 0)), itemStyle: { color: "#ef4444", borderRadius: [4, 4, 0, 0] } },
+                ],
+              }}
+            />
+          </div>
+
+          {/* Funding Waterfall */}
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <h3 className="font-semibold text-sm mb-3">Funding Breakdown</h3>
+            <ReactECharts
+              style={{ height: 220 }}
+              option={{
+                tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+                grid: { top: 15, right: 15, bottom: 35, left: 55 },
+                xAxis: { type: "category", data: ["Max Deficit", "Funding Req", "Contingency", "Total Funding"], axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
+                yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
+                series: [{
+                  type: "bar", barWidth: 32,
+                  data: [
+                    { value: Math.abs(results.summary.maxCashDeficit), itemStyle: { color: "#ef4444", borderRadius: [4, 4, 0, 0] } },
+                    { value: results.summary.fundingRequired, itemStyle: { color: "#f59e0b", borderRadius: [4, 4, 0, 0] } },
+                    { value: results.summary.contingency, itemStyle: { color: "#a78bfa", borderRadius: [4, 4, 0, 0] } },
+                    { value: results.summary.totalFunding, itemStyle: { color: "#34d399", borderRadius: [4, 4, 0, 0] } },
+                  ],
+                  label: { show: true, position: "top", color: "#aaa", fontSize: 9, formatter: (p: any) => `$${(p.value/1000).toFixed(0)}k` },
+                }],
+              }}
+            />
+          </div>
+
+          {/* EBITDA Trend */}
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <h3 className="font-semibold text-sm mb-3">Monthly EBITDA</h3>
+            <ReactECharts
+              style={{ height: 220 }}
+              option={{
+                tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+                grid: { top: 15, right: 15, bottom: 30, left: 55 },
+                xAxis: { type: "category", data: results.monthsAdded, axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
+                yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => `$${(v/1000).toFixed(0)}k` }, splitLine: { lineStyle: { color: "#222" } } },
+                series: [{
+                  type: "bar",
+                  data: results.monthsAdded.map(m => ({
+                    value: results.monthlyData[m]?.["EBITDA"] || 0,
+                    itemStyle: { color: (results.monthlyData[m]?.["EBITDA"] || 0) >= 0 ? "#34d399" : "#ef4444", borderRadius: [4, 4, 0, 0] },
+                  })),
+                }],
+              }}
+            />
+          </div>
         </div>
       )}
 

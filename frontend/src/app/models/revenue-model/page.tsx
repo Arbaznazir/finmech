@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ArrowLeft, DollarSign, Save, RotateCcw, ArrowRight } from "lucide-react";
+const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
 import api from "@/lib/api";
@@ -147,6 +149,43 @@ export default function RevenueModelPage() {
                   <p className="text-lg font-bold">{m.value}</p>
                 </div>
               ))}
+            </div>
+
+            {/* Revenue Projection Bar Chart */}
+            <div className="rounded-2xl border border-border bg-card p-5">
+              <h3 className="font-semibold text-sm mb-3">12-Month Revenue Projection</h3>
+              <ReactECharts
+                style={{ height: 260 }}
+                option={{
+                  tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+                  grid: { top: 30, right: 15, bottom: 30, left: 55 },
+                  xAxis: { type: "category", data: ["M1","M2","M3","M4","M5","M6","M7","M8","M9","M10","M11","M12"], axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
+                  yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
+                  series: [
+                    { name: "Revenue", type: "bar", data: Array(12).fill(results.monthlyRevenue), itemStyle: { color: "#a78bfa", borderRadius: [4, 4, 0, 0] } },
+                    { name: "Cumulative", type: "line", data: Array.from({ length: 12 }, (_, i) => results.monthlyRevenue * (i + 1)), smooth: true, lineStyle: { color: "#34d399", width: 2 }, itemStyle: { color: "#34d399" }, symbol: "circle", symbolSize: 5 },
+                  ],
+                }}
+              />
+            </div>
+
+            {/* Revenue Composition Donut */}
+            <div className="rounded-2xl border border-border bg-card p-5">
+              <h3 className="font-semibold text-sm mb-3">Revenue Composition</h3>
+              <ReactECharts
+                style={{ height: 220 }}
+                option={{
+                  tooltip: { trigger: "item", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+                  series: [{
+                    type: "pie", radius: ["45%", "72%"], center: ["50%", "50%"],
+                    label: { color: "#ccc", fontSize: 10 },
+                    data: [
+                      { value: results.monthlyRevenue, name: "Monthly Revenue", itemStyle: { color: "#a78bfa" } },
+                      { value: results.annualRevenue - results.monthlyRevenue, name: "Remaining Annual", itemStyle: { color: "#34d399" } },
+                    ],
+                  }],
+                }}
+              />
             </div>
 
             {/* Interlink hint */}

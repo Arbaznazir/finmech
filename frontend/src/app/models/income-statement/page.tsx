@@ -1,11 +1,13 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import {
   ArrowLeft, FileText, Save, RotateCcw, ChevronDown, ChevronUp,
   Plus, CheckCircle, AlertTriangle, XCircle, Info,
 } from "lucide-react";
+const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
 import { formatCurrency, formatPercent } from "@/lib/utils";
 import api from "@/lib/api";
@@ -409,6 +411,126 @@ export default function IncomeStatementPage() {
                   </p>
                 </div>
               </div>
+            </div>
+
+            {/* Monthly Revenue & Net Profit Trend */}
+            <div className="rounded-2xl border border-border bg-card p-5">
+              <h3 className="font-semibold text-sm mb-3">Monthly Revenue & Net Profit Trend</h3>
+              <ReactECharts
+                style={{ height: 260 }}
+                option={{
+                  tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+                  legend: { data: ["Revenue", "Net Profit"], textStyle: { color: "#aaa", fontSize: 10 }, top: 0 },
+                  grid: { top: 30, right: 15, bottom: 30, left: 55 },
+                  xAxis: { type: "category", data: results.monthsAdded, axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
+                  yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
+                  series: [
+                    { name: "Revenue", type: "bar", data: results.monthsAdded.map(m => results.monthlyData[m]?.["Gross Revenue"] || 0), itemStyle: { color: "#60a5fa", borderRadius: [4, 4, 0, 0] } },
+                    { name: "Net Profit", type: "line", data: results.monthsAdded.map(m => results.monthlyData[m]?.["Net Profit"] || 0), smooth: true, lineStyle: { color: "#34d399", width: 2 }, itemStyle: { color: "#34d399" }, symbol: "circle", symbolSize: 5 },
+                  ],
+                }}
+              />
+            </div>
+
+            {/* P&L Composition Donut */}
+            <div className="rounded-2xl border border-border bg-card p-5">
+              <h3 className="font-semibold text-sm mb-3">Annual P&L Composition</h3>
+              <ReactECharts
+                style={{ height: 240 }}
+                option={{
+                  tooltip: { trigger: "item", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+                  series: [{
+                    type: "pie", radius: ["40%", "68%"], center: ["50%", "50%"],
+                    label: { color: "#ccc", fontSize: 10, formatter: "{b}\n{d}%" },
+                    data: [
+                      { value: Math.abs(results.annual["Total of COGS"] || 0), name: "COGS", itemStyle: { color: "#ef4444" } },
+                      { value: Math.abs(results.annual["Total Operating Expenses"] || 0), name: "OpEx", itemStyle: { color: "#f59e0b" } },
+                      { value: Math.max(0, results.annual["Net Profit"] || 0), name: "Net Profit", itemStyle: { color: "#34d399" } },
+                      { value: Math.abs(results.annual["Depreciation & Amortization"] || 0), name: "D&A", itemStyle: { color: "#a78bfa" } },
+                      { value: Math.abs(results.annual["Interest Expense"] || 0), name: "Interest", itemStyle: { color: "#60a5fa" } },
+                    ].filter(d => d.value > 0),
+                  }],
+                }}
+              />
+            </div>
+
+            {/* Margin Comparison Bar */}
+            <div className="rounded-2xl border border-border bg-card p-5">
+              <h3 className="font-semibold text-sm mb-3">Annual Margins</h3>
+              <ReactECharts
+                style={{ height: 180 }}
+                option={{
+                  tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 }, formatter: (p: any) => p.map((s: any) => `${s.seriesName}: ${s.value.toFixed(1)}%`).join("<br/>") },
+                  grid: { top: 10, right: 15, bottom: 25, left: 100 },
+                  xAxis: { type: "value", max: 100, axisLabel: { color: "#888", fontSize: 10, formatter: "{value}%" }, splitLine: { lineStyle: { color: "#222" } } },
+                  yAxis: { type: "category", data: ["Net Margin", "EBITDA Margin", "Gross Margin"], axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
+                  series: [{
+                    type: "bar", barWidth: 18,
+                    data: [
+                      { value: Math.max(0, (results.derived.netMarginAnnual || 0) * 100), itemStyle: { color: "#34d399", borderRadius: [0, 4, 4, 0] } },
+                      { value: Math.max(0, (results.derived.ebitdaMarginAnnual || 0) * 100), itemStyle: { color: "#a78bfa", borderRadius: [0, 4, 4, 0] } },
+                      { value: Math.max(0, (results.derived.grossMarginAnnual || 0) * 100), itemStyle: { color: "#60a5fa", borderRadius: [0, 4, 4, 0] } },
+                    ],
+                    label: { show: true, position: "right", color: "#aaa", fontSize: 10, formatter: (p: any) => p.value.toFixed(1) + "%" },
+                  }],
+                }}
+              />
+            </div>
+
+            {/* Quarterly Revenue Comparison */}
+            {Object.keys(results.quarters).length > 0 && (
+              <div className="rounded-2xl border border-border bg-card p-5">
+                <h3 className="font-semibold text-sm mb-3">Quarterly Revenue vs Profit</h3>
+                <ReactECharts
+                  style={{ height: 220 }}
+                  option={{
+                    tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+                    legend: { data: ["Revenue", "Net Profit"], textStyle: { color: "#aaa", fontSize: 10 }, top: 0 },
+                    grid: { top: 30, right: 15, bottom: 25, left: 55 },
+                    xAxis: { type: "category", data: Object.keys(results.quarters), axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
+                    yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
+                    series: [
+                      { name: "Revenue", type: "bar", data: Object.values(results.quarters).map(q => q["Gross Revenue"] || 0), itemStyle: { color: "#60a5fa", borderRadius: [4, 4, 0, 0] } },
+                      { name: "Net Profit", type: "bar", data: Object.values(results.quarters).map(q => q["Net Profit"] || 0), itemStyle: { color: "#34d399", borderRadius: [4, 4, 0, 0] } },
+                    ],
+                  }}
+                />
+              </div>
+            )}
+
+            {/* Expense Waterfall */}
+            <div className="rounded-2xl border border-border bg-card p-5">
+              <h3 className="font-semibold text-sm mb-3">Revenue to Net Profit Waterfall</h3>
+              <ReactECharts
+                style={{ height: 220 }}
+                option={(() => {
+                  const rev = results.annual["Gross Revenue"] || 0;
+                  const cogs = Math.abs(results.annual["Total of COGS"] || 0);
+                  const opex = Math.abs(results.annual["Total Operating Expenses"] || 0);
+                  const da = Math.abs(results.annual["Depreciation & Amortization"] || 0);
+                  const interest = Math.abs(results.annual["Interest Expense"] || 0);
+                  const tax = Math.abs(results.annual["Tax"] || 0);
+                  const netProfit = results.annual["Net Profit"] || 0;
+                  return {
+                    tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+                    grid: { top: 15, right: 15, bottom: 35, left: 55 },
+                    xAxis: { type: "category", data: ["Revenue", "COGS", "OpEx", "D&A", "Interest", "Tax", "Net Profit"], axisLabel: { color: "#888", fontSize: 9, rotate: 20 }, axisLine: { lineStyle: { color: "#333" } } },
+                    yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => `$${(v/1000).toFixed(0)}k` }, splitLine: { lineStyle: { color: "#222" } } },
+                    series: [
+                      { type: "bar", stack: "w", itemStyle: { borderColor: "transparent", color: "transparent" }, emphasis: { itemStyle: { borderColor: "transparent", color: "transparent" } }, data: [0, rev - cogs, rev - cogs - opex, rev - cogs - opex - da, rev - cogs - opex - da - interest, rev - cogs - opex - da - interest - tax, 0].map(v => Math.max(0, v)) },
+                      { type: "bar", stack: "w", data: [
+                        { value: rev, itemStyle: { color: "#60a5fa", borderRadius: [4, 4, 0, 0] } },
+                        { value: cogs, itemStyle: { color: "#ef4444", borderRadius: [4, 4, 0, 0] } },
+                        { value: opex, itemStyle: { color: "#f59e0b", borderRadius: [4, 4, 0, 0] } },
+                        { value: da, itemStyle: { color: "#a78bfa", borderRadius: [4, 4, 0, 0] } },
+                        { value: interest, itemStyle: { color: "#94a3b8", borderRadius: [4, 4, 0, 0] } },
+                        { value: tax, itemStyle: { color: "#fb923c", borderRadius: [4, 4, 0, 0] } },
+                        { value: Math.abs(netProfit), itemStyle: { color: netProfit >= 0 ? "#34d399" : "#ef4444", borderRadius: [4, 4, 0, 0] } },
+                      ] },
+                    ],
+                  };
+                })()}
+              />
             </div>
 
             <div className="rounded-2xl border border-border bg-card p-6">

@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ArrowLeft, Users, Save, RotateCcw } from "lucide-react";
+const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
 import api from "@/lib/api";
@@ -228,6 +230,110 @@ export default function StdUnitEconomicsPage() {
           </div>
         </div>
       </div>
+
+      {/* ============ CHARTS ============ */}
+      {results.status.length > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+          {/* CAC vs LTV Trend */}
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <h3 className="font-semibold text-sm mb-3">CAC vs LTV Trend</h3>
+            <ReactECharts
+              style={{ height: 240 }}
+              option={{
+                tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+                legend: { data: ["CAC", "LTV"], textStyle: { color: "#aaa", fontSize: 10 }, top: 0 },
+                grid: { top: 30, right: 15, bottom: 30, left: 55 },
+                xAxis: { type: "category", data: results.monthsAdded, axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
+                yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => `$${v.toLocaleString()}` }, splitLine: { lineStyle: { color: "#222" } } },
+                series: [
+                  { name: "CAC", type: "bar", data: results.monthsAdded.map(m => results.monthlyData[m]?.["CAC"] || 0), itemStyle: { color: "#ef4444", borderRadius: [4, 4, 0, 0] } },
+                  { name: "LTV", type: "line", data: results.monthsAdded.map(m => results.monthlyData[m]?.["LTV"] || 0), smooth: true, lineStyle: { color: "#34d399", width: 2 }, itemStyle: { color: "#34d399" }, symbol: "circle", symbolSize: 5 },
+                ],
+              }}
+            />
+          </div>
+
+          {/* Churn & Growth Trend */}
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <h3 className="font-semibold text-sm mb-3">Churn & Growth Rates</h3>
+            <ReactECharts
+              style={{ height: 240 }}
+              option={{
+                tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+                legend: { data: ["Churn %", "Growth %"], textStyle: { color: "#aaa", fontSize: 10 }, top: 0 },
+                grid: { top: 30, right: 15, bottom: 30, left: 45 },
+                xAxis: { type: "category", data: results.monthsAdded, axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
+                yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: "{value}%" }, splitLine: { lineStyle: { color: "#222" } } },
+                series: [
+                  { name: "Churn %", type: "line", data: results.status.map(s => s.churnRate), smooth: true, lineStyle: { color: "#ef4444", width: 2 }, itemStyle: { color: "#ef4444" }, symbol: "circle", symbolSize: 5 },
+                  { name: "Growth %", type: "line", data: results.status.map(s => s.growthRate), smooth: true, lineStyle: { color: "#34d399", width: 2 }, itemStyle: { color: "#34d399" }, symbol: "circle", symbolSize: 5 },
+                ],
+              }}
+            />
+          </div>
+
+          {/* LTV/CAC Ratio Bar */}
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <h3 className="font-semibold text-sm mb-3">LTV/CAC Ratio by Month</h3>
+            <ReactECharts
+              style={{ height: 220 }}
+              option={{
+                tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+                grid: { top: 15, right: 15, bottom: 30, left: 45 },
+                xAxis: { type: "category", data: results.monthsAdded, axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
+                yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: "{value}x" }, splitLine: { lineStyle: { color: "#222" } } },
+                series: [{
+                  type: "bar",
+                  data: results.status.map(s => ({
+                    value: Math.round(s.ltvCacRatio * 10) / 10,
+                    itemStyle: { color: s.ltvCacRatio > 3 ? "#34d399" : s.ltvCacRatio > 1 ? "#f59e0b" : "#ef4444", borderRadius: [4, 4, 0, 0] },
+                  })),
+                  markLine: { data: [{ yAxis: 3, lineStyle: { color: "#34d399", type: "dashed" } }], label: { formatter: "3x target", color: "#34d399", fontSize: 9 }, symbol: "none" },
+                }],
+              }}
+            />
+          </div>
+
+          {/* KPI Radar (latest month) */}
+          {(() => {
+            const last = results.status[results.status.length - 1];
+            return (
+              <div className="rounded-2xl border border-border bg-card p-5">
+                <h3 className="font-semibold text-sm mb-3">Latest Month KPI Radar</h3>
+                <ReactECharts
+                  style={{ height: 240 }}
+                  option={{
+                    radar: {
+                      indicator: [
+                        { name: "LTV/CAC", max: 6 },
+                        { name: "Growth %", max: 50 },
+                        { name: "Low Churn\n(inv)", max: 20 },
+                      ],
+                      axisName: { color: "#aaa", fontSize: 9 },
+                      splitArea: { areaStyle: { color: ["rgba(255,255,255,0.02)", "rgba(255,255,255,0.04)"] } },
+                      splitLine: { lineStyle: { color: "#333" } },
+                      axisLine: { lineStyle: { color: "#444" } },
+                    },
+                    series: [{
+                      type: "radar",
+                      data: [{
+                        value: [
+                          Math.min(6, Math.max(0, last.ltvCacRatio)),
+                          Math.min(50, Math.max(0, last.growthRate)),
+                          Math.max(0, 20 - last.churnRate),
+                        ],
+                        areaStyle: { color: "rgba(96,165,250,0.2)" },
+                        lineStyle: { color: "#60a5fa", width: 2 },
+                        itemStyle: { color: "#60a5fa" },
+                      }],
+                    }],
+                  }}
+                />
+              </div>
+            );
+          })()}
+        </div>
+      )}
     </div>
   );
 }

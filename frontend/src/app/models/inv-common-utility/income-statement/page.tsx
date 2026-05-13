@@ -23,7 +23,7 @@ const emptyMonth = (): Record<string, number> => {
   return m;
 };
 
-export default function StdCommonUtilityPage() {
+export default function InvIncomeStatementPage() {
   const { user, hydrate } = useAuth();
   const [monthData, setMonthData] = useState<Record<string, Record<string, number>>>(() => {
     const d: Record<string, Record<string, number>> = {};
@@ -32,7 +32,7 @@ export default function StdCommonUtilityPage() {
   });
   const [activeMonth, setActiveMonth] = useState<MonthName>("Apr");
   const { save: persistState, reset: clearPersisted, saving, saved, markDirty } = useSavedModel({
-    modelSlug: "std-common-utility",
+    modelSlug: "inv-common-utility",
     onLoad: (data: Record<string, unknown>) => {
       if (data.monthData) setMonthData(data.monthData as Record<string, Record<string, number>>);
     },
@@ -63,7 +63,6 @@ export default function StdCommonUtilityPage() {
   };
 
   const persistResults = () => {
-    // Build per-month mapped data for downstream models
     const months: Record<string, Record<string, number>> = {};
     MONTHS_ORDER.forEach((m) => {
       const d = isResult.monthlyData[m];
@@ -85,19 +84,17 @@ export default function StdCommonUtilityPage() {
         ebitdaMargin: d["EBITDA Margin %"] ?? 0,
         netProfit: d["Net Profit"] ?? 0,
         netMargin: d["Net Margin %"] ?? 0,
+        depreciation: d["Depreciation & Amortization"] ?? 0,
       };
     });
 
-    // Find the latest month with data for backward-compat summary
     let latestMonth = isResult.monthlyData[MONTHS_ORDER[0]];
     for (let i = MONTHS_ORDER.length - 1; i >= 0; i--) {
       const m = isResult.monthlyData[MONTHS_ORDER[i]];
       if (m && (m["Gross Revenue"] || 0) > 0) { latestMonth = m; break; }
     }
-    saveModelResults("std-common-utility", {
-      // Full monthly data for downstream models
+    saveModelResults("inv-common-utility", {
       months,
-      // Summary (backward compat)
       monthlyRevenue: latestMonth?.["Gross Revenue"] ?? 0,
       monthlyExpenses: latestMonth?.["Total Operating Expenses"] ?? 0,
       grossMargin: latestMonth?.["Gross Margin %"] ?? 0,
@@ -108,10 +105,10 @@ export default function StdCommonUtilityPage() {
       annualRevenue: isResult.annual["Gross Revenue"] ?? 0,
       annualNetProfit: isResult.annual["Net Profit"] ?? 0,
       annualEBITDA: isResult.annual["EBITDA"] ?? 0,
+      annualGrossProfit: isResult.annual["Gross Profit"] ?? 0,
     });
   };
 
-  // Auto-persist whenever calculation results change
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { persistResults(); }, [isResult]);
 
@@ -119,7 +116,7 @@ export default function StdCommonUtilityPage() {
     const d: Record<string, Record<string, number>> = {};
     MONTHS_ORDER.forEach((m) => { d[m] = emptyMonth(); });
     setMonthData(d);
-    clearModelResults("std-common-utility");
+    clearModelResults("inv-common-utility");
     clearPersisted();
   };
 
@@ -128,7 +125,7 @@ export default function StdCommonUtilityPage() {
     persistResults();
     try {
       await api.post("/calculations", {
-        modelSlug: "std-common-utility",
+        modelSlug: "inv-common-utility",
         inputs: monthData,
         outputs: { monthlyData: isResult.monthlyData, annual: isResult.annual },
       });
@@ -141,31 +138,31 @@ export default function StdCommonUtilityPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-8">
-      <Link href="/models" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
-        <ArrowLeft className="h-4 w-4" /> Back to Models
+      <Link href="/models/inv-common-utility" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
+        <ArrowLeft className="h-4 w-4" /> Back to Common Utility Hub
       </Link>
 
       <div className="flex items-start justify-between gap-4 mb-6">
         <div className="flex items-start gap-4">
-          <div className="h-14 w-14 rounded-2xl flex items-center justify-center shrink-0 bg-primary/10">
-            <Settings className="h-7 w-7 text-primary" />
+          <div className="h-14 w-14 rounded-2xl flex items-center justify-center shrink-0 bg-amber-400/10">
+            <Settings className="h-7 w-7 text-amber-400" />
           </div>
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold">Common Utility</h1>
-              <span className="rounded px-2 py-0.5 text-xs font-medium uppercase bg-primary/10 text-primary">Standard</span>
+              <h1 className="text-2xl font-bold">Income Statement</h1>
+              <span className="rounded px-2 py-0.5 text-xs font-medium uppercase bg-amber-400/10 text-amber-400">Investor Grade</span>
             </div>
             <p className="text-muted-foreground mt-1">
-              Central Income Statement hub — feeds data into all other Standard models.
+              Central Income Statement hub — feeds data into all other Investor Grade models.
             </p>
-            <p className="text-xs text-blue-400 mt-1 flex items-center gap-1">
-              <ArrowRight className="h-3 w-3" /> Break-even, Burn &amp; Runway, Unit Economics, Movements, Business Snapshot
+            <p className="text-xs text-amber-400 mt-1 flex items-center gap-1">
+              <ArrowRight className="h-3 w-3" /> Break-even, Burn &amp; Runway, Unit Economics, Movements, Funding, DCF, Snapshot
             </p>
           </div>
         </div>
         {user && (
           <button onClick={handleSave} disabled={saving || saved}
-            className={`inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${saved ? "bg-success/10 text-success" : "bg-primary/10 text-primary hover:bg-primary/20"}`}>
+            className={`inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${saved ? "bg-success/10 text-success" : "bg-amber-400/10 text-amber-400 hover:bg-amber-400/20"}`}>
             <Save className="h-4 w-4" />
             {saved ? "Saved!" : saving ? "Saving..." : "Save"}
           </button>
@@ -175,8 +172,8 @@ export default function StdCommonUtilityPage() {
       {/* Month tabs */}
       <div className="flex gap-1 overflow-x-auto pb-2 mb-6">
         {MONTHS_ORDER.map((m) => (
-          <button key={m} onClick={() => { setActiveMonth(m); persistResults(); }}
-            className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${activeMonth === m ? "bg-primary text-primary-foreground" : "bg-card border border-border hover:bg-muted"}`}>
+          <button key={m} onClick={() => setActiveMonth(m)}
+            className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${activeMonth === m ? "bg-amber-400 text-black" : "bg-card border border-border hover:bg-muted"}`}>
             {m}
           </button>
         ))}
@@ -199,7 +196,7 @@ export default function StdCommonUtilityPage() {
                         onChange={(e) => handleChange(field.key, e.target.value)}
                         onKeyDown={handleKeyDown}
                         placeholder="0"
-                        className="w-full rounded-lg border border-border bg-input pl-7 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+                        className="w-full rounded-lg border border-border bg-input pl-7 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/50"
                       />
                     </div>
                   </div>
@@ -208,7 +205,7 @@ export default function StdCommonUtilityPage() {
             </div>
           ))}
           <div className="flex gap-3">
-            <button onClick={persistResults} className="flex-1 rounded-lg bg-primary py-2.5 text-sm font-semibold text-primary-foreground hover:bg-accent transition-colors">
+            <button onClick={persistResults} className="flex-1 rounded-lg bg-amber-400 text-black py-2.5 text-sm font-semibold hover:bg-amber-300 transition-colors">
               Push Data to Linked Models
             </button>
             <button onClick={handleReset} className="rounded-lg border border-border px-4 py-2.5 text-sm hover:bg-muted transition-colors">
@@ -273,12 +270,12 @@ export default function StdCommonUtilityPage() {
             </div>
           )}
 
-          <div className="rounded-xl bg-blue-400/5 border border-blue-400/20 p-4">
-            <p className="text-xs text-blue-400 font-medium mb-2 flex items-center gap-1.5">
+          <div className="rounded-xl bg-amber-400/5 border border-amber-400/20 p-4">
+            <p className="text-xs text-amber-400 font-medium mb-2 flex items-center gap-1.5">
               <ArrowRight className="h-3.5 w-3.5" /> Data flows to linked models
             </p>
             <p className="text-xs text-muted-foreground">
-              Revenue, costs, and margins auto-fill into Break-even, Burn &amp; Runway, Unit Economics, Movements, and Business Snapshot.
+              Revenue, costs, margins, and EBITDA auto-fill into Break-even, Burn &amp; Runway, Unit Economics, Movements, Funding, DCF, and Business Snapshot.
             </p>
           </div>
         </div>
@@ -287,111 +284,111 @@ export default function StdCommonUtilityPage() {
       {/* ============ CHARTS ============ */}
       {isResult.monthsAdded.length > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-          {/* Monthly Revenue + Net Profit Trend */}
+          {/* Monthly Revenue + Net Profit */}
           <div className="rounded-2xl border border-border bg-card p-5">
             <h3 className="font-semibold text-sm mb-3">Monthly Revenue & Net Profit</h3>
-            <ReactECharts
-              style={{ height: 240 }}
-              option={{
-                tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
-                legend: { data: ["Revenue", "Net Profit"], textStyle: { color: "#aaa", fontSize: 10 }, top: 0 },
-                grid: { top: 30, right: 15, bottom: 25, left: 55 },
-                xAxis: { type: "category", data: MONTHS_ORDER, axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
-                yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
-                series: [
-                  { name: "Revenue", type: "bar", data: MONTHS_ORDER.map(m => isResult.monthlyData[m]?.["Gross Revenue"] || 0), itemStyle: { color: "#60a5fa", borderRadius: [4, 4, 0, 0] } },
-                  { name: "Net Profit", type: "line", data: MONTHS_ORDER.map(m => isResult.monthlyData[m]?.["Net Profit"] || 0), smooth: true, lineStyle: { color: "#34d399", width: 2 }, itemStyle: { color: "#34d399" }, symbol: "circle", symbolSize: 5 },
-                ],
-              }}
-            />
+            <ReactECharts style={{ height: 240 }} option={{
+              tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+              legend: { data: ["Revenue", "Net Profit"], textStyle: { color: "#aaa", fontSize: 10 }, top: 0 },
+              grid: { top: 30, right: 15, bottom: 25, left: 55 },
+              xAxis: { type: "category", data: MONTHS_ORDER, axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
+              yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
+              series: [
+                { name: "Revenue", type: "bar", data: MONTHS_ORDER.map(m => isResult.monthlyData[m]?.["Gross Revenue"] || 0), itemStyle: { color: "#60a5fa", borderRadius: [4, 4, 0, 0] } },
+                { name: "Net Profit", type: "line", data: MONTHS_ORDER.map(m => isResult.monthlyData[m]?.["Net Profit"] || 0), smooth: true, lineStyle: { color: "#34d399", width: 2 }, itemStyle: { color: "#34d399" }, symbol: "circle", symbolSize: 5 },
+              ],
+            }} />
           </div>
 
-          {/* Margin Trend Lines */}
+          {/* Margin Trends */}
           <div className="rounded-2xl border border-border bg-card p-5">
             <h3 className="font-semibold text-sm mb-3">Margin Trends</h3>
-            <ReactECharts
-              style={{ height: 240 }}
-              option={{
-                tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
-                legend: { data: ["Gross %", "EBITDA %", "Net %"], textStyle: { color: "#aaa", fontSize: 10 }, top: 0 },
-                grid: { top: 30, right: 15, bottom: 25, left: 45 },
-                xAxis: { type: "category", data: MONTHS_ORDER, axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
-                yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: "{value}%" }, splitLine: { lineStyle: { color: "#222" } } },
-                series: [
-                  { name: "Gross %", type: "line", data: MONTHS_ORDER.map(m => isResult.monthlyData[m]?.["Gross Margin %"] || 0), smooth: true, lineStyle: { color: "#34d399", width: 2 }, itemStyle: { color: "#34d399" }, symbol: "circle", symbolSize: 4 },
-                  { name: "EBITDA %", type: "line", data: MONTHS_ORDER.map(m => isResult.monthlyData[m]?.["EBITDA Margin %"] || 0), smooth: true, lineStyle: { color: "#f59e0b", width: 2 }, itemStyle: { color: "#f59e0b" }, symbol: "circle", symbolSize: 4 },
-                  { name: "Net %", type: "line", data: MONTHS_ORDER.map(m => isResult.monthlyData[m]?.["Net Margin %"] || 0), smooth: true, lineStyle: { color: "#a78bfa", width: 2 }, itemStyle: { color: "#a78bfa" }, symbol: "circle", symbolSize: 4 },
-                ],
-              }}
-            />
+            <ReactECharts style={{ height: 240 }} option={{
+              tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+              legend: { data: ["Gross %", "EBITDA %", "Net %"], textStyle: { color: "#aaa", fontSize: 10 }, top: 0 },
+              grid: { top: 30, right: 15, bottom: 25, left: 45 },
+              xAxis: { type: "category", data: MONTHS_ORDER, axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
+              yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: "{value}%" }, splitLine: { lineStyle: { color: "#222" } } },
+              series: [
+                { name: "Gross %", type: "line", data: MONTHS_ORDER.map(m => isResult.monthlyData[m]?.["Gross Margin %"] || 0), smooth: true, lineStyle: { color: "#34d399", width: 2 }, itemStyle: { color: "#34d399" }, symbol: "circle", symbolSize: 4 },
+                { name: "EBITDA %", type: "line", data: MONTHS_ORDER.map(m => isResult.monthlyData[m]?.["EBITDA Margin %"] || 0), smooth: true, lineStyle: { color: "#f59e0b", width: 2 }, itemStyle: { color: "#f59e0b" }, symbol: "circle", symbolSize: 4 },
+                { name: "Net %", type: "line", data: MONTHS_ORDER.map(m => isResult.monthlyData[m]?.["Net Margin %"] || 0), smooth: true, lineStyle: { color: "#a78bfa", width: 2 }, itemStyle: { color: "#a78bfa" }, symbol: "circle", symbolSize: 4 },
+              ],
+            }} />
           </div>
 
           {/* P&L Composition Donut (annual) */}
           <div className="rounded-2xl border border-border bg-card p-5">
             <h3 className="font-semibold text-sm mb-3">Annual P&L Composition</h3>
-            <ReactECharts
-              style={{ height: 220 }}
-              option={{
-                tooltip: { trigger: "item", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
-                series: [{
-                  type: "pie", radius: ["40%", "68%"], center: ["50%", "50%"],
-                  label: { color: "#ccc", fontSize: 10, formatter: "{b}\n{d}%" },
-                  data: [
-                    { value: Math.abs(isResult.annual["Total of COGS"] || 0), name: "COGS", itemStyle: { color: "#ef4444" } },
-                    { value: Math.abs(isResult.annual["Total Fixed Costs"] || 0), name: "Fixed Costs", itemStyle: { color: "#f59e0b" } },
-                    { value: Math.abs(isResult.annual["Total variable Costs"] || 0), name: "Variable Costs", itemStyle: { color: "#a78bfa" } },
-                    { value: Math.max(0, isResult.annual["Net Profit"] || 0), name: "Net Profit", itemStyle: { color: "#34d399" } },
-                  ].filter(d => d.value > 0),
-                }],
-              }}
-            />
+            <ReactECharts style={{ height: 220 }} option={{
+              tooltip: { trigger: "item", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+              series: [{ type: "pie", radius: ["40%", "68%"], center: ["50%", "50%"],
+                label: { color: "#ccc", fontSize: 10, formatter: "{b}\n{d}%" },
+                data: [
+                  { value: Math.abs(isResult.annual["Total of COGS"] || 0), name: "COGS", itemStyle: { color: "#ef4444" } },
+                  { value: Math.abs(isResult.annual["Total Fixed Costs"] || 0), name: "Fixed Costs", itemStyle: { color: "#f59e0b" } },
+                  { value: Math.abs(isResult.annual["Total variable Costs"] || 0), name: "Variable Costs", itemStyle: { color: "#a78bfa" } },
+                  { value: Math.max(0, isResult.annual["Net Profit"] || 0), name: "Net Profit", itemStyle: { color: "#34d399" } },
+                ].filter(d => d.value > 0),
+              }],
+            }} />
           </div>
 
-          {/* Annual Breakdown Bar */}
+          {/* Annual Summary Bar */}
           <div className="rounded-2xl border border-border bg-card p-5">
             <h3 className="font-semibold text-sm mb-3">Annual Summary</h3>
-            <ReactECharts
-              style={{ height: 220 }}
-              option={{
-                tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
-                grid: { top: 15, right: 15, bottom: 35, left: 55 },
-                xAxis: { type: "category", data: ["Revenue", "Gross Profit", "EBITDA", "Net Profit"], axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
-                yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
-                series: [{
-                  type: "bar", barWidth: 32,
-                  data: [
-                    { value: isResult.annual["Gross Revenue"] || 0, itemStyle: { color: "#60a5fa", borderRadius: [4, 4, 0, 0] } },
-                    { value: isResult.annual["Gross Profit"] || 0, itemStyle: { color: "#34d399", borderRadius: [4, 4, 0, 0] } },
-                    { value: isResult.annual["EBITDA"] || 0, itemStyle: { color: "#f59e0b", borderRadius: [4, 4, 0, 0] } },
-                    { value: isResult.annual["Net Profit"] || 0, itemStyle: { color: (isResult.annual["Net Profit"] || 0) >= 0 ? "#34d399" : "#ef4444", borderRadius: [4, 4, 0, 0] } },
-                  ],
-                  label: { show: true, position: "top", color: "#aaa", fontSize: 9, formatter: (p: any) => p.value >= 1000 ? `$${(p.value/1000).toFixed(0)}k` : `$${p.value}` },
-                }],
-              }}
-            />
+            <ReactECharts style={{ height: 220 }} option={{
+              tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+              grid: { top: 15, right: 15, bottom: 35, left: 55 },
+              xAxis: { type: "category", data: ["Revenue", "Gross Profit", "EBITDA", "EBIT", "Net Profit"], axisLabel: { color: "#888", fontSize: 9 }, axisLine: { lineStyle: { color: "#333" } } },
+              yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
+              series: [{ type: "bar", barWidth: 28,
+                data: [
+                  { value: isResult.annual["Gross Revenue"] || 0, itemStyle: { color: "#60a5fa", borderRadius: [4, 4, 0, 0] } },
+                  { value: isResult.annual["Gross Profit"] || 0, itemStyle: { color: "#34d399", borderRadius: [4, 4, 0, 0] } },
+                  { value: isResult.annual["EBITDA"] || 0, itemStyle: { color: "#f59e0b", borderRadius: [4, 4, 0, 0] } },
+                  { value: isResult.annual["EBIT"] || 0, itemStyle: { color: "#a78bfa", borderRadius: [4, 4, 0, 0] } },
+                  { value: isResult.annual["Net Profit"] || 0, itemStyle: { color: (isResult.annual["Net Profit"] || 0) >= 0 ? "#34d399" : "#ef4444", borderRadius: [4, 4, 0, 0] } },
+                ],
+                label: { show: true, position: "top", color: "#aaa", fontSize: 9, formatter: (p: any) => p.value >= 1000 ? `$${(p.value/1000).toFixed(0)}k` : `$${p.value}` },
+              }],
+            }} />
           </div>
 
-          {/* OPEX Breakdown Donut */}
-          <div className="rounded-2xl border border-border bg-card p-5 lg:col-span-2">
-            <h3 className="font-semibold text-sm mb-3">Monthly OPEX Breakdown ({activeMonth})</h3>
-            <ReactECharts
-              style={{ height: 220 }}
-              option={{
-                tooltip: { trigger: "item", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
-                series: [{
-                  type: "pie", radius: ["35%", "65%"], center: ["50%", "50%"],
-                  label: { color: "#ccc", fontSize: 10, formatter: "{b}\n{d}%" },
-                  data: [
-                    { value: Math.abs(cur?.["Salaries & Benefits"] || 0), name: "Salaries", itemStyle: { color: "#60a5fa" } },
-                    { value: Math.abs(cur?.["Rent & Utilities"] || 0), name: "Rent & Utils", itemStyle: { color: "#f59e0b" } },
-                    { value: Math.abs(cur?.["Marketing & Advertising"] || 0), name: "Marketing", itemStyle: { color: "#ec4899" } },
-                    { value: Math.abs(cur?.["Travel & Transport"] || 0), name: "Travel", itemStyle: { color: "#22d3ee" } },
-                    { value: Math.abs(cur?.["Insurance"] || 0), name: "Insurance", itemStyle: { color: "#a78bfa" } },
-                    { value: Math.abs(cur?.["Other Expenses"] || 0), name: "Other", itemStyle: { color: "#84cc16" } },
-                  ].filter(d => d.value > 0),
-                }],
-              }}
-            />
+          {/* Revenue vs COGS vs OPEX Stacked */}
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <h3 className="font-semibold text-sm mb-3">Revenue vs Cost Structure</h3>
+            <ReactECharts style={{ height: 240 }} option={{
+              tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+              legend: { data: ["Revenue", "COGS", "OPEX"], textStyle: { color: "#aaa", fontSize: 10 }, top: 0 },
+              grid: { top: 30, right: 15, bottom: 25, left: 55 },
+              xAxis: { type: "category", data: MONTHS_ORDER, axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
+              yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
+              series: [
+                { name: "Revenue", type: "line", data: MONTHS_ORDER.map(m => isResult.monthlyData[m]?.["Gross Revenue"] || 0), smooth: true, lineStyle: { color: "#60a5fa", width: 2 }, itemStyle: { color: "#60a5fa" }, symbol: "circle", symbolSize: 4 },
+                { name: "COGS", type: "bar", stack: "cost", data: MONTHS_ORDER.map(m => Math.abs(isResult.monthlyData[m]?.["Total of COGS"] || 0)), itemStyle: { color: "#ef4444" } },
+                { name: "OPEX", type: "bar", stack: "cost", data: MONTHS_ORDER.map(m => Math.abs(isResult.monthlyData[m]?.["Total Operating Expenses"] || 0)), itemStyle: { color: "#f59e0b" } },
+              ],
+            }} />
+          </div>
+
+          {/* OPEX Breakdown Donut (active month) */}
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <h3 className="font-semibold text-sm mb-3">OPEX Breakdown ({activeMonth})</h3>
+            <ReactECharts style={{ height: 220 }} option={{
+              tooltip: { trigger: "item", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+              series: [{ type: "pie", radius: ["35%", "65%"], center: ["50%", "50%"],
+                label: { color: "#ccc", fontSize: 10, formatter: "{b}\n{d}%" },
+                data: [
+                  { value: Math.abs(cur?.["Salaries & Benefits"] || 0), name: "Salaries", itemStyle: { color: "#60a5fa" } },
+                  { value: Math.abs(cur?.["Rent & Utilities"] || 0), name: "Rent & Utils", itemStyle: { color: "#f59e0b" } },
+                  { value: Math.abs(cur?.["Marketing & Advertising"] || 0), name: "Marketing", itemStyle: { color: "#ec4899" } },
+                  { value: Math.abs(cur?.["Travel & Transport"] || 0), name: "Travel", itemStyle: { color: "#22d3ee" } },
+                  { value: Math.abs(cur?.["Insurance"] || 0), name: "Insurance", itemStyle: { color: "#a78bfa" } },
+                  { value: Math.abs(cur?.["Other Expenses"] || 0), name: "Other", itemStyle: { color: "#84cc16" } },
+                ].filter(d => d.value > 0),
+              }],
+            }} />
           </div>
         </div>
       )}

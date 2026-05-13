@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ArrowLeft, ArrowRightLeft, Save, RotateCcw } from "lucide-react";
+const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
 import api from "@/lib/api";
@@ -69,6 +71,14 @@ export default function InvMovementsPage() {
   }, [hydrate]);
 
   const results = useMemo(() => calculateMovements(monthData), [monthData]);
+
+  // Persist to localStorage so Cash Flow & Balance Sheet can auto-pull
+  useEffect(() => {
+    saveModelResults("inv-movements", {
+      monthlyData: results.monthlyData,
+      annual: results.annual,
+    });
+  }, [results]);
 
   const handleChange = (key: string, value: string) => {
     setMonthData((prev) => ({
@@ -297,6 +307,113 @@ export default function InvMovementsPage() {
           </div>
         </div>
       </div>
+
+      {/* ============ CHARTS ============ */}
+      {results.monthsAdded.length > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+          {/* Working Capital Components */}
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <h3 className="font-semibold text-sm mb-3">Working Capital Components</h3>
+            <ReactECharts style={{ height: 240 }} option={{
+              tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+              legend: { data: ["Receivables", "Inventory", "Payables"], textStyle: { color: "#aaa", fontSize: 10 }, top: 0 },
+              grid: { top: 30, right: 15, bottom: 30, left: 55 },
+              xAxis: { type: "category", data: MONTHS_ORDER, axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
+              yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
+              series: [
+                { name: "Receivables", type: "bar", stack: "wc", data: MONTHS_ORDER.map(m => results.monthlyData[m]?.["Trade Receivables (Closing)"] || 0), itemStyle: { color: "#60a5fa" } },
+                { name: "Inventory", type: "bar", stack: "wc", data: MONTHS_ORDER.map(m => results.monthlyData[m]?.["Inventory (Closing)"] || 0), itemStyle: { color: "#f59e0b" } },
+                { name: "Payables", type: "bar", stack: "wc", data: MONTHS_ORDER.map(m => -(results.monthlyData[m]?.["Trade Payables (Closing)"] || 0)), itemStyle: { color: "#ef4444" } },
+              ],
+            }} />
+          </div>
+
+          {/* CFO & FCF Trend */}
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <h3 className="font-semibold text-sm mb-3">Cash from Operations & FCF</h3>
+            <ReactECharts style={{ height: 240 }} option={{
+              tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+              legend: { data: ["CFO", "FCF"], textStyle: { color: "#aaa", fontSize: 10 }, top: 0 },
+              grid: { top: 30, right: 15, bottom: 30, left: 55 },
+              xAxis: { type: "category", data: MONTHS_ORDER, axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
+              yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
+              series: [
+                { name: "CFO", type: "line", smooth: true, data: MONTHS_ORDER.map(m => results.monthlyData[m]?.["Cash from Operations"] || 0), areaStyle: { color: "rgba(52,211,153,0.15)" }, lineStyle: { color: "#34d399", width: 2 }, itemStyle: { color: "#34d399" }, symbol: "circle", symbolSize: 4 },
+                { name: "FCF", type: "line", smooth: true, data: MONTHS_ORDER.map(m => results.monthlyData[m]?.["Free Cash Flow"] || 0), lineStyle: { color: "#60a5fa", width: 2 }, itemStyle: { color: "#60a5fa" }, symbol: "circle", symbolSize: 4 },
+              ],
+            }} />
+          </div>
+
+          {/* Cash Conversion Cycle */}
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <h3 className="font-semibold text-sm mb-3">Cash Conversion Cycle</h3>
+            <ReactECharts style={{ height: 240 }} option={{
+              tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+              legend: { data: ["DSO", "DIO", "DPO", "CCC"], textStyle: { color: "#aaa", fontSize: 10 }, top: 0 },
+              grid: { top: 30, right: 15, bottom: 30, left: 45 },
+              xAxis: { type: "category", data: MONTHS_ORDER, axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
+              yAxis: { type: "value", name: "days", nameTextStyle: { color: "#888", fontSize: 9 }, axisLabel: { color: "#888", fontSize: 10 }, splitLine: { lineStyle: { color: "#222" } } },
+              series: [
+                { name: "DSO", type: "line", data: MONTHS_ORDER.map(m => results.monthlyData[m]?.["Days Sales Outstanding (DSO)"] || 0), smooth: true, lineStyle: { color: "#60a5fa", width: 2 }, itemStyle: { color: "#60a5fa" }, symbol: "circle", symbolSize: 4 },
+                { name: "DIO", type: "line", data: MONTHS_ORDER.map(m => results.monthlyData[m]?.["Days Inventory Outstanding (DIO)"] || 0), smooth: true, lineStyle: { color: "#f59e0b", width: 2 }, itemStyle: { color: "#f59e0b" }, symbol: "circle", symbolSize: 4 },
+                { name: "DPO", type: "line", data: MONTHS_ORDER.map(m => results.monthlyData[m]?.["Days Payable Outstanding (DPO)"] || 0), smooth: true, lineStyle: { color: "#a78bfa", width: 2 }, itemStyle: { color: "#a78bfa" }, symbol: "circle", symbolSize: 4 },
+                { name: "CCC", type: "line", data: MONTHS_ORDER.map(m => results.monthlyData[m]?.["Cash Conversion Cycle"] || 0), smooth: true, lineStyle: { color: "#ec4899", width: 2, type: "dashed" }, itemStyle: { color: "#ec4899" }, symbol: "circle", symbolSize: 5 },
+              ],
+            }} />
+          </div>
+
+          {/* Annual Cash Flow Donut */}
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <h3 className="font-semibold text-sm mb-3">Annual Cash Flow Breakdown</h3>
+            <ReactECharts style={{ height: 220 }} option={{
+              tooltip: { trigger: "item", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+              series: [{ type: "pie", radius: ["40%", "68%"], center: ["50%", "50%"],
+                label: { color: "#ccc", fontSize: 10, formatter: "{b}\n{d}%" },
+                data: [
+                  { value: Math.abs(results.annual.totalCFO || 0), name: "CFO", itemStyle: { color: "#34d399" } },
+                  { value: Math.abs(results.annual.totalCapEx || 0), name: "CapEx", itemStyle: { color: "#f59e0b" } },
+                  { value: Math.abs(results.annual.totalChangeInWC || 0), name: "WC Change", itemStyle: { color: "#a78bfa" } },
+                ].filter(d => d.value > 0),
+              }],
+            }} />
+          </div>
+
+          {/* Change in Working Capital Bar */}
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <h3 className="font-semibold text-sm mb-3">Monthly WC Change</h3>
+            <ReactECharts style={{ height: 220 }} option={{
+              tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+              grid: { top: 15, right: 15, bottom: 30, left: 55 },
+              xAxis: { type: "category", data: MONTHS_ORDER, axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
+              yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
+              series: [{
+                type: "bar",
+                data: MONTHS_ORDER.map(m => {
+                  const v = results.monthlyData[m]?.["Change in Working Capital"] || 0;
+                  return { value: v, itemStyle: { color: v >= 0 ? "#34d399" : "#ef4444", borderRadius: [4, 4, 0, 0] } };
+                }),
+              }],
+            }} />
+          </div>
+
+          {/* Gross Profit Trend */}
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <h3 className="font-semibold text-sm mb-3">Gross Profit Trend</h3>
+            <ReactECharts style={{ height: 220 }} option={{
+              tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+              grid: { top: 15, right: 15, bottom: 30, left: 55 },
+              xAxis: { type: "category", data: MONTHS_ORDER, axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
+              yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
+              series: [{
+                type: "line", smooth: true,
+                data: MONTHS_ORDER.map(m => results.monthlyData[m]?.["Gross Profit"] || 0),
+                areaStyle: { color: "rgba(96,165,250,0.15)" },
+                lineStyle: { color: "#60a5fa", width: 2 }, itemStyle: { color: "#60a5fa" }, symbol: "circle", symbolSize: 4,
+              }],
+            }} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

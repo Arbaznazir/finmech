@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ArrowLeft, LayoutDashboard, Save, RotateCcw, RefreshCw } from "lucide-react";
+const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
 import api from "@/lib/api";
@@ -335,6 +337,112 @@ export default function StdBusinessSnapshotPage() {
           </div>
         )}
       </div>
+
+      {/* ============ CHARTS ============ */}
+      {results && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+          {/* Health Radar */}
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <h3 className="font-semibold text-sm mb-3">Business Health Radar</h3>
+            <ReactECharts
+              style={{ height: 260 }}
+              option={{
+                radar: {
+                  indicator: [
+                    { name: "Revenue", max: 3 },
+                    { name: "Margin", max: 3 },
+                    { name: "Runway", max: 3 },
+                    { name: "LTV/CAC", max: 3 },
+                  ],
+                  axisName: { color: "#aaa", fontSize: 10 },
+                  splitArea: { areaStyle: { color: ["rgba(255,255,255,0.02)", "rgba(255,255,255,0.04)"] } },
+                  splitLine: { lineStyle: { color: "#333" } },
+                  axisLine: { lineStyle: { color: "#444" } },
+                },
+                series: [{
+                  type: "radar",
+                  data: [{
+                    value: [
+                      { GREEN: 3, AMBER: 2, RED: 1 }[results.revenueStatus],
+                      { GREEN: 3, AMBER: 2, RED: 1 }[results.marginStatus],
+                      { GREEN: 3, AMBER: 2, RED: 1 }[results.runwayStatus],
+                      { GREEN: 3, AMBER: 2, RED: 1 }[results.ltcCacStatus],
+                    ],
+                    areaStyle: { color: results.healthLabel === "HEALTHY" ? "rgba(52,211,153,0.25)" : results.healthLabel === "CAUTION" ? "rgba(245,158,11,0.25)" : "rgba(239,68,68,0.25)" },
+                    lineStyle: { color: results.healthLabel === "HEALTHY" ? "#34d399" : results.healthLabel === "CAUTION" ? "#f59e0b" : "#ef4444", width: 2 },
+                    itemStyle: { color: results.healthLabel === "HEALTHY" ? "#34d399" : results.healthLabel === "CAUTION" ? "#f59e0b" : "#ef4444" },
+                  }],
+                }],
+              }}
+            />
+          </div>
+
+          {/* Key Metrics Bar */}
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <h3 className="font-semibold text-sm mb-3">Key Metrics Overview</h3>
+            <ReactECharts
+              style={{ height: 260 }}
+              option={{
+                tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+                grid: { top: 15, right: 15, bottom: 40, left: 70 },
+                xAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10 }, splitLine: { lineStyle: { color: "#222" } } },
+                yAxis: { type: "category", data: ["Revenue/mo", "Cash Balance", "Burn Rate", "LTV", "CAC"], axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
+                series: [{
+                  type: "bar",
+                  data: [
+                    { value: inputs.monthlyRevenue, itemStyle: { color: "#60a5fa", borderRadius: [0, 4, 4, 0] } },
+                    { value: inputs.cashBalance, itemStyle: { color: "#34d399", borderRadius: [0, 4, 4, 0] } },
+                    { value: inputs.burnRate, itemStyle: { color: "#ef4444", borderRadius: [0, 4, 4, 0] } },
+                    { value: inputs.ltv, itemStyle: { color: "#a78bfa", borderRadius: [0, 4, 4, 0] } },
+                    { value: inputs.cac, itemStyle: { color: "#f59e0b", borderRadius: [0, 4, 4, 0] } },
+                  ],
+                  label: { show: true, position: "right", color: "#aaa", fontSize: 9, formatter: (p: any) => `$${p.value.toLocaleString()}` },
+                }],
+              }}
+            />
+          </div>
+
+          {/* Health Score Gauge */}
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <h3 className="font-semibold text-sm mb-3">Health Score</h3>
+            <ReactECharts
+              style={{ height: 220 }}
+              option={{
+                series: [{
+                  type: "gauge", startAngle: 200, endAngle: -20, min: 0, max: 100,
+                  pointer: { show: true, length: "60%", width: 4, itemStyle: { color: "#60a5fa" } },
+                  axisLine: { lineStyle: { width: 20, color: [[0.33, "#ef4444"], [0.66, "#f59e0b"], [1, "#34d399"]] } },
+                  axisTick: { show: false },
+                  splitLine: { show: false },
+                  axisLabel: { color: "#888", fontSize: 9, distance: 25 },
+                  detail: { valueAnimation: true, formatter: "{value}%", color: "#e0e0e0", fontSize: 20, offsetCenter: [0, "70%"] },
+                  data: [{ value: results.healthScore }],
+                }],
+              }}
+            />
+          </div>
+
+          {/* Working Capital Donut */}
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <h3 className="font-semibold text-sm mb-3">Working Capital Composition</h3>
+            <ReactECharts
+              style={{ height: 220 }}
+              option={{
+                tooltip: { trigger: "item", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+                series: [{
+                  type: "pie", radius: ["40%", "68%"], center: ["50%", "50%"],
+                  label: { color: "#ccc", fontSize: 10, formatter: "{b}\n{d}%" },
+                  data: [
+                    { value: Math.abs(inputs.receivables), name: "Receivables", itemStyle: { color: "#60a5fa" } },
+                    { value: Math.abs(inputs.inventory), name: "Inventory", itemStyle: { color: "#f59e0b" } },
+                    { value: Math.abs(inputs.payables), name: "Payables", itemStyle: { color: "#ef4444" } },
+                  ].filter(d => d.value > 0),
+                }],
+              }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

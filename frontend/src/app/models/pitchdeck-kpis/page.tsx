@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import {
   ArrowLeft, Presentation, Save, RotateCcw,
   CheckCircle, AlertTriangle, XCircle, Lightbulb,
   ChevronDown, ChevronUp,
 } from "lucide-react";
+const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
 import api from "@/lib/api";
@@ -277,6 +279,111 @@ export default function PitchDeckKPIsPage() {
                   </span>
                 </div>
               ))}
+            </div>
+          </div>
+
+          {/* Charts */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* KPI Radar */}
+            <div className="rounded-2xl border border-border bg-card p-5">
+              <h3 className="font-semibold text-sm mb-3">Investor KPI Radar</h3>
+              <ReactECharts
+                style={{ height: 280 }}
+                option={{
+                  radar: {
+                    indicator: [
+                      { name: "Gross Margin", max: 80 },
+                      { name: "LTV/CAC", max: 6 },
+                      { name: "Runway (mo)", max: 24 },
+                      { name: "Recurring Rev %", max: 100 },
+                      { name: "Cash Efficiency", max: 3 },
+                    ],
+                    axisName: { color: "#aaa", fontSize: 9 },
+                    splitArea: { areaStyle: { color: ["rgba(255,255,255,0.02)", "rgba(255,255,255,0.04)"] } },
+                    splitLine: { lineStyle: { color: "#333" } },
+                    axisLine: { lineStyle: { color: "#444" } },
+                  },
+                  series: [{
+                    type: "radar",
+                    data: [{
+                      value: [
+                        Math.max(0, Math.min(80, results.grossMargin)),
+                        Math.max(0, Math.min(6, results.ltvCacRatio)),
+                        Math.max(0, Math.min(24, results.runwayMonths === Infinity ? 24 : results.runwayMonths)),
+                        Math.max(0, Math.min(100, results.recurringRevenueRatio)),
+                        Math.max(0, Math.min(3, results.cashEfficiencyRatio)),
+                      ],
+                      areaStyle: { color: "rgba(236,72,153,0.2)" },
+                      lineStyle: { color: "#ec4899", width: 2 },
+                      itemStyle: { color: "#ec4899" },
+                    }],
+                  }],
+                }}
+              />
+            </div>
+
+            {/* Key Metrics Horizontal Bar */}
+            <div className="rounded-2xl border border-border bg-card p-5">
+              <h3 className="font-semibold text-sm mb-3">Key Metrics</h3>
+              <ReactECharts
+                style={{ height: 260 }}
+                option={{
+                  tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+                  grid: { top: 10, right: 60, bottom: 25, left: 120 },
+                  xAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10 }, splitLine: { lineStyle: { color: "#222" } } },
+                  yAxis: { type: "category", data: ["Burn Multiple", "Cash Efficiency", "LTV/CAC", "Recurring Rev %", "Gross Margin %"], axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
+                  series: [{
+                    type: "bar", barWidth: 16,
+                    data: [
+                      { value: Math.round(results.burnMultiple * 100) / 100, itemStyle: { color: "#f59e0b", borderRadius: [0, 4, 4, 0] } },
+                      { value: Math.round(results.cashEfficiencyRatio * 100) / 100, itemStyle: { color: "#22d3ee", borderRadius: [0, 4, 4, 0] } },
+                      { value: Math.round(results.ltvCacRatio * 100) / 100, itemStyle: { color: results.ltvCacRatio > 3 ? "#34d399" : "#ef4444", borderRadius: [0, 4, 4, 0] } },
+                      { value: Math.round(results.recurringRevenueRatio * 10) / 10, itemStyle: { color: results.recurringRevenueRatio > 70 ? "#34d399" : "#f59e0b", borderRadius: [0, 4, 4, 0] } },
+                      { value: Math.round(results.grossMargin * 10) / 10, itemStyle: { color: results.grossMargin > 40 ? "#34d399" : "#f59e0b", borderRadius: [0, 4, 4, 0] } },
+                    ],
+                    label: { show: true, position: "right", color: "#aaa", fontSize: 10 },
+                  }],
+                }}
+              />
+            </div>
+
+            {/* Runway Gauge */}
+            <div className="rounded-2xl border border-border bg-card p-5">
+              <h3 className="font-semibold text-sm mb-3">Runway Gauge</h3>
+              <ReactECharts
+                style={{ height: 220 }}
+                option={{
+                  series: [{
+                    type: "gauge", startAngle: 200, endAngle: -20, min: 0, max: 24,
+                    pointer: { show: true, length: "60%", width: 4, itemStyle: { color: "#ec4899" } },
+                    axisLine: { lineStyle: { width: 20, color: [[0.25, "#ef4444"], [0.5, "#f59e0b"], [1, "#34d399"]] } },
+                    axisTick: { show: false },
+                    splitLine: { show: false },
+                    axisLabel: { color: "#888", fontSize: 9, distance: 25 },
+                    detail: { valueAnimation: true, formatter: "{value} mo", color: "#e0e0e0", fontSize: 18, offsetCenter: [0, "70%"] },
+                    data: [{ value: Math.min(24, results.runwayMonths === Infinity ? 24 : Math.round(results.runwayMonths * 10) / 10) }],
+                  }],
+                }}
+              />
+            </div>
+
+            {/* Revenue vs Cost Donut */}
+            <div className="rounded-2xl border border-border bg-card p-5">
+              <h3 className="font-semibold text-sm mb-3">Revenue vs Cost Split</h3>
+              <ReactECharts
+                style={{ height: 220 }}
+                option={{
+                  tooltip: { trigger: "item", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+                  series: [{
+                    type: "pie", radius: ["40%", "68%"], center: ["50%", "50%"],
+                    label: { color: "#ccc", fontSize: 10, formatter: "{b}\n{d}%" },
+                    data: [
+                      { value: Math.abs(results.netBurn < 0 ? 0 : results.netBurn), name: "Net Burn", itemStyle: { color: "#ef4444" } },
+                      { value: Math.abs(results.netBurn < 0 ? Math.abs(results.netBurn) : 0), name: "Net Positive", itemStyle: { color: "#34d399" } },
+                    ].filter(d => d.value > 0),
+                  }],
+                }}
+              />
             </div>
           </div>
 
