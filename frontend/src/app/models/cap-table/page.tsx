@@ -6,6 +6,8 @@ import Link from "next/link";
 import {
   ArrowLeft, PieChart, Save, RotateCcw, Plus, Trash2, Play,
 } from "lucide-react";
+import { FieldHint } from "@/components/FieldHint";
+import { FIELD_HINTS } from "@/lib/field-hints";
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
@@ -172,7 +174,7 @@ export default function CapTablePage() {
               {shareholders.map((sh, i) => (
                 <div key={i} className="grid grid-cols-1 sm:grid-cols-[1fr_100px_120px_100px_120px_36px] gap-2 items-end rounded-lg bg-background/50 border border-border/50 p-3">
                   <div>
-                    <label className="block text-xs text-muted-foreground mb-1">Name</label>
+                    <label className="flex items-center text-xs text-muted-foreground mb-1">Name<FieldHint hint={{ what: "Full legal name of the shareholder — founder, co-founder, employee, or advisor.", why: "Identifies each person's stake in the company for legal and ROC filings.", how: "Use name matching PAN card. Directors listed in Form DIR-12 with ROC." }} /></label>
                     <input
                       type="text"
                       value={sh.name}
@@ -182,7 +184,7 @@ export default function CapTablePage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-muted-foreground mb-1">Role</label>
+                    <label className="flex items-center text-xs text-muted-foreground mb-1">Role</label>
                     <select
                       value={sh.role}
                       onChange={(e) => updateShareholder(i, "role", e.target.value)}
@@ -195,7 +197,7 @@ export default function CapTablePage() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs text-muted-foreground mb-1">Shares</label>
+                    <label className="flex items-center text-xs text-muted-foreground mb-1">Shares{FIELD_HINTS["shares"] && <FieldHint hint={FIELD_HINTS["shares"]} />}</label>
                     <input
                       type="number"
                       value={sh.shares || ""}
@@ -205,7 +207,7 @@ export default function CapTablePage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-muted-foreground mb-1">Class</label>
+                    <label className="flex items-center text-xs text-muted-foreground mb-1">Class</label>
                     <select
                       value={sh.shareClass}
                       onChange={(e) => updateShareholder(i, "shareClass", e.target.value)}
@@ -216,7 +218,7 @@ export default function CapTablePage() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs text-muted-foreground mb-1">Investment</label>
+                    <label className="flex items-center text-xs text-muted-foreground mb-1">Investment{FIELD_HINTS["investment"] && <FieldHint hint={FIELD_HINTS["investment"]} />}</label>
                     <input
                       type="number"
                       value={sh.investment || ""}
@@ -274,7 +276,7 @@ export default function CapTablePage() {
               {rounds.map((round, i) => (
                 <div key={i} className="grid grid-cols-1 sm:grid-cols-[1fr_140px_140px_100px_36px] gap-2 items-end rounded-lg bg-background/50 border border-border/50 p-3">
                   <div>
-                    <label className="block text-xs text-muted-foreground mb-1">Round Name</label>
+                    <label className="flex items-center text-xs text-muted-foreground mb-1">Round Name{FIELD_HINTS["roundName"] && <FieldHint hint={FIELD_HINTS["roundName"]} />}</label>
                     <input
                       type="text"
                       value={round.roundName}
@@ -284,7 +286,7 @@ export default function CapTablePage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-muted-foreground mb-1">Investment ($)</label>
+                    <label className="flex items-center text-xs text-muted-foreground mb-1">Investment ($){FIELD_HINTS["investmentAmount"] && <FieldHint hint={FIELD_HINTS["investmentAmount"]} />}</label>
                     <input
                       type="number"
                       value={round.investmentAmount || ""}
@@ -294,7 +296,7 @@ export default function CapTablePage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-muted-foreground mb-1">Price/Share ($)</label>
+                    <label className="flex items-center text-xs text-muted-foreground mb-1">Price/Share ($){FIELD_HINTS["pricePerShare"] && <FieldHint hint={FIELD_HINTS["pricePerShare"]} />}</label>
                     <input
                       type="number"
                       step="0.01"
@@ -305,7 +307,7 @@ export default function CapTablePage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-muted-foreground mb-1">Class</label>
+                    <label className="flex items-center text-xs text-muted-foreground mb-1">Class</label>
                     <select
                       value={round.shareClass}
                       onChange={(e) => updateRound(i, "shareClass", e.target.value)}
@@ -396,7 +398,7 @@ export default function CapTablePage() {
           <div className="rounded-2xl border border-border bg-card p-6">
             <h2 className="font-semibold mb-4">Exit Scenario</h2>
             <div className="max-w-sm">
-              <label className="block text-xs text-muted-foreground mb-1">Exit Value ($)</label>
+              <label className="flex items-center text-xs text-muted-foreground mb-1">Exit Value ($){FIELD_HINTS["exitValue"] && <FieldHint hint={FIELD_HINTS["exitValue"]} />}</label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">$</span>
                 <input

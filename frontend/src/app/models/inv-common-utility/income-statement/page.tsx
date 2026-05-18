@@ -4,6 +4,8 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ArrowLeft, Settings, Save, RotateCcw, ArrowRight } from "lucide-react";
+import { FieldHint } from "@/components/FieldHint";
+import { FIELD_HINTS } from "@/lib/field-hints";
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
@@ -188,7 +190,7 @@ export default function InvIncomeStatementPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {INPUT_FIELDS.filter((f) => f.category === cat).map((field) => (
                   <div key={field.key}>
-                    <label className="block text-xs text-muted-foreground mb-1">{field.label}</label>
+                    <label className="flex items-center text-xs text-muted-foreground mb-1">{field.label}{FIELD_HINTS[field.key] && <FieldHint hint={FIELD_HINTS[field.key]} />}</label>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">$</span>
                       <input type="number" data-field={field.key}
@@ -220,6 +222,17 @@ export default function InvIncomeStatementPage() {
             <h3 className="font-semibold text-sm mb-3">{activeMonth} Summary</h3>
             {cur && (
               <div className="space-y-2 text-xs">
+                {/* Fixed & Variable Cost highlight */}
+                <div className="grid grid-cols-2 gap-2 mb-2">
+                  <div className="rounded-lg px-3 py-2 bg-amber-400/10 border border-amber-400/20">
+                    <p className="text-amber-400 font-medium text-[10px] uppercase mb-0.5">Total Fixed Costs</p>
+                    <p className="font-semibold text-sm">{formatCurrency(Number(cur?.["Total Fixed Costs"]) || 0)}</p>
+                  </div>
+                  <div className="rounded-lg px-3 py-2 bg-orange-400/10 border border-orange-400/20">
+                    <p className="text-orange-400 font-medium text-[10px] uppercase mb-0.5">Total Variable Costs</p>
+                    <p className="font-semibold text-sm">{formatCurrency(Number(cur?.["Total variable Costs"]) || 0)}</p>
+                  </div>
+                </div>
                 {([
                   { label: "Gross Revenue", key: "Gross Revenue" },
                   { label: "COGS", key: "Total of COGS" },
@@ -252,6 +265,8 @@ export default function InvIncomeStatementPage() {
               {([
                 { label: "Revenue", key: "Gross Revenue" },
                 { label: "Gross Profit", key: "Gross Profit" },
+                { label: "Total Fixed Costs", key: "Total Fixed Costs" },
+                { label: "Total Variable Costs", key: "Total variable Costs" },
                 { label: "EBITDA", key: "EBITDA" },
                 { label: "Net Profit", key: "Net Profit" },
               ] as { label: string; key: string }[]).map((row) => (
@@ -383,9 +398,10 @@ export default function InvIncomeStatementPage() {
                   { value: Math.abs(cur?.["Salaries & Benefits"] || 0), name: "Salaries", itemStyle: { color: "#60a5fa" } },
                   { value: Math.abs(cur?.["Rent & Utilities"] || 0), name: "Rent & Utils", itemStyle: { color: "#f59e0b" } },
                   { value: Math.abs(cur?.["Marketing & Advertising"] || 0), name: "Marketing", itemStyle: { color: "#ec4899" } },
-                  { value: Math.abs(cur?.["Travel & Transport"] || 0), name: "Travel", itemStyle: { color: "#22d3ee" } },
-                  { value: Math.abs(cur?.["Insurance"] || 0), name: "Insurance", itemStyle: { color: "#a78bfa" } },
-                  { value: Math.abs(cur?.["Other Expenses"] || 0), name: "Other", itemStyle: { color: "#84cc16" } },
+                  { value: Math.abs(cur?.["Travel"] || 0), name: "Travel", itemStyle: { color: "#22d3ee" } },
+                  { value: Math.abs(cur?.["Professional & Legal Fees"] || 0), name: "Legal & Prof", itemStyle: { color: "#a78bfa" } },
+                  { value: Math.abs(cur?.["Technology & IT Costs"] || 0), name: "Tech & IT", itemStyle: { color: "#34d399" } },
+                  { value: Math.abs(cur?.["Miscll Operating expenses"] || 0), name: "Miscl.", itemStyle: { color: "#84cc16" } },
                 ].filter(d => d.value > 0),
               }],
             }} />

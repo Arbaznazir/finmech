@@ -4,6 +4,8 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ArrowLeft, Flame, Save, RotateCcw } from "lucide-react";
+import { FieldHint } from "@/components/FieldHint";
+import { FIELD_HINTS } from "@/lib/field-hints";
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
@@ -163,7 +165,7 @@ export default function StdBurnRunwayPage() {
 
       {/* Opening Cash */}
       <div className="rounded-2xl border border-border bg-card p-5 mb-6">
-        <label className="block text-xs text-muted-foreground mb-1">Opening Cash Balance</label>
+        <label className="flex items-center text-xs text-muted-foreground mb-1">Opening Cash Balance<FieldHint hint={{ what: "Cash and bank balance at the start of this period.", why: "Runway = Opening Cash ÷ Monthly Net Burn. Your starting cash sets how long you can operate.", how: "From your bank statement on 1st April or start of the financial year." }} /></label>
         <div className="relative max-w-xs">
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">$</span>
           <input type="number" value={openingCash || ""}
@@ -204,8 +206,9 @@ export default function StdBurnRunwayPage() {
               const isLocked = lockedFields.has(`${activeMonth}::${field.key}`);
               return (
               <div key={field.key}>
-                <label className="block text-xs text-muted-foreground mb-1">
+                <label className="flex items-center text-xs text-muted-foreground mb-1">
                   {field.label}
+                  {FIELD_HINTS[field.key] && <FieldHint hint={FIELD_HINTS[field.key]} />}
                   {isLocked && <span className="ml-1 text-[10px] text-primary/70">(auto-filled)</span>}
                 </label>
                 <div className="relative">

@@ -7,6 +7,8 @@ import {
   ArrowLeft, Users, Save, RotateCcw, CheckCircle,
   AlertTriangle, XCircle, Info,
 } from "lucide-react";
+import { FieldHint } from "@/components/FieldHint";
+import { FIELD_HINTS } from "@/lib/field-hints";
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
@@ -233,7 +235,7 @@ export default function UnitEconomicsPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 px-1">
                   {fields.map((field) => (
                     <div key={field.key}>
-                      <label className="block text-xs text-muted-foreground mb-1">{field.label}</label>
+                      <label className="flex items-center text-xs text-muted-foreground mb-1">{field.label}{FIELD_HINTS[field.key] && <FieldHint hint={FIELD_HINTS[field.key]} />}</label>
                       <div className="relative">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">{field.prefix}</span>
                         <input

@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ArrowLeft, LayoutDashboard, Save, RotateCcw, RefreshCw } from "lucide-react";
+import { FieldHint } from "@/components/FieldHint";
+import { FIELD_HINTS } from "@/lib/field-hints";
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
@@ -113,9 +115,9 @@ export default function InvBusinessSnapshotPage() {
         const bd = burn as Record<string, unknown>;
         if (bd.monthlyData) {
           const months = bd.monthlyData as Record<string, Record<string, number>>;
-          const keys = Object.keys(months);
-          for (let i = keys.length - 1; i >= 0; i--) {
-            const last = months[keys[i]];
+          const BURN_MONTHS = ["April","May","June","July","Aug","Sep","Oct","Nov","Dec","Jan","Feb","Mar"];
+          for (let i = BURN_MONTHS.length - 1; i >= 0; i--) {
+            const last = months[BURN_MONTHS[i]];
             if (last && (last["Total Revenue"] > 0 || last["Cumulative Cash"] !== 0)) {
               if (last["Cumulative Cash"] > 0) { next.cashBalance = last["Cumulative Cash"]; locked.add("cashBalance"); }
               if (last["Net Burn"] > 0) { next.burnRate = last["Net Burn"]; locked.add("burnRate"); }
@@ -129,13 +131,14 @@ export default function InvBusinessSnapshotPage() {
         const ueData = ue as Record<string, unknown>;
         if (ueData.monthlyData) {
           const months = ueData.monthlyData as Record<string, Record<string, number>>;
-          const keys = Object.keys(months);
-          for (let i = keys.length - 1; i >= 0; i--) {
-            const last = months[keys[i]];
-            if (last && last["Total Active Customers (Monthly)"] > 0) {
-              next.totalCustomers = last["Total Active Customers (Monthly)"]; locked.add("totalCustomers");
+          const MONTHS_ORDER = ["Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec","Jan","Feb","Mar"];
+          for (let i = MONTHS_ORDER.length - 1; i >= 0; i--) {
+            const last = months[MONTHS_ORDER[i]];
+            if (last && (last["Ending Customers"] > 0 || last["Ending MRR"] > 0)) {
+              if (last["Ending Customers"] > 0) { next.totalCustomers = last["Ending Customers"]; locked.add("totalCustomers"); }
               if (last["LTV"] > 0) { next.ltv = last["LTV"]; locked.add("ltv"); }
               if (last["CAC"] > 0) { next.cac = last["CAC"]; locked.add("cac"); }
+              if (last["Net Revenue Retention (NRR)"] > 0) { next.nrr = last["Net Revenue Retention (NRR)"] * 100; locked.add("nrr"); }
               break;
             }
           }
@@ -268,8 +271,9 @@ export default function InvBusinessSnapshotPage() {
               const isLocked = lockedFields.has(field.key);
               return (
               <div key={field.key}>
-                <label className="block text-xs text-muted-foreground mb-1">
+                <label className="flex items-center text-xs text-muted-foreground mb-1">
                   {field.label}
+                  {FIELD_HINTS[field.key] && <FieldHint hint={FIELD_HINTS[field.key]} />}
                   {isLocked && <span className="ml-1 text-[10px] text-amber-400/70">(auto-filled)</span>}
                 </label>
                 <div className="relative">

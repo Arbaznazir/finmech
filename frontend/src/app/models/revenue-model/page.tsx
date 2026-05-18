@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ArrowLeft, DollarSign, Save, RotateCcw, ArrowRight } from "lucide-react";
+import { FieldHint } from "@/components/FieldHint";
+import { FIELD_HINTS } from "@/lib/field-hints";
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
@@ -91,7 +93,7 @@ export default function RevenueModelPage() {
           <div className="space-y-4">
             {REVENUE_FIELDS.map((field) => (
               <div key={field.key}>
-                <label className="block text-xs text-muted-foreground mb-1">{field.label}</label>
+                <label className="flex items-center text-xs text-muted-foreground mb-1">{field.label}{FIELD_HINTS[field.key] && <FieldHint hint={FIELD_HINTS[field.key]} />}</label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">{field.prefix}</span>
                   <input

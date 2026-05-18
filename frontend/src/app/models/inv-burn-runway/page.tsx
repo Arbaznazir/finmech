@@ -4,6 +4,8 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ArrowLeft, Flame, Save, RotateCcw } from "lucide-react";
+import { FieldHint } from "@/components/FieldHint";
+import { FIELD_HINTS } from "@/lib/field-hints";
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
@@ -120,9 +122,11 @@ export default function InvBurnRunwayPage() {
   const summaryRows = [
     { label: "Revenue", key: "Total Revenue" },
     { label: "Total Expenses", key: "Total Expenses" },
-    { label: "Net Burn", key: "Net Burn" },
-    { label: "Cumulative Cash", key: "Cumulative Cash" },
+    { label: "Net Profit/Loss", key: "Net Profit/Loss" },
     { label: "Gross Burn", key: "Gross Burn" },
+    { label: "Net Burn", key: "Net Burn" },
+    { label: "Avg Net Burn", key: "Avg Net Burn (to date)" },
+    { label: "Cumulative Cash", key: "Cumulative Cash" },
     { label: "Runway (Months)", key: "Runway (months)" },
   ];
 
@@ -165,7 +169,7 @@ export default function InvBurnRunwayPage() {
 
       {/* Opening Cash */}
       <div className="rounded-2xl border border-border bg-card p-4 mb-4">
-        <label className="block text-xs text-muted-foreground mb-1">Opening Cash Balance</label>
+        <label className="flex items-center text-xs text-muted-foreground mb-1">Opening Cash Balance<FieldHint hint={FIELD_HINTS["Opening Cash Balance"] ?? { what: "Cash in your bank at the start of this period.", why: "Runway = Cash ÷ Monthly Net Burn. Your starting cash determines how long you can operate.", how: "From your bank statement on the first day of the period." }} /></label>
         <div className="relative max-w-xs">
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">$</span>
           <input type="number" value={openingCash || ""} onChange={(e) => { setOpeningCash(parseFloat(e.target.value) || 0); markDirty(); }}
@@ -191,8 +195,9 @@ export default function InvBurnRunwayPage() {
               const isLocked = lockedFields.has(`${activeMonth}::${field.key}`);
               return (
               <div key={field.key}>
-                <label className="block text-xs text-muted-foreground mb-1">
+                <label className="flex items-center text-xs text-muted-foreground mb-1">
                   {field.label}
+                  {FIELD_HINTS[field.key] && <FieldHint hint={FIELD_HINTS[field.key]} />}
                   {isLocked && <span className="ml-1 text-[10px] text-amber-400/70">(auto-filled)</span>}
                 </label>
                 <div className="relative">
@@ -226,20 +231,24 @@ export default function InvBurnRunwayPage() {
                 {summaryRows.map((row) => (
                   <div key={row.label} className="flex justify-between rounded-lg px-3 py-1.5 bg-background/50 border border-border/50">
                     <span className="text-muted-foreground">{row.label}</span>
-                    <span className="font-semibold">
-                      {row.key === "Runway Months"
-                        ? `${(Number(cur[row.key]) || 0).toFixed(1)} mo`
+                    <span className={`font-semibold ${
+                      row.key === "Net Profit/Loss" ? (Number(cur[row.key]) >= 0 ? "text-success" : "text-danger") :
+                      row.key === "Net Burn" ? (Number(cur[row.key]) > 0 ? "text-danger" : "text-success") : ""
+                    }`}>
+                      {row.key === "Runway (months)"
+                        ? (cur[row.key] === Infinity || Number(cur[row.key]) >= 9999 ? "∞" : `${Number(cur[row.key]).toFixed(1)} mo`)
                         : formatCurrency(Number(cur[row.key]) || 0)}
                     </span>
                   </div>
                 ))}
-                {cur["Classification"] && (
-                  <div className={`rounded-lg px-3 py-2 text-center font-semibold ${
-                    cur["Classification"] === 1 ? "bg-success/10 text-success" :
-                    cur["Classification"] === 2 ? "bg-amber-400/10 text-amber-400" :
+                {cur["CLASSIFICATION"] && (
+                  <div className={`rounded-lg px-3 py-2 text-center font-semibold text-xs ${
+                    cur["CLASSIFICATION"] === "GREEN" ? "bg-success/10 text-success" :
+                    cur["CLASSIFICATION"] === "AMBER" ? "bg-amber-400/10 text-amber-400" :
                     "bg-danger/10 text-danger"
                   }`}>
-                    {cur["Classification"] === 1 ? "GREEN — Healthy" : cur["Classification"] === 2 ? "AMBER — Monitor" : "RED — Critical"}
+                    {cur["CLASSIFICATION"] === "GREEN" ? "GREEN — Healthy" :
+                     cur["CLASSIFICATION"] === "AMBER" ? "AMBER — Monitor" : "RED — Critical"}
                   </div>
                 )}
               </div>
@@ -279,7 +288,7 @@ export default function InvBurnRunwayPage() {
               yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
               series: [{
                 type: "bar",
-                data: results.status.map(s => ({ value: s.netBurn, itemStyle: { color: s.netBurn >= 0 ? "#34d399" : "#ef4444", borderRadius: [4, 4, 0, 0] } })),
+                data: results.status.map(s => ({ value: s.netBurn, itemStyle: { color: s.netBurn > 0 ? "#ef4444" : "#34d399", borderRadius: [4, 4, 0, 0] } })),
               }],
             }} />
           </div>
@@ -294,7 +303,7 @@ export default function InvBurnRunwayPage() {
               yAxis: { type: "value", name: "months", nameTextStyle: { color: "#888", fontSize: 9 }, axisLabel: { color: "#888", fontSize: 10 }, splitLine: { lineStyle: { color: "#222" } } },
               series: [{
                 type: "line", smooth: true,
-                data: results.status.map(s => Math.min(s.runway, 99)),
+                data: results.status.map(s => s.runway === Infinity || s.runway >= 9999 ? 36 : Math.min(s.runway, 36)),
                 lineStyle: { color: "#f59e0b", width: 2 }, itemStyle: { color: "#f59e0b" }, symbol: "circle", symbolSize: 5,
                 markLine: { data: [{ yAxis: 12, lineStyle: { color: "#34d399", type: "dashed" } }, { yAxis: 6, lineStyle: { color: "#ef4444", type: "dashed" } }], label: { formatter: (p: any) => `${p.value}mo`, color: "#888", fontSize: 9 }, symbol: "none" },
               }],
@@ -346,8 +355,8 @@ export default function InvBurnRunwayPage() {
                     axisLine: { lineStyle: { width: 20, color: [[0.25, "#ef4444"], [0.5, "#f59e0b"], [1, "#34d399"]] } },
                     axisTick: { show: false }, splitLine: { show: false },
                     axisLabel: { color: "#888", fontSize: 9, distance: 25 },
-                    detail: { valueAnimation: true, formatter: "{value} mo", color: "#e0e0e0", fontSize: 20, offsetCenter: [0, "70%"] },
-                    data: [{ value: Math.min(Math.round(latest.runway * 10) / 10, 24) }],
+                    detail: { valueAnimation: true, formatter: (v: number) => v >= 24 ? "∞" : `${v} mo`, color: "#e0e0e0", fontSize: 20, offsetCenter: [0, "70%"] },
+                    data: [{ value: latest.runway === Infinity || latest.runway >= 9999 ? 24 : Math.min(Math.round(latest.runway * 10) / 10, 24) }],
                   }],
                 }} />
               </div>

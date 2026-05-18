@@ -4,6 +4,8 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ArrowLeft, Banknote, Save, RotateCcw } from "lucide-react";
+import { FieldHint } from "@/components/FieldHint";
+import { FIELD_HINTS } from "@/lib/field-hints";
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
@@ -176,7 +178,7 @@ export default function InvCashFlowPage() {
 
       {/* Opening Cash */}
       <div className="rounded-2xl border border-border bg-card p-4 mb-6">
-        <label className="block text-xs text-muted-foreground mb-1">Opening Cash Balance</label>
+        <label className="flex items-center text-xs text-muted-foreground mb-1">Opening Cash Balance<FieldHint hint={{ what: "Cash and bank balance at the very start of the period being analysed.", why: "All cumulative cash calculations start from this number. Get it from your bank statement on day 1.", how: "Bank statement opening balance on 1st April or start of your financial year." }} /></label>
         <div className="relative w-64">
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">$</span>
           <input type="number" value={openingCash || ""}
@@ -210,8 +212,9 @@ export default function InvCashFlowPage() {
                     const isAutoLocked = autoLinked && lockedFields.has(`${activeMonth}::${field.key}`);
                     return (
                       <div key={field.key}>
-                        <label className="block text-xs text-muted-foreground mb-1">
+                        <label className="flex items-center text-xs text-muted-foreground mb-1">
                           {field.label}
+                          {FIELD_HINTS[field.key] && <FieldHint hint={FIELD_HINTS[field.key]} />}
                           {isAutoLocked && <span className="ml-1 text-[10px] text-amber-400/70">(auto-filled)</span>}
                         </label>
                         <div className="relative">

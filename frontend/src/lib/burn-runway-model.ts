@@ -110,7 +110,7 @@ export function calculateBurnRunway(
 
     // Burn Metrics
     m["Gross Burn"] = m["Total Expenses"];
-    m["Net Burn"] = m["Total Expenses"] - m["Total Revenue"];
+    m["Net Burn"] = Math.max(0, m["Total Expenses"] - m["Total Revenue"]);
 
     // Avg Net Burn (to date)
     const monthsSoFar = addedMonths.length;

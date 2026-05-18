@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ArrowLeft, TrendingUp, Save, RotateCcw } from "lucide-react";
+import { FieldHint } from "@/components/FieldHint";
+import { FIELD_HINTS } from "@/lib/field-hints";
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
@@ -34,16 +36,29 @@ export default function InvBreakEvenPage() {
 
   useEffect(() => {
     hydrate();
-    const hub = loadModelResults<Record<string, number>>("inv-common-utility");
-    if (hub) {
-      const linked = new Set<string>();
-      setInputs((prev) => {
-        const next = { ...prev };
-        if (hub.totalFixedCosts > 0) { next.fixedCostMonthly = hub.totalFixedCosts; linked.add("fixedCostMonthly"); }
-        return next;
-      });
-      setLinkedFields(linked);
+    const hub = loadModelResults<Record<string, unknown>>("inv-common-utility");
+    if (!hub) return;
+
+    const linked = new Set<string>();
+    const hubMonths = hub.months as Record<string, Record<string, number>> | undefined;
+
+    // Get latest month with data
+    const MONTHS = ["Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec","Jan","Feb","Mar"];
+    let latestMonthData: Record<string, number> | null = null;
+    for (let i = MONTHS.length - 1; i >= 0; i--) {
+      const d = hubMonths?.[MONTHS[i]];
+      if (d && (d.revenue ?? 0) > 0) { latestMonthData = d; break; }
     }
+
+    setInputs((prev) => {
+      const next = { ...prev };
+      // Fixed costs — prefer latest month, fall back to top-level
+      const fc = latestMonthData?.totalFixedCosts ?? (hub.totalFixedCosts as number | undefined);
+      if (fc && fc > 0) { next.fixedCostMonthly = fc; linked.add("fixedCostMonthly"); }
+      return next;
+    });
+
+    if (linked.size > 0) setLinkedFields(linked);
   }, [hydrate]);
 
   const handleCalculate = () => {
@@ -118,7 +133,7 @@ export default function InvBreakEvenPage() {
             {fields.map((field) => (
               <div key={field.key}>
                 <div className="flex items-center gap-2 mb-1">
-                  <label className="text-xs text-muted-foreground">{field.label}</label>
+                  <label className="flex items-center text-xs text-muted-foreground">{field.label}{FIELD_HINTS[field.key] && <FieldHint hint={FIELD_HINTS[field.key]} />}</label>
                   {field.linked && linkedFields.has(field.key) && (
                     <span className="text-[10px] rounded px-1.5 py-0.5 bg-success/10 text-success font-medium">
                       Auto-filled

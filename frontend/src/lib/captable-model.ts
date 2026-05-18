@@ -19,6 +19,9 @@ export interface FundingRound {
   pricePerShare: number;
   shareClass: string;
   newShares: number;
+  preMoneyValuation: number;
+  postMoneyValuation: number;
+  dilutionPct: number;
 }
 
 export interface ExitPayout {
@@ -79,8 +82,15 @@ export function buildCapTable(
   const processedRounds: FundingRound[] = [];
 
   rounds.forEach((round) => {
+    const sharesBefore = getTotalShares(shareholders);
     const newShares = round.pricePerShare > 0
       ? Math.round(round.investmentAmount / round.pricePerShare)
+      : 0;
+
+    const preMoneyValuation = round.pricePerShare * sharesBefore;
+    const postMoneyValuation = preMoneyValuation + round.investmentAmount;
+    const dilutionPct = (sharesBefore + newShares) > 0
+      ? (newShares / (sharesBefore + newShares)) * 100
       : 0;
 
     processedRounds.push({
@@ -89,6 +99,9 @@ export function buildCapTable(
       pricePerShare: round.pricePerShare,
       shareClass: round.shareClass || "Preferred",
       newShares,
+      preMoneyValuation,
+      postMoneyValuation,
+      dilutionPct,
     });
 
     shareholders.push({

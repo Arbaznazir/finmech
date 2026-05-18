@@ -4,6 +4,8 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ArrowLeft, ArrowRightLeft, Save, RotateCcw } from "lucide-react";
+import { FieldHint } from "@/components/FieldHint";
+import { FIELD_HINTS } from "@/lib/field-hints";
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
@@ -180,8 +182,9 @@ export default function StdMovementsPage() {
                     const isLocked = lockedFields.has(`${activeMonth}::${field.key}`);
                     return (
                     <div key={field.key}>
-                      <label className="block text-xs text-muted-foreground mb-1">
+                      <label className="flex items-center text-xs text-muted-foreground mb-1">
                         {field.label}
+                        {FIELD_HINTS[field.key] && <FieldHint hint={FIELD_HINTS[field.key]} />}
                         {isLocked && <span className="ml-1 text-[10px] text-primary/70">(auto-filled)</span>}
                       </label>
                       <div className="relative">

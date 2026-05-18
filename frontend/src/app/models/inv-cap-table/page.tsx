@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ArrowLeft, PieChart, Save, RotateCcw, Plus, Trash2, Play } from "lucide-react";
+import { FieldHint } from "@/components/FieldHint";
+import { FIELD_HINTS } from "@/lib/field-hints";
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
@@ -23,9 +25,17 @@ const EMPTY_SHAREHOLDER: InitialShareholder = {
 };
 const EMPTY_ROUND = { roundName: "", investmentAmount: 0, pricePerShare: 0, shareClass: "Preferred" };
 
+const DEFAULT_SHAREHOLDERS: InitialShareholder[] = [
+  { name: "Promoter 1", role: "Founder", shares: 250000, shareClass: "Common", investment: 500000 },
+  { name: "Promoter 2", role: "Founder", shares: 125000, shareClass: "Common", investment: 250000 },
+  { name: "Promoter 3", role: "Co-Founder", shares: 150000, shareClass: "Common", investment: 300000 },
+  { name: "Promoter 4", role: "Co-Founder", shares: 75000, shareClass: "Common", investment: 150000 },
+  { name: "Promoter 5", role: "Advisor", shares: 75000, shareClass: "Common", investment: 150000 },
+];
+
 export default function InvCapTablePage() {
   const { user, hydrate } = useAuth();
-  const [shareholders, setShareholders] = useState<InitialShareholder[]>([{ ...EMPTY_SHAREHOLDER }]);
+  const [shareholders, setShareholders] = useState<InitialShareholder[]>(DEFAULT_SHAREHOLDERS.map(s => ({ ...s })));
   const [rounds, setRounds] = useState<{ roundName: string; investmentAmount: number; pricePerShare: number; shareClass: string }[]>([]);
   const [exitValue, setExitValue] = useState(0);
   const [results, setResults] = useState<CapTableResults | null>(null);
@@ -135,6 +145,30 @@ export default function InvCapTablePage() {
         ))}
       </div>
 
+      {/* SUMMARY STRIP */}
+      {(() => {
+        const preview = buildCapTable(shareholders.filter(s => s.name && s.shares > 0), rounds.filter(r => r.roundName && r.investmentAmount > 0 && r.pricePerShare > 0));
+        if (preview.totalShares === 0) return null;
+        const totalRaised = preview.shareholders.reduce((s, sh) => s + sh.investment, 0);
+        const founderPct = preview.shareholders.filter(s => s.role === "Founder" || s.role === "Co-Founder").reduce((s, sh) => s + sh.ownershipPct, 0);
+        const investorPct = 100 - founderPct;
+        return (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+            {[
+              { label: "Total Shares", value: preview.totalShares.toLocaleString() },
+              { label: "Total Raised", value: formatCurrency(totalRaised) },
+              { label: "Founder Ownership", value: `${founderPct.toFixed(1)}%` },
+              { label: "Investor Ownership", value: `${investorPct.toFixed(1)}%` },
+            ].map(item => (
+              <div key={item.label} className="rounded-xl border border-border bg-card px-4 py-3">
+                <p className="text-[10px] text-muted-foreground uppercase font-semibold mb-0.5">{item.label}</p>
+                <p className="font-bold text-lg">{item.value}</p>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
+
       {/* SHAREHOLDERS */}
       {activeTab === "shareholders" && (
         <div className="space-y-6">
@@ -148,18 +182,41 @@ export default function InvCapTablePage() {
             <div className="space-y-3">
               {shareholders.map((sh, i) => (
                 <div key={i} className="grid grid-cols-1 sm:grid-cols-[1fr_100px_120px_100px_120px_36px] gap-2 items-end rounded-lg bg-background/50 border border-border/50 p-3">
-                  <div><label className="block text-xs text-muted-foreground mb-1">Name</label><input type="text" value={sh.name} onChange={(e) => updateShareholder(i, "name", e.target.value)} placeholder="Promoter 1" className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/50" /></div>
+                  <div><label className="flex items-center text-xs text-muted-foreground mb-1">Name<FieldHint hint={{ what: "Full name of the shareholder — founder, co-founder, employee, or advisor.", why: "Identifies each person's stake in the company for legal and ROC filings.", how: "Use legal name matching PAN card. Directors listed in Form DIR-12 with ROC." }} /></label><input type="text" value={sh.name} onChange={(e) => updateShareholder(i, "name", e.target.value)} placeholder="Promoter 1" className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/50" /></div>
                   <div><label className="block text-xs text-muted-foreground mb-1">Role</label><select value={sh.role} onChange={(e) => updateShareholder(i, "role", e.target.value)} className="w-full rounded-lg border border-border bg-input px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/50"><option value="Founder">Founder</option><option value="Co-Founder">Co-Founder</option><option value="Advisor">Advisor</option><option value="Employee">Employee</option></select></div>
-                  <div><label className="block text-xs text-muted-foreground mb-1">Shares</label><input type="number" value={sh.shares || ""} onChange={(e) => updateShareholder(i, "shares", parseFloat(e.target.value) || 0)} placeholder="250000" className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/50" /></div>
+                  <div><label className="flex items-center text-xs text-muted-foreground mb-1">Shares{FIELD_HINTS["shares"] && <FieldHint hint={FIELD_HINTS["shares"]} />}</label><input type="number" value={sh.shares || ""} onChange={(e) => updateShareholder(i, "shares", parseFloat(e.target.value) || 0)} placeholder="250000" className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/50" /></div>
                   <div><label className="block text-xs text-muted-foreground mb-1">Class</label><select value={sh.shareClass} onChange={(e) => updateShareholder(i, "shareClass", e.target.value)} className="w-full rounded-lg border border-border bg-input px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/50"><option value="Common">Common</option><option value="Preferred">Preferred</option></select></div>
-                  <div><label className="block text-xs text-muted-foreground mb-1">Investment</label><input type="number" value={sh.investment || ""} onChange={(e) => updateShareholder(i, "investment", parseFloat(e.target.value) || 0)} placeholder="500000" className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/50" /></div>
+                  <div><label className="flex items-center text-xs text-muted-foreground mb-1">Investment{FIELD_HINTS["investment"] && <FieldHint hint={FIELD_HINTS["investment"]} />}</label><input type="number" value={sh.investment || ""} onChange={(e) => updateShareholder(i, "investment", parseFloat(e.target.value) || 0)} placeholder="500000" className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/50" /></div>
                   <button onClick={() => removeShareholder(i)} disabled={shareholders.length <= 1} className="rounded-lg border border-border p-2 hover:bg-danger/10 hover:text-danger transition-colors disabled:opacity-30"><Trash2 className="h-4 w-4" /></button>
                 </div>
               ))}
             </div>
           </div>
-          <div className="flex gap-3">
-            <button onClick={() => { handleCalculate(); setActiveTab("rounds"); }} disabled={shareholders.every((s) => !s.name || s.shares <= 0)} className="rounded-lg bg-amber-400 text-black px-8 py-2.5 text-sm font-semibold hover:bg-amber-300 transition-colors disabled:opacity-50">Next: Funding Rounds</button>
+          {/* Inline ownership preview */}
+          {(() => {
+            const preview = buildCapTable(shareholders.filter(s => s.name && s.shares > 0), []);
+            if (preview.shareholders.length === 0) return null;
+            return (
+              <div className="mt-4 rounded-xl border border-border overflow-hidden">
+                <div className="px-4 py-2 bg-background/50 border-b border-border"><p className="text-xs font-semibold text-muted-foreground">Ownership Preview</p></div>
+                <table className="w-full text-xs">
+                  <thead><tr className="border-b border-border bg-background/30"><th className="text-left px-3 py-2 text-muted-foreground">Name</th><th className="text-right px-3 py-2 text-muted-foreground">Shares</th><th className="text-right px-3 py-2 text-muted-foreground">Investment</th><th className="text-right px-3 py-2 text-muted-foreground">Ownership</th></tr></thead>
+                  <tbody>
+                    {preview.shareholders.map((s, i) => (
+                      <tr key={i} className="border-b border-border/30">
+                        <td className="px-3 py-1.5 font-medium">{s.name}</td>
+                        <td className="text-right px-3 py-1.5">{s.shares.toLocaleString()}</td>
+                        <td className="text-right px-3 py-1.5">{formatCurrency(s.investment)}</td>
+                        <td className="text-right px-3 py-1.5 font-semibold text-amber-400">{s.ownershipPct.toFixed(1)}%</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            );
+          })()}
+          <div className="flex gap-3 mt-4">
+            <button onClick={() => { handleCalculate(); setActiveTab("rounds"); }} disabled={shareholders.every((s) => !s.name || s.shares <= 0)} className="rounded-lg bg-amber-400 text-black px-8 py-2.5 text-sm font-semibold hover:bg-amber-300 transition-colors disabled:opacity-50">Next: Funding Rounds →</button>
             <button onClick={handleReset} className="rounded-lg border border-border px-4 py-2.5 text-sm hover:bg-muted transition-colors"><RotateCcw className="h-4 w-4" /></button>
           </div>
         </div>
@@ -173,13 +230,13 @@ export default function InvCapTablePage() {
               <h2 className="font-semibold">Funding Rounds</h2>
               <button onClick={addRound} className="inline-flex items-center gap-1.5 rounded-lg bg-amber-400/10 text-amber-400 px-3 py-1.5 text-xs font-medium hover:bg-amber-400/20 transition-colors"><Plus className="h-3.5 w-3.5" /> Add Round</button>
             </div>
-            {rounds.length === 0 && <div className="text-center py-10 text-muted-foreground text-sm"><p>No funding rounds added yet.</p></div>}
+            {rounds.length === 0 && <div className="text-center py-10 text-muted-foreground text-sm"><p>No funding rounds yet — add Angel, Seed, Series A, etc.</p></div>}
             <div className="space-y-3">
               {rounds.map((round, i) => (
                 <div key={i} className="grid grid-cols-1 sm:grid-cols-[1fr_140px_140px_100px_36px] gap-2 items-end rounded-lg bg-background/50 border border-border/50 p-3">
-                  <div><label className="block text-xs text-muted-foreground mb-1">Round Name</label><input type="text" value={round.roundName} onChange={(e) => updateRound(i, "roundName", e.target.value)} placeholder="Seed" className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/50" /></div>
-                  <div><label className="block text-xs text-muted-foreground mb-1">Investment ($)</label><input type="number" value={round.investmentAmount || ""} onChange={(e) => updateRound(i, "investmentAmount", parseFloat(e.target.value) || 0)} placeholder="1000000" className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/50" /></div>
-                  <div><label className="block text-xs text-muted-foreground mb-1">Price/Share ($)</label><input type="number" step="0.01" value={round.pricePerShare || ""} onChange={(e) => updateRound(i, "pricePerShare", parseFloat(e.target.value) || 0)} placeholder="2.00" className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/50" /></div>
+                  <div><label className="flex items-center text-xs text-muted-foreground mb-1">Round Name{FIELD_HINTS["roundName"] && <FieldHint hint={FIELD_HINTS["roundName"]} />}</label><input type="text" value={round.roundName} onChange={(e) => updateRound(i, "roundName", e.target.value)} placeholder="Seed" className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/50" /></div>
+                  <div><label className="flex items-center text-xs text-muted-foreground mb-1">Investment ($){FIELD_HINTS["investmentAmount"] && <FieldHint hint={FIELD_HINTS["investmentAmount"]} />}</label><input type="number" value={round.investmentAmount || ""} onChange={(e) => updateRound(i, "investmentAmount", parseFloat(e.target.value) || 0)} placeholder="1000000" className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/50" /></div>
+                  <div><label className="flex items-center text-xs text-muted-foreground mb-1">Price/Share ($){FIELD_HINTS["pricePerShare"] && <FieldHint hint={FIELD_HINTS["pricePerShare"]} />}</label><input type="number" step="0.01" value={round.pricePerShare || ""} onChange={(e) => updateRound(i, "pricePerShare", parseFloat(e.target.value) || 0)} placeholder="2.00" className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/50" /></div>
                   <div><label className="block text-xs text-muted-foreground mb-1">Class</label><select value={round.shareClass} onChange={(e) => updateRound(i, "shareClass", e.target.value)} className="w-full rounded-lg border border-border bg-input px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/50"><option value="Preferred">Preferred</option><option value="Common">Common</option></select></div>
                   <button onClick={() => removeRound(i)} className="rounded-lg border border-border p-2 hover:bg-danger/10 hover:text-danger transition-colors"><Trash2 className="h-4 w-4" /></button>
                 </div>
@@ -196,7 +253,7 @@ export default function InvCapTablePage() {
                     <thead><tr className="border-b border-border bg-background/50"><th className="text-left px-4 py-2.5 text-muted-foreground font-semibold">Name</th><th className="text-left px-4 py-2.5 text-muted-foreground font-semibold">Role</th><th className="text-right px-4 py-2.5 text-muted-foreground font-semibold">Shares</th><th className="text-left px-4 py-2.5 text-muted-foreground font-semibold">Class</th><th className="text-right px-4 py-2.5 text-muted-foreground font-semibold">Ownership</th><th className="text-right px-4 py-2.5 text-muted-foreground font-semibold">Investment</th></tr></thead>
                     <tbody>
                       {preview.shareholders.map((s, i) => (
-                        <tr key={i} className="border-b border-border/30"><td className="px-4 py-2.5 font-medium">{s.name}</td><td className="px-4 py-2.5 text-muted-foreground">{s.role}</td><td className="text-right px-4 py-2.5">{s.shares.toLocaleString()}</td><td className="px-4 py-2.5"><span className={`text-xs px-2 py-0.5 rounded ${s.shareClass === "Common" ? "bg-blue-400/10 text-blue-400" : "bg-purple-400/10 text-purple-400"}`}>{s.shareClass}</span></td><td className="text-right px-4 py-2.5 font-semibold">{s.ownershipPct.toFixed(1)}%</td><td className="text-right px-4 py-2.5">{formatCurrency(s.investment)}</td></tr>
+                        <tr key={i} className={`border-b border-border/30 ${s.role === "Investor" ? "bg-amber-400/3" : ""}`}><td className="px-4 py-2.5 font-medium">{s.name}</td><td className="px-4 py-2.5 text-muted-foreground">{s.role}</td><td className="text-right px-4 py-2.5">{s.shares.toLocaleString()}</td><td className="px-4 py-2.5"><span className={`text-xs px-2 py-0.5 rounded ${s.shareClass === "Common" ? "bg-blue-400/10 text-blue-400" : "bg-purple-400/10 text-purple-400"}`}>{s.shareClass}</span></td><td className="text-right px-4 py-2.5 font-semibold">{s.ownershipPct.toFixed(1)}%</td><td className="text-right px-4 py-2.5">{formatCurrency(s.investment)}</td></tr>
                       ))}
                       <tr className="bg-background/50 font-semibold"><td className="px-4 py-2.5">Total</td><td /><td className="text-right px-4 py-2.5">{preview.totalShares.toLocaleString()}</td><td /><td className="text-right px-4 py-2.5">100.0%</td><td className="text-right px-4 py-2.5">{formatCurrency(preview.shareholders.reduce((s, sh) => s + sh.investment, 0))}</td></tr>
                     </tbody>
@@ -205,8 +262,36 @@ export default function InvCapTablePage() {
               </div>
             ) : null;
           })()}
+          {/* Pre/Post money summary per round */}
+          {(() => {
+            const preview = buildCapTable(shareholders.filter(s => s.name && s.shares > 0), rounds.filter(r => r.roundName && r.investmentAmount > 0 && r.pricePerShare > 0));
+            if (preview.rounds.length === 0) return null;
+            return (
+              <div className="rounded-2xl border border-border bg-card overflow-hidden">
+                <div className="px-4 py-3 border-b border-border bg-background/50"><h3 className="font-semibold text-sm">Round Economics</h3></div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead><tr className="border-b border-border bg-background/30"><th className="text-left px-4 py-2 text-muted-foreground">Round</th><th className="text-right px-4 py-2 text-muted-foreground">Investment</th><th className="text-right px-4 py-2 text-muted-foreground">Price/Share</th><th className="text-right px-4 py-2 text-muted-foreground">New Shares</th><th className="text-right px-4 py-2 text-muted-foreground">Pre-Money</th><th className="text-right px-4 py-2 text-muted-foreground">Post-Money</th><th className="text-right px-4 py-2 text-muted-foreground">Dilution</th></tr></thead>
+                    <tbody>
+                      {preview.rounds.map((r, i) => (
+                        <tr key={i} className="border-b border-border/30">
+                          <td className="px-4 py-2 font-medium">{r.roundName}</td>
+                          <td className="text-right px-4 py-2">{formatCurrency(r.investmentAmount)}</td>
+                          <td className="text-right px-4 py-2">{formatCurrency(r.pricePerShare)}</td>
+                          <td className="text-right px-4 py-2">{r.newShares.toLocaleString()}</td>
+                          <td className="text-right px-4 py-2">{formatCurrency(r.preMoneyValuation)}</td>
+                          <td className="text-right px-4 py-2 font-semibold text-amber-400">{formatCurrency(r.postMoneyValuation)}</td>
+                          <td className="text-right px-4 py-2 text-danger font-semibold">{r.dilutionPct.toFixed(1)}%</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            );
+          })()}
           <div className="flex gap-3">
-            <button onClick={() => { handleCalculate(); setActiveTab("exit"); }} className="rounded-lg bg-amber-400 text-black px-8 py-2.5 text-sm font-semibold hover:bg-amber-300 transition-colors">Next: Exit Waterfall</button>
+            <button onClick={() => { handleCalculate(); setActiveTab("exit"); }} className="rounded-lg bg-amber-400 text-black px-8 py-2.5 text-sm font-semibold hover:bg-amber-300 transition-colors">Next: Exit Waterfall →</button>
           </div>
         </div>
       )}
@@ -217,7 +302,7 @@ export default function InvCapTablePage() {
           <div className="rounded-2xl border border-border bg-card p-6">
             <h2 className="font-semibold mb-4">Exit Scenario</h2>
             <div className="max-w-sm">
-              <label className="block text-xs text-muted-foreground mb-1">Exit Value ($)</label>
+              <label className="flex items-center text-xs text-muted-foreground mb-1">Exit Value ($){FIELD_HINTS["exitValue"] && <FieldHint hint={FIELD_HINTS["exitValue"]} />}</label>
               <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">$</span>
               <input type="number" value={exitValue || ""} onChange={(e) => { setExitValue(parseFloat(e.target.value) || 0); markDirty(); }} placeholder="30000000" className="w-full rounded-lg border border-border bg-input pl-7 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/50" /></div>
             </div>

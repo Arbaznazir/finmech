@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ArrowLeft, TrendingUp, Save, RotateCcw, ArrowRight } from "lucide-react";
+import { FieldHint } from "@/components/FieldHint";
+import { FIELD_HINTS } from "@/lib/field-hints";
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
@@ -114,7 +116,7 @@ export default function BreakEvenBasicPage() {
             {BREAKEVEN_FREE_FIELDS.map((field) => (
               <div key={field.key}>
                 <div className="flex items-center gap-2 mb-1">
-                  <label className="block text-xs text-muted-foreground">{field.label}</label>
+                  <label className="flex items-center text-xs text-muted-foreground">{field.label}{FIELD_HINTS[field.key] && <FieldHint hint={FIELD_HINTS[field.key]} />}</label>
                   {field.linked && (
                     <span className={`text-[10px] rounded px-1.5 py-0.5 ${linkedFields.has(field.key) ? "text-success bg-success/10" : "text-blue-400 bg-blue-400/10"}`}>
                       {linkedFields.has(field.key) ? "✓ Auto-filled" : "From Revenue / Costing"}

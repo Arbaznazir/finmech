@@ -10,7 +10,7 @@ const PAGES = [
     href: "/models/inv-common-utility/income-statement",
     icon: FileText,
     status: "Start here",
-    feeds: "Burn & Runway, Unit Economics, Funding, DCF, Snapshot",
+    feeds: "Burn & Runway, Unit Economics, Funding, DCF, Snapshot, Cash Flow",
   },
   {
     title: "Working Capital Movements",

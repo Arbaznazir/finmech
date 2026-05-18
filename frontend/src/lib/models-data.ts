@@ -325,17 +325,6 @@ export const MODELS: Record<string, FinModel> = {
     customPage: true,
     fields: [],
   },
-  "inv-movements": {
-    slug: "inv-movements",
-    name: "Working Capital Movements",
-    description: "Month-by-month Receivables, Inventory & Payables tracking with Working Capital, CFO, FCF & Cash Conversion Cycle.",
-    tier: "investor",
-    category: "Cash Management",
-    icon: "ArrowRightLeft",
-    linkedModels: ["inv-common-utility", "inv-business-snapshot", "inv-funding-model"],
-    customPage: true,
-    fields: [],
-  },
   "inv-business-snapshot": {
     slug: "inv-business-snapshot",
     name: "Business Snapshot",

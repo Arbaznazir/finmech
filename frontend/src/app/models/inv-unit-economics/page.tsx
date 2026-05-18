@@ -3,7 +3,9 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { ArrowLeft, Users, Save, RotateCcw } from "lucide-react";
+import { ArrowLeft, TrendingUp, Save, RotateCcw, Users } from "lucide-react";
+import { FieldHint } from "@/components/FieldHint";
+import { FIELD_HINTS } from "@/lib/field-hints";
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
@@ -53,6 +55,12 @@ export default function InvUnitEconomicsPage() {
           if (!data || !next[m]) return;
           next[m] = { ...next[m] };
           if (data.marketingSpend > 0) { next[m]["Marketing Spend"] = data.marketingSpend; locked.add(`${m}::Marketing Spend`); }
+          if (data.totalFixedCosts > 0) { next[m]["Fixed Costs"] = data.totalFixedCosts; locked.add(`${m}::Fixed Costs`); }
+        });
+      } else if (typeof hub.totalFixedCosts === "number" && (hub.totalFixedCosts as number) > 0) {
+        MONTHS_ORDER.forEach((m) => {
+          next[m] = { ...next[m], "Fixed Costs": hub.totalFixedCosts as number };
+          locked.add(`${m}::Fixed Costs`);
         });
       }
       return next;
@@ -189,8 +197,9 @@ export default function InvUnitEconomicsPage() {
                     const isLocked = lockedFields.has(`${activeMonth}::${field.key}`);
                     return (
                     <div key={field.key}>
-                      <label className="block text-xs text-muted-foreground mb-1">
+                      <label className="flex items-center text-xs text-muted-foreground mb-1">
                         {field.label}
+                        {FIELD_HINTS[field.key] && <FieldHint hint={FIELD_HINTS[field.key]} />}
                         {isLocked && <span className="ml-1 text-[10px] text-amber-400/70">(auto-filled)</span>}
                       </label>
                       <div className="relative">

@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ArrowLeft, Calculator, Save, RotateCcw, ArrowRight, ArrowLeftRight } from "lucide-react";
+import { FieldHint } from "@/components/FieldHint";
+import { FIELD_HINTS } from "@/lib/field-hints";
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
@@ -133,7 +135,7 @@ export default function CostingModelPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {FIXED_COST_FIELDS.map((field) => (
                 <div key={field.key}>
-                  <label className="block text-xs text-muted-foreground mb-1">{field.label}</label>
+                  <label className="flex items-center text-xs text-muted-foreground mb-1">{field.label}{FIELD_HINTS[field.key] && <FieldHint hint={FIELD_HINTS[field.key]} />}</label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">$</span>
                     <input
@@ -164,7 +166,7 @@ export default function CostingModelPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {VARIABLE_COST_FIELDS.map((field) => (
                 <div key={field.key}>
-                  <label className="block text-xs text-muted-foreground mb-1">{field.label}</label>
+                  <label className="flex items-center text-xs text-muted-foreground mb-1">{field.label}{FIELD_HINTS[field.key] && <FieldHint hint={FIELD_HINTS[field.key]} />}</label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">$</span>
                     <input

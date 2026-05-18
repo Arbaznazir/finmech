@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ArrowLeft, Rocket, Save, RotateCcw } from "lucide-react";
+import { FieldHint } from "@/components/FieldHint";
+import { FIELD_HINTS } from "@/lib/field-hints";
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
@@ -197,13 +199,13 @@ export default function InvFundingModelPage() {
           {/* Opening Cash & Contingency */}
           <div className="rounded-2xl border border-border bg-card p-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs text-muted-foreground mb-1">Opening Cash</label>
+              <label className="flex items-center text-xs text-muted-foreground mb-1">Opening Cash<FieldHint hint={FIELD_HINTS["Opening Cash"] ?? { what: "Cash and bank balance at the start of the funding analysis period.", why: "Determines your current runway before the new funding arrives.", how: "From your bank statement on the first day of this period." }} /></label>
               <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">$</span>
               <input type="number" value={openingCash || ""} onChange={(e) => { setOpeningCash(parseFloat(e.target.value) || 0); markDirty(); }}
                 placeholder="100000" className="w-full rounded-lg border border-border bg-input pl-7 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/50" /></div>
             </div>
             <div>
-              <label className="block text-xs text-muted-foreground mb-1">Contingency %</label>
+              <label className="flex items-center text-xs text-muted-foreground mb-1">Contingency %<FieldHint hint={{ what: "A buffer added on top of your calculated funding requirement.", why: "Real costs always exceed estimates. 15–20% contingency protects against overruns.", how: "Industry standard is 15%. Increase to 20% for early-stage or unproven business models." }} /></label>
               <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
               <input type="number" value={contingencyPct || ""} onChange={(e) => { setContingencyPct(parseFloat(e.target.value) || 15); markDirty(); }}
                 placeholder="15" className="w-full rounded-lg border border-border bg-input pl-7 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/50" /></div>
@@ -231,8 +233,9 @@ export default function InvFundingModelPage() {
                       const isLocked = lockedFields.has(`${activeMonth}::${field.key}`);
                       return (
                       <div key={field.key}>
-                        <label className="block text-xs text-muted-foreground mb-1">
+                        <label className="flex items-center text-xs text-muted-foreground mb-1">
                           {field.label}
+                          {FIELD_HINTS[field.key] && <FieldHint hint={FIELD_HINTS[field.key]} />}
                           {isLocked && <span className="ml-1 text-[10px] text-amber-400/70">(auto-filled)</span>}
                         </label>
                         <div className="relative">
