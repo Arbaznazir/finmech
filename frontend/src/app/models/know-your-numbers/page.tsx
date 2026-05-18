@@ -58,7 +58,7 @@ export default function KnowYourNumbersPage() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-8">
-      <Link href="/models" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
+      <Link href="/models?tier=free" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
         <ArrowLeft className="h-4 w-4" /> Back to Models
       </Link>
 
@@ -95,7 +95,7 @@ export default function KnowYourNumbersPage() {
           {SECTIONS.map((section) => {
             const sectionQs = QUESTIONS.filter((q) => q.section === section);
             return (
-              <div key={section} className="rounded-2xl border border-border bg-card p-6">
+              <div key={section} className="rounded-2xl border border-border bg-card p-6 output-panel">
                 <h2 className="font-semibold mb-4">{section}</h2>
                 <div className="space-y-4">
                   {sectionQs.map((q) => (
@@ -170,7 +170,7 @@ export default function KnowYourNumbersPage() {
           </div>
 
           {/* Readiness Gauge */}
-          <div className="rounded-2xl border border-border bg-card p-6">
+          <div className="rounded-2xl border border-border bg-card p-6 output-panel">
             <h2 className="font-semibold mb-2">Readiness Gauge</h2>
             <ReactECharts
               style={{ height: 220 }}
@@ -189,7 +189,7 @@ export default function KnowYourNumbersPage() {
           </div>
 
           {/* Radar Chart */}
-          <div className="rounded-2xl border border-border bg-card p-6">
+          <div className="rounded-2xl border border-border bg-card p-6 output-panel">
             <h2 className="font-semibold mb-2">Section Radar</h2>
             <ReactECharts
               style={{ height: 300 }}
@@ -216,7 +216,7 @@ export default function KnowYourNumbersPage() {
           </div>
 
           {/* Score breakdown - Bar Chart */}
-          <div className="rounded-2xl border border-border bg-card p-6">
+          <div className="rounded-2xl border border-border bg-card p-6 output-panel">
             <h2 className="font-semibold mb-2">Score by Section</h2>
             <ReactECharts
               style={{ height: 260 }}

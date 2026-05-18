@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ArrowLeft, TrendingUp, Save, RotateCcw, Users } from "lucide-react";
@@ -81,6 +81,23 @@ export default function InvUnitEconomicsPage() {
     markDirty();
   };
 
+  const activeMonthRef = useRef(activeMonth);
+  useEffect(() => {
+    const leaving = activeMonthRef.current;
+    activeMonthRef.current = activeMonth;
+    const leavingIdx = MONTHS_ORDER.indexOf(leaving);
+    if (leavingIdx < 0 || leavingIdx >= MONTHS_ORDER.length - 1) return;
+    const nextMonth = MONTHS_ORDER[leavingIdx + 1];
+    if (nextMonth !== activeMonth) return;
+    const leavingTotal = Number(results.monthlyData[leaving]?.["Total Customers"] ?? 0);
+    if (!leavingTotal || leavingTotal <= 0) return;
+    setMonthData((prev) => ({
+      ...prev,
+      [nextMonth]: { ...prev[nextMonth], "Customers at the beginning": leavingTotal },
+    } as Record<string, Record<string, number>>));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeMonth]);
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
       e.preventDefault();
@@ -131,7 +148,7 @@ export default function InvUnitEconomicsPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-8">
-      <Link href="/models" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
+      <Link href="/models?tier=investor" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
         <ArrowLeft className="h-4 w-4" /> Back to Models
       </Link>
 
@@ -186,7 +203,7 @@ export default function InvUnitEconomicsPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6">
         {/* Inputs */}
-        <div className="rounded-2xl border border-border bg-card p-5" data-inputs>
+        <div className="rounded-2xl border border-border bg-card p-5 output-panel" data-inputs>
           <h3 className="font-semibold text-sm mb-3">{activeMonth} Inputs</h3>
           <div className="space-y-4">
             {categories.map((cat) => (
@@ -230,7 +247,7 @@ export default function InvUnitEconomicsPage() {
         {/* Results Panel */}
         <div className="space-y-4 h-fit sticky top-8">
           {/* Monthly Metrics */}
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">{activeMonth} Metrics</h3>
             {cur ? (
               <div className="space-y-1.5">
@@ -258,7 +275,7 @@ export default function InvUnitEconomicsPage() {
 
           {/* Annual Summary */}
           {results.monthsAdded.length > 0 && (
-            <div className="rounded-2xl border border-border bg-card p-5">
+            <div className="rounded-2xl border border-border bg-card p-5 output-panel">
               <h3 className="font-semibold text-sm mb-3">Annual Summary</h3>
               <div className="space-y-1.5 text-xs">
                 <div className="flex justify-between px-3 py-1">
@@ -327,7 +344,7 @@ export default function InvUnitEconomicsPage() {
       {results && results.monthsAdded.length > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
           {/* CAC vs LTV Trend */}
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">CAC vs LTV Trend</h3>
             <ReactECharts style={{ height: 240 }} option={{
               tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
@@ -343,7 +360,7 @@ export default function InvUnitEconomicsPage() {
           </div>
 
           {/* LTV/CAC Ratio */}
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">LTV/CAC Ratio</h3>
             <ReactECharts style={{ height: 240 }} option={{
               tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
@@ -359,7 +376,7 @@ export default function InvUnitEconomicsPage() {
           </div>
 
           {/* Churn & Growth Rates */}
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">Churn & Growth Rates</h3>
             <ReactECharts style={{ height: 240 }} option={{
               tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
@@ -375,7 +392,7 @@ export default function InvUnitEconomicsPage() {
           </div>
 
           {/* NRR & GRR Trend */}
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">NRR & GRR Trend</h3>
             <ReactECharts style={{ height: 240 }} option={{
               tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
@@ -392,7 +409,7 @@ export default function InvUnitEconomicsPage() {
           </div>
 
           {/* Rule of 40 Trend */}
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">Rule of 40</h3>
             <ReactECharts style={{ height: 240 }} option={{
               tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
@@ -411,7 +428,7 @@ export default function InvUnitEconomicsPage() {
           </div>
 
           {/* RAG Status Donut */}
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">RAG Status Distribution</h3>
             <ReactECharts style={{ height: 240 }} option={{
               tooltip: { trigger: "item", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },

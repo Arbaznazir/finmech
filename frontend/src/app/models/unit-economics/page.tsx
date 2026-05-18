@@ -99,6 +99,19 @@ export default function UnitEconomicsPage() {
     clearPersisted();
   };
 
+  useEffect(() => {
+    const mIdx = MONTHS_ORDER.indexOf(activeMonth);
+    if (mIdx <= 0) return;
+    const prevMonth = MONTHS_ORDER[mIdx - 1];
+    const prevTotal = Number(results?.monthlyData?.[prevMonth]?.["Total Customers"] ?? 0);
+    if (!prevTotal || prevTotal <= 0) return;
+    setMonthsData((prev) => {
+      if ((prev[activeMonth]?.["Customers at the beginning"] || 0) !== 0) return prev;
+      return { ...prev, [activeMonth]: { ...(prev[activeMonth] || createEmptyInputs()), "Customers at the beginning": prevTotal } };
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeMonth]);
+
   const handleResetMonth = () => {
     setMonthsData((prev) => {
       const next = { ...prev };
@@ -133,7 +146,7 @@ export default function UnitEconomicsPage() {
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
-      <Link href="/models" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
+      <Link href="/models?tier=standalone" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
         <ArrowLeft className="h-4 w-4" /> Back to Models
       </Link>
 
@@ -217,7 +230,7 @@ export default function UnitEconomicsPage() {
           </div>
 
           {/* Input form */}
-          <div className="rounded-2xl border border-border bg-card p-6" data-inputs>
+          <div className="rounded-2xl border border-border bg-card p-6 output-panel" data-inputs>
             <div className="flex items-center justify-between mb-5">
               <h2 className="font-semibold">
                 Inputs for <span className="text-primary">{activeMonth}</span>
@@ -348,7 +361,7 @@ export default function UnitEconomicsPage() {
           })()}
 
           {/* Per-month */}
-          <div className="rounded-2xl border border-border bg-card p-6">
+          <div className="rounded-2xl border border-border bg-card p-6 output-panel">
             <h2 className="font-semibold mb-5">Monthly KPI Dashboard</h2>
             <div className="space-y-3">
               {results.status.map((s) => (
@@ -369,7 +382,7 @@ export default function UnitEconomicsPage() {
           </div>
 
           {/* Legend */}
-          <div className="rounded-2xl border border-border bg-card p-6">
+          <div className="rounded-2xl border border-border bg-card p-6 output-panel">
             <h3 className="font-semibold text-sm mb-3">RAG Classification</h3>
             <div className="space-y-2 text-xs text-muted-foreground">
               <div className="flex items-center gap-2">
@@ -391,7 +404,7 @@ export default function UnitEconomicsPage() {
           {results.status.length > 0 && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* CAC vs LTV Trend */}
-              <div className="rounded-2xl border border-border bg-card p-5">
+              <div className="rounded-2xl border border-border bg-card p-5 output-panel">
                 <h3 className="font-semibold text-sm mb-3">CAC vs LTV Trend</h3>
                 <ReactECharts
                   style={{ height: 240 }}
@@ -410,7 +423,7 @@ export default function UnitEconomicsPage() {
               </div>
 
               {/* Churn & Growth Trend */}
-              <div className="rounded-2xl border border-border bg-card p-5">
+              <div className="rounded-2xl border border-border bg-card p-5 output-panel">
                 <h3 className="font-semibold text-sm mb-3">Churn & Growth Rates</h3>
                 <ReactECharts
                   style={{ height: 240 }}
@@ -429,7 +442,7 @@ export default function UnitEconomicsPage() {
               </div>
 
               {/* LTV/CAC Ratio Bar */}
-              <div className="rounded-2xl border border-border bg-card p-5">
+              <div className="rounded-2xl border border-border bg-card p-5 output-panel">
                 <h3 className="font-semibold text-sm mb-3">LTV/CAC Ratio by Month</h3>
                 <ReactECharts
                   style={{ height: 220 }}
@@ -454,7 +467,7 @@ export default function UnitEconomicsPage() {
               {(() => {
                 const last = results.status[results.status.length - 1];
                 return (
-                  <div className="rounded-2xl border border-border bg-card p-5">
+                  <div className="rounded-2xl border border-border bg-card p-5 output-panel">
                     <h3 className="font-semibold text-sm mb-3">Latest Month KPI Radar</h3>
                     <ReactECharts
                       style={{ height: 240 }}

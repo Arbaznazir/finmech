@@ -79,7 +79,7 @@ export default function BreakEvenBasicPage() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-8">
-      <Link href="/models" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
+      <Link href="/models?tier=free" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
         <ArrowLeft className="h-4 w-4" /> Back to Models
       </Link>
 
@@ -110,7 +110,7 @@ export default function BreakEvenBasicPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Inputs */}
-        <div className="rounded-2xl border border-border bg-card p-6" data-inputs>
+        <div className="rounded-2xl border border-border bg-card p-6 output-panel" data-inputs>
           <h2 className="font-semibold mb-5">Break-Even Inputs</h2>
           <div className="space-y-4">
             {BREAKEVEN_FREE_FIELDS.map((field) => (
@@ -175,7 +175,7 @@ export default function BreakEvenBasicPage() {
             </div>
 
             {/* Metrics */}
-            <div className="rounded-2xl border border-border bg-card p-5">
+            <div className="rounded-2xl border border-border bg-card p-5 output-panel">
               <h3 className="font-semibold text-sm mb-3">Key Metrics</h3>
               <div className="space-y-2">
                 {([
@@ -194,7 +194,7 @@ export default function BreakEvenBasicPage() {
 
             {/* Break-Even Line Chart */}
             {results.breakEvenUnits > 0 && (
-              <div className="rounded-2xl border border-border bg-card p-5">
+              <div className="rounded-2xl border border-border bg-card p-5 output-panel">
                 <h3 className="font-semibold text-sm mb-3">Break-Even Analysis</h3>
                 <ReactECharts
                   style={{ height: 280 }}
@@ -220,7 +220,7 @@ export default function BreakEvenBasicPage() {
             )}
 
             {/* Contribution Analysis Bar */}
-            <div className="rounded-2xl border border-border bg-card p-5">
+            <div className="rounded-2xl border border-border bg-card p-5 output-panel">
               <h3 className="font-semibold text-sm mb-3">Contribution Analysis</h3>
               <ReactECharts
                 style={{ height: 180 }}
@@ -244,7 +244,7 @@ export default function BreakEvenBasicPage() {
 
             {/* Projection */}
             {inputs.unitsSoldForProjection > 0 && (
-              <div className="rounded-2xl border border-border bg-card p-5">
+              <div className="rounded-2xl border border-border bg-card p-5 output-panel">
                 <h3 className="font-semibold text-sm mb-3">Projection at {inputs.unitsSoldForProjection.toLocaleString()} units</h3>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between rounded-lg px-3 py-2 bg-background/50 border border-border/50">

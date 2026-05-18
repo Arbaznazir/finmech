@@ -134,7 +134,7 @@ export default function StdBurnRunwayPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-8">
-      <Link href="/models" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
+      <Link href="/models?tier=standard" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
         <ArrowLeft className="h-4 w-4" /> Back to Models
       </Link>
 
@@ -199,7 +199,7 @@ export default function StdBurnRunwayPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6">
         {/* Inputs */}
-        <div className="rounded-2xl border border-border bg-card p-5" data-inputs>
+        <div className="rounded-2xl border border-border bg-card p-5 output-panel" data-inputs>
           <h3 className="font-semibold text-sm mb-4">{activeMonth} Inputs</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {INPUT_FIELDS.map((field) => {
@@ -235,7 +235,7 @@ export default function StdBurnRunwayPage() {
 
         {/* Results sidebar */}
         <div className="space-y-4 h-fit sticky top-8">
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">{activeMonth} Results</h3>
             {cur ? (
               <div className="space-y-2 text-xs">
@@ -257,7 +257,7 @@ export default function StdBurnRunwayPage() {
       {results.status.length > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
           {/* Cumulative Cash Area */}
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">Cumulative Cash Position</h3>
             <ReactECharts
               style={{ height: 240 }}
@@ -279,7 +279,7 @@ export default function StdBurnRunwayPage() {
           </div>
 
           {/* Monthly Net Burn Bar */}
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">Monthly Net Burn</h3>
             <ReactECharts
               style={{ height: 240 }}
@@ -304,7 +304,7 @@ export default function StdBurnRunwayPage() {
             const last = results.status[results.status.length - 1];
             const rwy = last.runway === Infinity ? 24 : Math.min(24, last.runway);
             return (
-              <div className="rounded-2xl border border-border bg-card p-5">
+              <div className="rounded-2xl border border-border bg-card p-5 output-panel">
                 <h3 className="font-semibold text-sm mb-3">Current Runway</h3>
                 <ReactECharts
                   style={{ height: 220 }}
@@ -326,7 +326,7 @@ export default function StdBurnRunwayPage() {
           })()}
 
           {/* Classification Distribution Donut */}
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">Month Classification</h3>
             <ReactECharts
               style={{ height: 220 }}

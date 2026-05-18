@@ -100,7 +100,7 @@ export default function InvCapTablePage() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-8">
-      <Link href="/models" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
+      <Link href="/models?tier=investor" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
         <ArrowLeft className="h-4 w-4" /> Back to Models
       </Link>
 
@@ -172,7 +172,7 @@ export default function InvCapTablePage() {
       {/* SHAREHOLDERS */}
       {activeTab === "shareholders" && (
         <div className="space-y-6">
-          <div className="rounded-2xl border border-border bg-card p-6">
+          <div className="rounded-2xl border border-border bg-card p-6 output-panel">
             <div className="flex items-center justify-between mb-5">
               <h2 className="font-semibold">Initial Shareholders (Promoters)</h2>
               <button onClick={addShareholder} className="inline-flex items-center gap-1.5 rounded-lg bg-amber-400/10 text-amber-400 px-3 py-1.5 text-xs font-medium hover:bg-amber-400/20 transition-colors">
@@ -225,7 +225,7 @@ export default function InvCapTablePage() {
       {/* ROUNDS */}
       {activeTab === "rounds" && (
         <div className="space-y-6">
-          <div className="rounded-2xl border border-border bg-card p-6">
+          <div className="rounded-2xl border border-border bg-card p-6 output-panel">
             <div className="flex items-center justify-between mb-5">
               <h2 className="font-semibold">Funding Rounds</h2>
               <button onClick={addRound} className="inline-flex items-center gap-1.5 rounded-lg bg-amber-400/10 text-amber-400 px-3 py-1.5 text-xs font-medium hover:bg-amber-400/20 transition-colors"><Plus className="h-3.5 w-3.5" /> Add Round</button>
@@ -299,7 +299,7 @@ export default function InvCapTablePage() {
       {/* EXIT */}
       {activeTab === "exit" && (
         <div className="space-y-6">
-          <div className="rounded-2xl border border-border bg-card p-6">
+          <div className="rounded-2xl border border-border bg-card p-6 output-panel">
             <h2 className="font-semibold mb-4">Exit Scenario</h2>
             <div className="max-w-sm">
               <label className="flex items-center text-xs text-muted-foreground mb-1">Exit Value ($){FIELD_HINTS["exitValue"] && <FieldHint hint={FIELD_HINTS["exitValue"]} />}</label>
@@ -312,7 +312,7 @@ export default function InvCapTablePage() {
           </div>
           {results?.exit && (
             <>
-              <div className="rounded-2xl border-2 border-amber-400/30 bg-amber-400/5 p-6 text-center">
+              <div className="rounded-2xl border-2 border-amber-400/30 bg-amber-400/5 p-6 text-center output-panel-amber">
                 <p className="text-sm text-muted-foreground mb-2">Exit Value</p>
                 <p className="text-3xl font-bold text-amber-400">{formatCurrency(results.exit.exitValue)}</p>
               </div>
@@ -347,7 +347,7 @@ export default function InvCapTablePage() {
       {results && results.shareholders.length > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
           {/* Ownership Pie */}
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">Ownership Distribution</h3>
             <ReactECharts style={{ height: 260 }} option={{
               tooltip: { trigger: "item", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
@@ -362,7 +362,7 @@ export default function InvCapTablePage() {
           </div>
 
           {/* Investment Bar */}
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">Investment by Shareholder</h3>
             <ReactECharts style={{ height: 260 }} option={{
               tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
@@ -380,7 +380,7 @@ export default function InvCapTablePage() {
           </div>
 
           {/* Share Class Distribution */}
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">Share Class Distribution</h3>
             <ReactECharts style={{ height: 220 }} option={{
               tooltip: { trigger: "item", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
@@ -399,7 +399,7 @@ export default function InvCapTablePage() {
           </div>
 
           {/* Founders vs Investors Ownership */}
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">Founders vs Investors</h3>
             <ReactECharts style={{ height: 220 }} option={{
               tooltip: { trigger: "item", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
@@ -422,7 +422,7 @@ export default function InvCapTablePage() {
 
           {/* Exit Payouts */}
           {results.exit && results.exit.payouts.length > 0 && (
-            <div className="rounded-2xl border border-border bg-card p-5">
+            <div className="rounded-2xl border border-border bg-card p-5 output-panel">
               <h3 className="font-semibold text-sm mb-3">Exit Payouts</h3>
               <ReactECharts style={{ height: 240 }} option={{
                 tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
@@ -442,7 +442,7 @@ export default function InvCapTablePage() {
 
           {/* ROI Multiple */}
           {results.exit && results.exit.payouts.length > 0 && (
-            <div className="rounded-2xl border border-border bg-card p-5">
+            <div className="rounded-2xl border border-border bg-card p-5 output-panel">
               <h3 className="font-semibold text-sm mb-3">ROI Multiple</h3>
               <ReactECharts style={{ height: 240 }} option={{
                 tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },

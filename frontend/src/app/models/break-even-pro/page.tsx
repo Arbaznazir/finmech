@@ -83,7 +83,7 @@ export default function BreakEvenPage() {
   return (
     <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
-      <Link href="/models" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
+      <Link href="/models?tier=standalone" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
         <ArrowLeft className="h-4 w-4" /> Back to Models
       </Link>
 
@@ -120,7 +120,7 @@ export default function BreakEvenPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-6">
         {/* Input Panel */}
-        <div className="rounded-2xl border border-border bg-card p-6" data-inputs>
+        <div className="rounded-2xl border border-border bg-card p-6 output-panel" data-inputs>
           <h2 className="font-semibold mb-5">Parameters</h2>
           <div className="space-y-4">
             {fields.map((field) => (
@@ -267,7 +267,7 @@ export default function BreakEvenPage() {
       {results && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
           {/* Revenue vs Total Cost Crossover */}
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">Revenue vs Total Cost</h3>
             <ReactECharts
               style={{ height: 260 }}
@@ -286,7 +286,7 @@ export default function BreakEvenPage() {
           </div>
 
           {/* Profit/Loss Area */}
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">Profit / Loss by Units</h3>
             <ReactECharts
               style={{ height: 260 }}
@@ -307,7 +307,7 @@ export default function BreakEvenPage() {
           </div>
 
           {/* Contribution Waterfall */}
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">Contribution Waterfall</h3>
             <ReactECharts
               style={{ height: 220 }}
@@ -332,7 +332,7 @@ export default function BreakEvenPage() {
           </div>
 
           {/* Cost Structure Donut */}
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">Cost Structure at Projection</h3>
             <ReactECharts
               style={{ height: 220 }}

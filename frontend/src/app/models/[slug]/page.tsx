@@ -143,7 +143,7 @@ export default function ModelCalculatorPage({ params }: { params: Promise<{ slug
     return (
       <div className="mx-auto max-w-3xl px-4 py-20 text-center">
         <h1 className="text-2xl font-bold mb-4">Model not found</h1>
-        <Link href="/models" className="text-primary hover:underline">Back to Models</Link>
+        <Link href="/models?list=1" className="text-primary hover:underline">Back to Models</Link>
       </div>
     );
   }
@@ -189,7 +189,7 @@ export default function ModelCalculatorPage({ params }: { params: Promise<{ slug
 
   return (
     <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-8">
-      <Link href="/models" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
+      <Link href="/models?list=1" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
         <ArrowLeft className="h-4 w-4" /> Back to Models
       </Link>
 
@@ -224,7 +224,7 @@ export default function ModelCalculatorPage({ params }: { params: Promise<{ slug
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Input Panel */}
-        <div className="rounded-2xl border border-border bg-card p-6">
+        <div className="rounded-2xl border border-border bg-card p-6 output-panel">
           <h2 className="font-semibold mb-5">Inputs</h2>
           <div className="space-y-4">
             {model.fields.map((field) => (
@@ -284,7 +284,7 @@ export default function ModelCalculatorPage({ params }: { params: Promise<{ slug
         </div>
 
         {/* Output Panel */}
-        <div className="rounded-2xl border border-border bg-card p-6">
+        <div className="rounded-2xl border border-border bg-card p-6 output-panel">
           <div className="flex items-center justify-between mb-5">
             <h2 className="font-semibold">Results</h2>
             {outputs && user && (

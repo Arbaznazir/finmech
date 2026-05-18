@@ -88,7 +88,7 @@ export default function StdBreakEvenPage() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-8">
-      <Link href="/models" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
+      <Link href="/models?tier=standard" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
         <ArrowLeft className="h-4 w-4" /> Back to Models
       </Link>
 
@@ -118,7 +118,7 @@ export default function StdBreakEvenPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="rounded-2xl border border-border bg-card p-6" data-inputs>
+        <div className="rounded-2xl border border-border bg-card p-6 output-panel" data-inputs>
           <h2 className="font-semibold mb-5">Break-Even Inputs</h2>
           <div className="space-y-4">
             {fields.map((field) => (
@@ -181,7 +181,7 @@ export default function StdBreakEvenPage() {
                 : <><XCircle className="h-6 w-6 text-danger mx-auto mb-1" /><p className="text-sm font-bold text-danger">NOT YET PROFITABLE</p></>
               }
             </div>
-            <div className="rounded-2xl border border-border bg-card p-5">
+            <div className="rounded-2xl border border-border bg-card p-5 output-panel">
               <h3 className="font-semibold text-sm mb-3">Key Metrics</h3>
               <div className="space-y-2">
                 {([
@@ -198,7 +198,7 @@ export default function StdBreakEvenPage() {
               </div>
             </div>
             {results.projection.length > 0 && (
-              <div className="rounded-2xl border border-border bg-card p-5">
+              <div className="rounded-2xl border border-border bg-card p-5 output-panel">
                 <h3 className="font-semibold text-sm mb-3">Projection Table</h3>
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs">
@@ -234,7 +234,7 @@ export default function StdBreakEvenPage() {
       {results && results.projection.length > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
           {/* Revenue vs Total Cost Crossover */}
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">Revenue vs Total Cost</h3>
             <ReactECharts
               style={{ height: 240 }}
@@ -253,7 +253,7 @@ export default function StdBreakEvenPage() {
           </div>
 
           {/* Profit / Loss Area */}
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">Profit / Loss by Units</h3>
             <ReactECharts
               style={{ height: 240 }}
@@ -274,7 +274,7 @@ export default function StdBreakEvenPage() {
           </div>
 
           {/* Cost Structure Donut */}
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">Cost Structure</h3>
             <ReactECharts
               style={{ height: 220 }}
@@ -293,7 +293,7 @@ export default function StdBreakEvenPage() {
           </div>
 
           {/* Contribution Waterfall */}
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">Contribution Breakdown</h3>
             <ReactECharts
               style={{ height: 220 }}

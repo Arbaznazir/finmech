@@ -107,7 +107,7 @@ export default function FundingModelPage() {
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
-      <Link href="/models" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
+      <Link href="/models?tier=standalone" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
         <ArrowLeft className="h-4 w-4" /> Back to Models
       </Link>
 
@@ -221,7 +221,7 @@ export default function FundingModelPage() {
           </div>
 
           {/* Input form */}
-          <div className="rounded-2xl border border-border bg-card p-6" data-inputs>
+          <div className="rounded-2xl border border-border bg-card p-6 output-panel" data-inputs>
             <div className="flex items-center justify-between mb-5">
               <h2 className="font-semibold">
                 Inputs for <span className="text-primary">{activeMonth}</span>
@@ -332,7 +332,7 @@ export default function FundingModelPage() {
                 {formatCurrency(results.summary.maxCashDeficit)}
               </p>
             </div>
-            <div className="rounded-2xl border-2 border-primary/30 bg-primary/5 p-6 text-center">
+            <div className="rounded-2xl border-2 border-primary/30 bg-primary/5 p-6 text-center output-panel-primary">
               <p className="text-sm text-muted-foreground mb-2">Total Funding Required</p>
               <p className="text-3xl font-bold text-primary">
                 {formatCurrency(results.summary.totalFunding)}
@@ -341,7 +341,7 @@ export default function FundingModelPage() {
           </div>
 
           {/* Breakdown */}
-          <div className="rounded-2xl border border-border bg-card p-6">
+          <div className="rounded-2xl border border-border bg-card p-6 output-panel">
             <h2 className="font-semibold mb-5">Funding Breakdown</h2>
             <div className="space-y-3">
               {([
@@ -400,7 +400,7 @@ export default function FundingModelPage() {
       {results && results.monthsAdded.length > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
           {/* Cumulative Cash Area */}
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">Cumulative Cash Position</h3>
             <ReactECharts
               style={{ height: 240 }}
@@ -422,7 +422,7 @@ export default function FundingModelPage() {
           </div>
 
           {/* Revenue vs Total Costs Bar */}
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">Revenue vs Costs</h3>
             <ReactECharts
               style={{ height: 240 }}
@@ -441,7 +441,7 @@ export default function FundingModelPage() {
           </div>
 
           {/* Funding Waterfall */}
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">Funding Breakdown</h3>
             <ReactECharts
               style={{ height: 220 }}
@@ -465,7 +465,7 @@ export default function FundingModelPage() {
           </div>
 
           {/* EBITDA Trend */}
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">Monthly EBITDA</h3>
             <ReactECharts
               style={{ height: 220 }}

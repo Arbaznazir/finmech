@@ -87,7 +87,7 @@ export default function DCFValuationPage() {
   return (
     <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
-      <Link href="/models" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
+      <Link href="/models?tier=standalone" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
         <ArrowLeft className="h-4 w-4" /> Back to Models
       </Link>
 
@@ -192,18 +192,18 @@ export default function DCFValuationPage() {
         {results ? (
           <div className="space-y-6">
             {/* WACC Summary */}
-            <div className="rounded-2xl border border-border bg-card p-6">
+            <div className="rounded-2xl border border-border bg-card p-6 output-panel">
               <h2 className="font-semibold mb-4">WACC Calculation</h2>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <div className="rounded-xl bg-background/50 border border-border/50 p-3 text-center">
+                <div className="rounded-xl bg-muted border border-border p-3 output-panel text-center">
                   <p className="text-xs text-muted-foreground mb-1">Cost of Equity</p>
                   <p className="text-lg font-bold">{fmtPct(results.costOfEquity)}</p>
                 </div>
-                <div className="rounded-xl bg-background/50 border border-border/50 p-3 text-center">
+                <div className="rounded-xl bg-muted border border-border p-3 output-panel text-center">
                   <p className="text-xs text-muted-foreground mb-1">After-Tax Cost of Debt</p>
                   <p className="text-lg font-bold">{fmtPct(results.afterTaxCostOfDebt)}</p>
                 </div>
-                <div className="rounded-xl bg-background/50 border border-border/50 p-3 text-center">
+                <div className="rounded-xl bg-muted border border-border p-3 output-panel text-center">
                   <p className="text-xs text-muted-foreground mb-1">Equity Weight</p>
                   <p className="text-lg font-bold">{fmtPct(results.equityWeight)}</p>
                 </div>
@@ -261,7 +261,7 @@ export default function DCFValuationPage() {
             </div>
 
             {/* Valuation Summary */}
-            <div className="rounded-2xl border border-border bg-card p-6">
+            <div className="rounded-2xl border border-border bg-card p-6 output-panel">
               <h2 className="font-semibold mb-5">Valuation Summary</h2>
               <div className="space-y-3">
                 {([
@@ -284,7 +284,7 @@ export default function DCFValuationPage() {
 
             {/* Big Number */}
             <div className="grid grid-cols-2 gap-4">
-              <div className="rounded-2xl border-2 border-primary/30 bg-primary/5 p-6 text-center">
+              <div className="rounded-2xl border-2 border-primary/30 bg-primary/5 p-6 text-center output-panel-primary">
                 <p className="text-sm text-muted-foreground mb-2">Enterprise Value</p>
                 <p className="text-3xl font-bold text-primary">{formatCurrency(results.enterpriseValue)}</p>
               </div>
@@ -307,7 +307,7 @@ export default function DCFValuationPage() {
       {results && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
           {/* 5-Year FCFF Bar */}
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">5-Year FCFF Projection</h3>
             <ReactECharts
               style={{ height: 240 }}
@@ -326,7 +326,7 @@ export default function DCFValuationPage() {
           </div>
 
           {/* Revenue Growth Trend */}
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">Revenue & EBITDA Trend</h3>
             <ReactECharts
               style={{ height: 240 }}
@@ -345,7 +345,7 @@ export default function DCFValuationPage() {
           </div>
 
           {/* Valuation Waterfall */}
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">Valuation Breakdown</h3>
             <ReactECharts
               style={{ height: 220 }}
@@ -369,7 +369,7 @@ export default function DCFValuationPage() {
           </div>
 
           {/* EV Composition Donut */}
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">Enterprise Value Composition</h3>
             <ReactECharts
               style={{ height: 220 }}

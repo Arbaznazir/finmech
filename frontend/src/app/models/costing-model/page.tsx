@@ -68,7 +68,7 @@ export default function CostingModelPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-8">
-      <Link href="/models" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
+      <Link href="/models?tier=free" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
         <ArrowLeft className="h-4 w-4" /> Back to Models
       </Link>
 
@@ -101,7 +101,7 @@ export default function CostingModelPage() {
         {/* Inputs */}
         <div className="space-y-6" data-inputs>
           {/* Units Sold */}
-          <div className="rounded-2xl border border-border bg-card p-6">
+          <div className="rounded-2xl border border-border bg-card p-6 output-panel">
             <div className="flex items-center gap-2 mb-3">
               <h2 className="font-semibold text-sm">Units Sold (Monthly)</h2>
               <span className={`text-xs rounded px-2 py-0.5 ${revenueLinked ? "text-success bg-success/10" : "text-blue-400 bg-blue-400/10"}`}>
@@ -130,7 +130,7 @@ export default function CostingModelPage() {
           </div>
 
           {/* Fixed Costs */}
-          <div className="rounded-2xl border border-border bg-card p-6">
+          <div className="rounded-2xl border border-border bg-card p-6 output-panel">
             <h2 className="font-semibold text-sm mb-4">Fixed Costs (Monthly)</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {FIXED_COST_FIELDS.map((field) => (
@@ -161,7 +161,7 @@ export default function CostingModelPage() {
           </div>
 
           {/* Variable Costs */}
-          <div className="rounded-2xl border border-border bg-card p-6">
+          <div className="rounded-2xl border border-border bg-card p-6 output-panel">
             <h2 className="font-semibold text-sm mb-4">Variable Costs (Per Unit)</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {VARIABLE_COST_FIELDS.map((field) => (
@@ -210,26 +210,26 @@ export default function CostingModelPage() {
               <p className="text-2xl font-bold text-danger">{formatCurrency(results.totalMonthlyCost)}</p>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-xl bg-background/50 border border-border/50 p-3 text-center">
+              <div className="rounded-xl bg-muted border border-border p-3 output-panel text-center">
                 <p className="text-xs text-muted-foreground mb-1">Total Fixed Costs</p>
                 <p className="text-lg font-bold">{formatCurrency(results.totalFixedCosts)}</p>
               </div>
-              <div className="rounded-xl bg-background/50 border border-border/50 p-3 text-center">
+              <div className="rounded-xl bg-muted border border-border p-3 output-panel text-center">
                 <p className="text-xs text-muted-foreground mb-1">Total Variable Cost</p>
                 <p className="text-lg font-bold">{formatCurrency(results.totalVariableCost)}</p>
               </div>
-              <div className="rounded-xl bg-background/50 border border-border/50 p-3 text-center">
+              <div className="rounded-xl bg-muted border border-border p-3 output-panel text-center">
                 <p className="text-xs text-muted-foreground mb-1">Variable Cost / Unit</p>
                 <p className="text-lg font-bold">{formatCurrency(results.totalVariableCostPerUnit)}</p>
               </div>
-              <div className="rounded-xl bg-background/50 border border-border/50 p-3 text-center">
+              <div className="rounded-xl bg-muted border border-border p-3 output-panel text-center">
                 <p className="text-xs text-muted-foreground mb-1">Units Sold</p>
                 <p className="text-lg font-bold">{results.unitsSold.toLocaleString()}</p>
               </div>
             </div>
 
             {/* Fixed vs Variable Donut */}
-            <div className="rounded-2xl border border-border bg-card p-5">
+            <div className="rounded-2xl border border-border bg-card p-5 output-panel">
               <h3 className="font-semibold text-sm mb-3">Fixed vs Variable Costs</h3>
               <ReactECharts
                 style={{ height: 220 }}
@@ -248,7 +248,7 @@ export default function CostingModelPage() {
             </div>
 
             {/* Cost Breakdown Bar */}
-            <div className="rounded-2xl border border-border bg-card p-5">
+            <div className="rounded-2xl border border-border bg-card p-5 output-panel">
               <h3 className="font-semibold text-sm mb-3">Cost Breakdown</h3>
               <ReactECharts
                 style={{ height: 200 }}

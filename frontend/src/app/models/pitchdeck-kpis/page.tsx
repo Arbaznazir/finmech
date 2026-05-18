@@ -113,7 +113,7 @@ export default function PitchDeckKPIsPage() {
   return (
     <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
-      <Link href="/models" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
+      <Link href="/models?tier=standalone" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
         <ArrowLeft className="h-4 w-4" /> Back to Models
       </Link>
 
@@ -235,7 +235,7 @@ export default function PitchDeckKPIsPage() {
           </div>
 
           {/* RAG Cards */}
-          <div className="rounded-2xl border border-border bg-card p-6">
+          <div className="rounded-2xl border border-border bg-card p-6 output-panel">
             <h2 className="font-semibold mb-5">RAG Classification</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {([
@@ -264,7 +264,7 @@ export default function PitchDeckKPIsPage() {
           </div>
 
           {/* Summary Flags */}
-          <div className="rounded-2xl border border-border bg-card p-6">
+          <div className="rounded-2xl border border-border bg-card p-6 output-panel">
             <h2 className="font-semibold mb-5">Investor Summary Flags</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {([
@@ -287,7 +287,7 @@ export default function PitchDeckKPIsPage() {
           {/* Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* KPI Radar */}
-            <div className="rounded-2xl border border-border bg-card p-5">
+            <div className="rounded-2xl border border-border bg-card p-5 output-panel">
               <h3 className="font-semibold text-sm mb-3">Investor KPI Radar</h3>
               <ReactECharts
                 style={{ height: 280 }}
@@ -325,7 +325,7 @@ export default function PitchDeckKPIsPage() {
             </div>
 
             {/* Key Metrics Horizontal Bar */}
-            <div className="rounded-2xl border border-border bg-card p-5">
+            <div className="rounded-2xl border border-border bg-card p-5 output-panel">
               <h3 className="font-semibold text-sm mb-3">Key Metrics</h3>
               <ReactECharts
                 style={{ height: 260 }}
@@ -350,7 +350,7 @@ export default function PitchDeckKPIsPage() {
             </div>
 
             {/* Runway Gauge */}
-            <div className="rounded-2xl border border-border bg-card p-5">
+            <div className="rounded-2xl border border-border bg-card p-5 output-panel">
               <h3 className="font-semibold text-sm mb-3">Runway Gauge</h3>
               <ReactECharts
                 style={{ height: 220 }}
@@ -370,7 +370,7 @@ export default function PitchDeckKPIsPage() {
             </div>
 
             {/* Revenue vs Cost Donut */}
-            <div className="rounded-2xl border border-border bg-card p-5">
+            <div className="rounded-2xl border border-border bg-card p-5 output-panel">
               <h3 className="font-semibold text-sm mb-3">Revenue vs Cost Split</h3>
               <ReactECharts
                 style={{ height: 220 }}
@@ -390,7 +390,7 @@ export default function PitchDeckKPIsPage() {
           </div>
 
           {/* Thresholds */}
-          <div className="rounded-2xl border border-border bg-card p-6">
+          <div className="rounded-2xl border border-border bg-card p-6 output-panel">
             <h3 className="font-semibold text-sm mb-3">RAG Thresholds</h3>
             <div className="overflow-x-auto">
               <table className="w-full text-xs">

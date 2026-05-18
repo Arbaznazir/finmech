@@ -217,7 +217,7 @@ export default function InvBalanceSheetPage() {
         {/* Inputs */}
         <div className="space-y-5" data-inputs>
           {categories.map((cat) => (
-            <div key={cat} className="rounded-2xl border border-border bg-card p-5">
+            <div key={cat} className="rounded-2xl border border-border bg-card p-5 output-panel">
               <h3 className="font-semibold text-sm mb-3">{cat}</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {INPUT_FIELDS.filter((f) => f.category === cat).map((field) => {
@@ -256,7 +256,7 @@ export default function InvBalanceSheetPage() {
         {/* Results */}
         <div className="space-y-4 h-fit sticky top-8">
           {outputSections.map((section) => (
-            <div key={section} className="rounded-2xl border border-border bg-card p-5">
+            <div key={section} className="rounded-2xl border border-border bg-card p-5 output-panel">
               <h3 className="font-semibold text-sm mb-3">{section}</h3>
               {cur ? (
                 <div className="space-y-2">
@@ -290,7 +290,7 @@ export default function InvBalanceSheetPage() {
       {results.monthsAdded.length > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
           {/* Total Assets vs Total Liabilities + Equity */}
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">Assets vs Liabilities + Equity</h3>
             <ReactECharts style={{ height: 240 }} option={{
               tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
@@ -306,7 +306,7 @@ export default function InvBalanceSheetPage() {
           </div>
 
           {/* Asset Composition Donut (active month) */}
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">Asset Composition ({activeMonth})</h3>
             <ReactECharts style={{ height: 240 }} option={{
               tooltip: { trigger: "item", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
@@ -323,7 +323,7 @@ export default function InvBalanceSheetPage() {
           </div>
 
           {/* Working Capital Trend */}
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">Working Capital Trend</h3>
             <ReactECharts style={{ height: 220 }} option={{
               tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
@@ -344,7 +344,7 @@ export default function InvBalanceSheetPage() {
           {(() => {
             const latestStatus = results.status[results.status.length - 1];
             return (
-              <div className="rounded-2xl border border-border bg-card p-5">
+              <div className="rounded-2xl border border-border bg-card p-5 output-panel">
                 <h3 className="font-semibold text-sm mb-3">Current Ratio (Latest)</h3>
                 <ReactECharts style={{ height: 220 }} option={{
                   series: [{
@@ -362,7 +362,7 @@ export default function InvBalanceSheetPage() {
           })()}
 
           {/* Liabilities vs Equity Breakdown */}
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">Liabilities vs Equity ({activeMonth})</h3>
             <ReactECharts style={{ height: 220 }} option={{
               tooltip: { trigger: "item", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
@@ -378,7 +378,7 @@ export default function InvBalanceSheetPage() {
           </div>
 
           {/* Balance Check Status */}
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">Balance Check Status</h3>
             <ReactECharts style={{ height: 220 }} option={{
               tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },

@@ -148,7 +148,7 @@ export default function InvFundingModelPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-8">
-      <Link href="/models" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
+      <Link href="/models?tier=investor" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
         <ArrowLeft className="h-4 w-4" /> Back to Models
       </Link>
 
@@ -222,7 +222,7 @@ export default function InvFundingModelPage() {
             ))}
           </div>
 
-          <div className="rounded-2xl border border-border bg-card p-5" data-inputs>
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel" data-inputs>
             <h3 className="font-semibold text-sm mb-3">{activeMonth} Inputs</h3>
             <div className="space-y-4">
               {categories.map((cat) => (
@@ -307,7 +307,7 @@ export default function InvFundingModelPage() {
       {/* SUMMARY TAB */}
       {activeTab === "summary" && results && (
         <div className="space-y-6">
-          <div className="rounded-2xl border-2 border-amber-400/30 bg-amber-400/5 p-6 text-center">
+          <div className="rounded-2xl border-2 border-amber-400/30 bg-amber-400/5 p-6 text-center output-panel-amber">
             <p className="text-sm text-muted-foreground mb-2">Total Funding Required (incl. {results.summary.contingencyPct}% contingency)</p>
             <p className="text-3xl font-bold text-amber-400">{formatCurrency(results.summary.totalFunding)}</p>
           </div>
@@ -334,7 +334,7 @@ export default function InvFundingModelPage() {
       {results && results.monthsAdded.length > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
           {/* Cumulative Cash Area */}
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">Cumulative Cash Position</h3>
             <ReactECharts style={{ height: 240 }} option={{
               tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
@@ -352,7 +352,7 @@ export default function InvFundingModelPage() {
           </div>
 
           {/* Monthly Net Cash Bar */}
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">Monthly Net Cash Flow</h3>
             <ReactECharts style={{ height: 240 }} option={{
               tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
@@ -370,7 +370,7 @@ export default function InvFundingModelPage() {
           </div>
 
           {/* Revenue vs Total Expenses */}
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">Revenue vs Total Expenses</h3>
             <ReactECharts style={{ height: 240 }} option={{
               tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
@@ -386,7 +386,7 @@ export default function InvFundingModelPage() {
           </div>
 
           {/* Funding Waterfall */}
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">Funding Requirement Breakdown</h3>
             <ReactECharts style={{ height: 240 }} option={{
               tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
@@ -412,7 +412,7 @@ export default function InvFundingModelPage() {
             const d = last ? results.monthlyData[last] : null;
             if (!d) return null;
             return (
-              <div className="rounded-2xl border border-border bg-card p-5">
+              <div className="rounded-2xl border border-border bg-card p-5 output-panel">
                 <h3 className="font-semibold text-sm mb-3">Expense Composition ({last})</h3>
                 <ReactECharts style={{ height: 220 }} option={{
                   tooltip: { trigger: "item", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
@@ -430,7 +430,7 @@ export default function InvFundingModelPage() {
           })()}
 
           {/* Funding Gauge */}
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">Total Funding Required</h3>
             <ReactECharts style={{ height: 220 }} option={{
               series: [{

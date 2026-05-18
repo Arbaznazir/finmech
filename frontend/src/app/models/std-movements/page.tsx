@@ -125,7 +125,7 @@ export default function StdMovementsPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-8">
-      <Link href="/models" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
+      <Link href="/models?tier=standard" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
         <ArrowLeft className="h-4 w-4" /> Back to Models
       </Link>
 
@@ -171,7 +171,7 @@ export default function StdMovementsPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6">
         {/* Inputs */}
-        <div className="rounded-2xl border border-border bg-card p-5" data-inputs>
+        <div className="rounded-2xl border border-border bg-card p-5 output-panel" data-inputs>
           <h3 className="font-semibold text-sm mb-3">{activeMonth} Inputs</h3>
           <div className="space-y-4">
             {categories.map((cat) => (
@@ -214,7 +214,7 @@ export default function StdMovementsPage() {
 
         {/* Results */}
         <div className="space-y-4 h-fit sticky top-8">
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">{activeMonth} Results</h3>
             {cur ? (
               <div className="space-y-2">
@@ -236,7 +236,7 @@ export default function StdMovementsPage() {
           </div>
 
           {/* Annual Summary */}
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">Annual Summary</h3>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
@@ -308,7 +308,7 @@ export default function StdMovementsPage() {
       {results.monthsAdded.length > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
           {/* Working Capital Components Stacked Bar */}
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">Working Capital Components</h3>
             <ReactECharts
               style={{ height: 240 }}
@@ -328,7 +328,7 @@ export default function StdMovementsPage() {
           </div>
 
           {/* CFO & FCF Trend Line */}
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">Cash from Operations & FCF</h3>
             <ReactECharts
               style={{ height: 240 }}
@@ -347,7 +347,7 @@ export default function StdMovementsPage() {
           </div>
 
           {/* Cash Conversion Cycle Trend */}
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">Cash Conversion Cycle</h3>
             <ReactECharts
               style={{ height: 220 }}
@@ -368,7 +368,7 @@ export default function StdMovementsPage() {
           </div>
 
           {/* Annual Summary Donut */}
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">Annual Cash Flow Breakdown</h3>
             <ReactECharts
               style={{ height: 220 }}

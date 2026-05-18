@@ -221,7 +221,7 @@ export default function InvBusinessSnapshotPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-8">
-      <Link href="/models" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
+      <Link href="/models?tier=investor" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
         <ArrowLeft className="h-4 w-4" /> Back to Models
       </Link>
 
@@ -264,7 +264,7 @@ export default function InvBusinessSnapshotPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6">
         {/* Inputs */}
-        <div className="rounded-2xl border border-border bg-card p-6" data-inputs>
+        <div className="rounded-2xl border border-border bg-card p-6 output-panel" data-inputs>
           <h2 className="font-semibold mb-5">Business Metrics</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {fields.map((field) => {
@@ -340,7 +340,7 @@ export default function InvBusinessSnapshotPage() {
               </div>
             )}
 
-            <div className="rounded-2xl border border-border bg-card p-5">
+            <div className="rounded-2xl border border-border bg-card p-5 output-panel">
               <h3 className="font-semibold text-sm mb-3">Insights</h3>
               <div className="space-y-2">
                 {results.insights.map((insight, i) => (
@@ -362,7 +362,7 @@ export default function InvBusinessSnapshotPage() {
       {results && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
           {/* Business Health Radar */}
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">Business Health Radar</h3>
             <ReactECharts style={{ height: 260 }} option={{
               tooltip: { backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
@@ -397,7 +397,7 @@ export default function InvBusinessSnapshotPage() {
           </div>
 
           {/* Health Score Gauge */}
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">Health Score</h3>
             <ReactECharts style={{ height: 260 }} option={{
               series: [{
@@ -413,7 +413,7 @@ export default function InvBusinessSnapshotPage() {
           </div>
 
           {/* Key Metrics Bar */}
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">Key Metrics Overview</h3>
             <ReactECharts style={{ height: 240 }} option={{
               tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
@@ -434,7 +434,7 @@ export default function InvBusinessSnapshotPage() {
           </div>
 
           {/* Revenue vs Burn Donut */}
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">Revenue vs Burn</h3>
             <ReactECharts style={{ height: 220 }} option={{
               tooltip: { trigger: "item", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
@@ -450,7 +450,7 @@ export default function InvBusinessSnapshotPage() {
 
           {/* EV/Revenue Gauge */}
           {results.evRevenueMultiple > 0 && (
-            <div className="rounded-2xl border border-border bg-card p-5">
+            <div className="rounded-2xl border border-border bg-card p-5 output-panel">
               <h3 className="font-semibold text-sm mb-3">EV / Revenue Multiple</h3>
               <ReactECharts style={{ height: 220 }} option={{
                 series: [{
@@ -468,7 +468,7 @@ export default function InvBusinessSnapshotPage() {
 
           {/* Working Capital Composition */}
           {(inputs.receivables > 0 || inputs.inventory > 0 || inputs.payables > 0) && (
-            <div className="rounded-2xl border border-border bg-card p-5">
+            <div className="rounded-2xl border border-border bg-card p-5 output-panel">
               <h3 className="font-semibold text-sm mb-3">Working Capital Composition</h3>
               <ReactECharts style={{ height: 220 }} option={{
                 tooltip: { trigger: "item", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },

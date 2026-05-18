@@ -143,7 +143,7 @@ export default function StdCommonUtilityPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-8">
-      <Link href="/models" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
+      <Link href="/models?tier=standard" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
         <ArrowLeft className="h-4 w-4" /> Back to Models
       </Link>
 
@@ -188,7 +188,7 @@ export default function StdCommonUtilityPage() {
         {/* Inputs */}
         <div className="space-y-5" data-inputs>
           {categories.map((cat) => (
-            <div key={cat} className="rounded-2xl border border-border bg-card p-5">
+            <div key={cat} className="rounded-2xl border border-border bg-card p-5 output-panel">
               <h3 className="font-semibold text-sm mb-3">{cat}</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {INPUT_FIELDS.filter((f) => f.category === cat).map((field) => (
@@ -221,7 +221,7 @@ export default function StdCommonUtilityPage() {
 
         {/* Summary sidebar */}
         <div className="space-y-4 h-fit sticky top-8">
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">{activeMonth} Summary</h3>
             {cur && (
               <div className="space-y-2 text-xs">
@@ -251,7 +251,7 @@ export default function StdCommonUtilityPage() {
             )}
           </div>
 
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">Annual Total</h3>
             <div className="space-y-2 text-xs">
               {([
@@ -290,7 +290,7 @@ export default function StdCommonUtilityPage() {
       {isResult.monthsAdded.length > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
           {/* Monthly Revenue + Net Profit Trend */}
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">Monthly Revenue & Net Profit</h3>
             <ReactECharts
               style={{ height: 240 }}
@@ -309,7 +309,7 @@ export default function StdCommonUtilityPage() {
           </div>
 
           {/* Margin Trend Lines */}
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">Margin Trends</h3>
             <ReactECharts
               style={{ height: 240 }}
@@ -329,7 +329,7 @@ export default function StdCommonUtilityPage() {
           </div>
 
           {/* P&L Composition Donut (annual) */}
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">Annual P&L Composition</h3>
             <ReactECharts
               style={{ height: 220 }}
@@ -350,7 +350,7 @@ export default function StdCommonUtilityPage() {
           </div>
 
           {/* Annual Breakdown Bar */}
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">Annual Summary</h3>
             <ReactECharts
               style={{ height: 220 }}

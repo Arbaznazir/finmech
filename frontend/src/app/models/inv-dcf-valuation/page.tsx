@@ -84,7 +84,7 @@ export default function InvDCFValuationPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-8">
-      <Link href="/models" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
+      <Link href="/models?tier=investor" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
         <ArrowLeft className="h-4 w-4" /> Back to Models
       </Link>
 
@@ -174,13 +174,13 @@ export default function InvDCFValuationPage() {
         {/* Results */}
         {results ? (
           <div className="space-y-4 h-fit sticky top-8">
-            <div className="rounded-2xl border-2 border-amber-400/30 bg-amber-400/5 p-6 text-center">
+            <div className="rounded-2xl border-2 border-amber-400/30 bg-amber-400/5 p-6 text-center output-panel-amber">
               <p className="text-sm text-muted-foreground mb-1">Enterprise Value</p>
               <p className="text-3xl font-bold text-amber-400">{formatCurrency(results.enterpriseValue)}</p>
               <p className="text-sm text-muted-foreground mt-2">Equity Value: {formatCurrency(results.equityValue)}</p>
             </div>
 
-            <div className="rounded-2xl border border-border bg-card p-5">
+            <div className="rounded-2xl border border-border bg-card p-5 output-panel">
               <h3 className="font-semibold text-sm mb-3">WACC Breakdown</h3>
               <div className="space-y-2 text-xs">
                 {([
@@ -198,7 +198,7 @@ export default function InvDCFValuationPage() {
               </div>
             </div>
 
-            <div className="rounded-2xl border border-border bg-card p-5">
+            <div className="rounded-2xl border border-border bg-card p-5 output-panel">
               <h3 className="font-semibold text-sm mb-3">Valuation Summary</h3>
               <div className="space-y-2 text-xs">
                 {([
@@ -254,7 +254,7 @@ export default function InvDCFValuationPage() {
       {results && results.projection.length > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
           {/* Revenue & EBITDA Projection */}
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">Revenue & EBITDA Projection</h3>
             <ReactECharts style={{ height: 240 }} option={{
               tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
@@ -270,7 +270,7 @@ export default function InvDCFValuationPage() {
           </div>
 
           {/* FCFF vs PV of FCFF */}
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">FCFF vs Present Value</h3>
             <ReactECharts style={{ height: 240 }} option={{
               tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
@@ -286,7 +286,7 @@ export default function InvDCFValuationPage() {
           </div>
 
           {/* Valuation Waterfall */}
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">Valuation Waterfall</h3>
             <ReactECharts style={{ height: 240 }} option={{
               tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
@@ -307,7 +307,7 @@ export default function InvDCFValuationPage() {
           </div>
 
           {/* WACC Composition */}
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">WACC Composition</h3>
             <ReactECharts style={{ height: 220 }} option={{
               tooltip: { trigger: "item", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
@@ -322,7 +322,7 @@ export default function InvDCFValuationPage() {
           </div>
 
           {/* EV vs Equity Value */}
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">Enterprise vs Equity Value</h3>
             <ReactECharts style={{ height: 220 }} option={{
               tooltip: { trigger: "item", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
@@ -337,7 +337,7 @@ export default function InvDCFValuationPage() {
           </div>
 
           {/* WACC Gauge */}
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">WACC</h3>
             <ReactECharts style={{ height: 220 }} option={{
               series: [{

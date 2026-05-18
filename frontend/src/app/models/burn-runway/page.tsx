@@ -139,7 +139,7 @@ export default function BurnRunwayPage() {
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
-      <Link href="/models" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
+      <Link href="/models?tier=standalone" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
         <ArrowLeft className="h-4 w-4" /> Back to Models
       </Link>
 
@@ -223,7 +223,7 @@ export default function BurnRunwayPage() {
           </div>
 
           {/* Input form */}
-          <div className="rounded-2xl border border-border bg-card p-6" data-inputs>
+          <div className="rounded-2xl border border-border bg-card p-6 output-panel" data-inputs>
             <div className="flex items-center justify-between mb-5">
               <h2 className="font-semibold">
                 Inputs for <span className="text-primary">{activeMonth}</span>
@@ -383,7 +383,7 @@ export default function BurnRunwayPage() {
           )}
 
           {/* Per-month status */}
-          <div className="rounded-2xl border border-border bg-card p-6">
+          <div className="rounded-2xl border border-border bg-card p-6 output-panel">
             <h2 className="font-semibold mb-5">Monthly Classification</h2>
             <div className="space-y-3">
               {results.status.map((s) => (
@@ -406,7 +406,7 @@ export default function BurnRunwayPage() {
           </div>
 
           {/* Legend */}
-          <div className="rounded-2xl border border-border bg-card p-6">
+          <div className="rounded-2xl border border-border bg-card p-6 output-panel">
             <h3 className="font-semibold text-sm mb-3">Classification Logic</h3>
             <div className="space-y-2 text-xs text-muted-foreground">
               <div className="flex items-center gap-2">
@@ -426,7 +426,7 @@ export default function BurnRunwayPage() {
 
           {/* Cumulative Cash Area */}
           {results.status.length > 0 && (
-            <div className="rounded-2xl border border-border bg-card p-5">
+            <div className="rounded-2xl border border-border bg-card p-5 output-panel">
               <h3 className="font-semibold text-sm mb-3">Cumulative Cash Position</h3>
               <ReactECharts
                 style={{ height: 240 }}
@@ -450,7 +450,7 @@ export default function BurnRunwayPage() {
 
           {/* Monthly Burn Bar */}
           {results.status.length > 0 && (
-            <div className="rounded-2xl border border-border bg-card p-5">
+            <div className="rounded-2xl border border-border bg-card p-5 output-panel">
               <h3 className="font-semibold text-sm mb-3">Monthly Net Burn</h3>
               <ReactECharts
                 style={{ height: 220 }}
@@ -475,7 +475,7 @@ export default function BurnRunwayPage() {
           {results.status.length > 0 && (() => {
             const last = results.status[results.status.length - 1];
             return (
-              <div className="rounded-2xl border border-border bg-card p-5">
+              <div className="rounded-2xl border border-border bg-card p-5 output-panel">
                 <h3 className="font-semibold text-sm mb-3">Current Runway</h3>
                 <ReactECharts
                   style={{ height: 200 }}
@@ -502,7 +502,7 @@ export default function BurnRunwayPage() {
             const amber = results.status.filter(s => s.classification === "AMBER").length;
             const red = results.status.filter(s => s.classification === "RED").length;
             return (
-              <div className="rounded-2xl border border-border bg-card p-5">
+              <div className="rounded-2xl border border-border bg-card p-5 output-panel">
                 <h3 className="font-semibold text-sm mb-3">Classification Distribution</h3>
                 <ReactECharts
                   style={{ height: 200 }}

@@ -185,7 +185,7 @@ export default function InvIncomeStatementPage() {
         {/* Inputs */}
         <div className="space-y-5" data-inputs>
           {categories.map((cat) => (
-            <div key={cat} className="rounded-2xl border border-border bg-card p-5">
+            <div key={cat} className="rounded-2xl border border-border bg-card p-5 output-panel">
               <h3 className="font-semibold text-sm mb-3">{cat}</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {INPUT_FIELDS.filter((f) => f.category === cat).map((field) => (
@@ -218,7 +218,7 @@ export default function InvIncomeStatementPage() {
 
         {/* Summary sidebar */}
         <div className="space-y-4 h-fit sticky top-8">
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">{activeMonth} Summary</h3>
             {cur && (
               <div className="space-y-2 text-xs">
@@ -259,7 +259,7 @@ export default function InvIncomeStatementPage() {
             )}
           </div>
 
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">Annual Total</h3>
             <div className="space-y-2 text-xs">
               {([
@@ -300,7 +300,7 @@ export default function InvIncomeStatementPage() {
       {isResult.monthsAdded.length > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
           {/* Monthly Revenue + Net Profit */}
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">Monthly Revenue & Net Profit</h3>
             <ReactECharts style={{ height: 240 }} option={{
               tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
@@ -316,7 +316,7 @@ export default function InvIncomeStatementPage() {
           </div>
 
           {/* Margin Trends */}
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">Margin Trends</h3>
             <ReactECharts style={{ height: 240 }} option={{
               tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
@@ -333,7 +333,7 @@ export default function InvIncomeStatementPage() {
           </div>
 
           {/* P&L Composition Donut (annual) */}
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">Annual P&L Composition</h3>
             <ReactECharts style={{ height: 220 }} option={{
               tooltip: { trigger: "item", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
@@ -350,7 +350,7 @@ export default function InvIncomeStatementPage() {
           </div>
 
           {/* Annual Summary Bar */}
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">Annual Summary</h3>
             <ReactECharts style={{ height: 220 }} option={{
               tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
@@ -371,7 +371,7 @@ export default function InvIncomeStatementPage() {
           </div>
 
           {/* Revenue vs COGS vs OPEX Stacked */}
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">Revenue vs Cost Structure</h3>
             <ReactECharts style={{ height: 240 }} option={{
               tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
@@ -388,7 +388,7 @@ export default function InvIncomeStatementPage() {
           </div>
 
           {/* OPEX Breakdown Donut (active month) */}
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">OPEX Breakdown ({activeMonth})</h3>
             <ReactECharts style={{ height: 220 }} option={{
               tooltip: { trigger: "item", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },

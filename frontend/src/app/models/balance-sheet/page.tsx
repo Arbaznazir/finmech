@@ -121,7 +121,7 @@ export default function BalanceSheetPage() {
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
-      <Link href="/models" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
+      <Link href="/models?tier=standalone" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
         <ArrowLeft className="h-4 w-4" /> Back to Models
       </Link>
 
@@ -205,7 +205,7 @@ export default function BalanceSheetPage() {
           </div>
 
           {/* Input form */}
-          <div className="rounded-2xl border border-border bg-card p-6" data-inputs>
+          <div className="rounded-2xl border border-border bg-card p-6 output-panel" data-inputs>
             <div className="flex items-center justify-between mb-5">
               <h2 className="font-semibold">
                 Inputs for <span className="text-primary">{activeMonth}</span>
@@ -361,7 +361,7 @@ export default function BalanceSheetPage() {
       {/* ============ ANNUAL VIEW ============ */}
       {activeTab === "annual" && results && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="rounded-2xl border border-border bg-card p-6">
+          <div className="rounded-2xl border border-border bg-card p-6 output-panel">
             <h2 className="font-semibold mb-5">Annual Summary</h2>
             <div className="space-y-2">
               {OUTPUT_FIELDS.map((field) => {
@@ -382,7 +382,7 @@ export default function BalanceSheetPage() {
           </div>
 
           <div className="space-y-6">
-            <div className="rounded-2xl border border-border bg-card p-6">
+            <div className="rounded-2xl border border-border bg-card p-6 output-panel">
               <h2 className="font-semibold mb-5">Key Ratios (Annual)</h2>
               <div className="grid grid-cols-2 gap-4">
                 {[
@@ -404,7 +404,7 @@ export default function BalanceSheetPage() {
             </div>
 
             {/* Assets vs Liabilities Monthly Trend */}
-            <div className="rounded-2xl border border-border bg-card p-5">
+            <div className="rounded-2xl border border-border bg-card p-5 output-panel">
               <h3 className="font-semibold text-sm mb-3">Assets vs Liabilities Trend</h3>
               <ReactECharts
                 style={{ height: 260 }}
@@ -424,7 +424,7 @@ export default function BalanceSheetPage() {
             </div>
 
             {/* Asset Composition Donut */}
-            <div className="rounded-2xl border border-border bg-card p-5">
+            <div className="rounded-2xl border border-border bg-card p-5 output-panel">
               <h3 className="font-semibold text-sm mb-3">Annual Asset Composition</h3>
               <ReactECharts
                 style={{ height: 240 }}
@@ -446,7 +446,7 @@ export default function BalanceSheetPage() {
             </div>
 
             {/* Key Ratios Radar */}
-            <div className="rounded-2xl border border-border bg-card p-5">
+            <div className="rounded-2xl border border-border bg-card p-5 output-panel">
               <h3 className="font-semibold text-sm mb-3">Financial Ratios</h3>
               <ReactECharts
                 style={{ height: 280 }}
@@ -484,7 +484,7 @@ export default function BalanceSheetPage() {
 
             {/* Working Capital Trend */}
             {results.monthsAdded.length > 1 && (
-              <div className="rounded-2xl border border-border bg-card p-5">
+              <div className="rounded-2xl border border-border bg-card p-5 output-panel">
                 <h3 className="font-semibold text-sm mb-3">Working Capital Trend</h3>
                 <ReactECharts
                   style={{ height: 200 }}
@@ -506,7 +506,7 @@ export default function BalanceSheetPage() {
               </div>
             )}
 
-            <div className="rounded-2xl border border-border bg-card p-6">
+            <div className="rounded-2xl border border-border bg-card p-6 output-panel">
               <h2 className="font-semibold mb-3">Months Coverage</h2>
               <div className="grid grid-cols-6 gap-2">
                 {MONTHS_ORDER.map((m) => {
@@ -526,7 +526,7 @@ export default function BalanceSheetPage() {
       {/* ============ BALANCE CHECK / STATUS TAB ============ */}
       {activeTab === "status" && results && (
         <div className="max-w-3xl mx-auto space-y-6">
-          <div className="rounded-2xl border border-border bg-card p-6">
+          <div className="rounded-2xl border border-border bg-card p-6 output-panel">
             <h2 className="font-semibold mb-5">Monthly Balance Check</h2>
             <div className="space-y-3">
               {results.status.map((s) => (

@@ -128,7 +128,7 @@ export default function IncomeStatementPage() {
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
-      <Link href="/models" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
+      <Link href="/models?tier=standalone" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
         <ArrowLeft className="h-4 w-4" /> Back to Models
       </Link>
 
@@ -212,7 +212,7 @@ export default function IncomeStatementPage() {
           </div>
 
           {/* Input form */}
-          <div className="rounded-2xl border border-border bg-card p-6" data-inputs>
+          <div className="rounded-2xl border border-border bg-card p-6 output-panel" data-inputs>
             <div className="flex items-center justify-between mb-5">
               <h2 className="font-semibold">
                 Inputs for <span className="text-primary">{activeMonth}</span>
@@ -368,7 +368,7 @@ export default function IncomeStatementPage() {
       {activeTab === "annual" && results && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Annual P&L */}
-          <div className="rounded-2xl border border-border bg-card p-6">
+          <div className="rounded-2xl border border-border bg-card p-6 output-panel">
             <h2 className="font-semibold mb-5">Annual P&L Summary</h2>
             <div className="space-y-2">
               {OUTPUT_FIELDS.map((field) => {
@@ -389,7 +389,7 @@ export default function IncomeStatementPage() {
 
           {/* Derived Metrics */}
           <div className="space-y-6">
-            <div className="rounded-2xl border border-border bg-card p-6">
+            <div className="rounded-2xl border border-border bg-card p-6 output-panel">
               <h2 className="font-semibold mb-5">Key Metrics</h2>
               <div className="grid grid-cols-2 gap-4">
                 <div className="rounded-xl bg-background/50 border border-border/50 p-4 text-center">
@@ -416,7 +416,7 @@ export default function IncomeStatementPage() {
             </div>
 
             {/* Monthly Revenue & Net Profit Trend */}
-            <div className="rounded-2xl border border-border bg-card p-5">
+            <div className="rounded-2xl border border-border bg-card p-5 output-panel">
               <h3 className="font-semibold text-sm mb-3">Monthly Revenue & Net Profit Trend</h3>
               <ReactECharts
                 style={{ height: 260 }}
@@ -435,7 +435,7 @@ export default function IncomeStatementPage() {
             </div>
 
             {/* P&L Composition Donut */}
-            <div className="rounded-2xl border border-border bg-card p-5">
+            <div className="rounded-2xl border border-border bg-card p-5 output-panel">
               <h3 className="font-semibold text-sm mb-3">Annual P&L Composition</h3>
               <ReactECharts
                 style={{ height: 240 }}
@@ -457,7 +457,7 @@ export default function IncomeStatementPage() {
             </div>
 
             {/* Margin Comparison Bar */}
-            <div className="rounded-2xl border border-border bg-card p-5">
+            <div className="rounded-2xl border border-border bg-card p-5 output-panel">
               <h3 className="font-semibold text-sm mb-3">Annual Margins</h3>
               <ReactECharts
                 style={{ height: 180 }}
@@ -481,7 +481,7 @@ export default function IncomeStatementPage() {
 
             {/* Quarterly Revenue Comparison */}
             {Object.keys(results.quarters).length > 0 && (
-              <div className="rounded-2xl border border-border bg-card p-5">
+              <div className="rounded-2xl border border-border bg-card p-5 output-panel">
                 <h3 className="font-semibold text-sm mb-3">Quarterly Revenue vs Profit</h3>
                 <ReactECharts
                   style={{ height: 220 }}
@@ -501,7 +501,7 @@ export default function IncomeStatementPage() {
             )}
 
             {/* Expense Waterfall */}
-            <div className="rounded-2xl border border-border bg-card p-5">
+            <div className="rounded-2xl border border-border bg-card p-5 output-panel">
               <h3 className="font-semibold text-sm mb-3">Revenue to Net Profit Waterfall</h3>
               <ReactECharts
                 style={{ height: 220 }}
@@ -535,7 +535,7 @@ export default function IncomeStatementPage() {
               />
             </div>
 
-            <div className="rounded-2xl border border-border bg-card p-6">
+            <div className="rounded-2xl border border-border bg-card p-6 output-panel">
               <h2 className="font-semibold mb-3">Months Coverage</h2>
               <div className="grid grid-cols-6 gap-2">
                 {MONTHS_ORDER.map((m) => {
@@ -571,7 +571,7 @@ export default function IncomeStatementPage() {
             )}
           </div>
 
-          <div className="rounded-2xl border border-border bg-card p-6">
+          <div className="rounded-2xl border border-border bg-card p-6 output-panel">
             <h3 className="font-semibold mb-4">Quick Numbers</h3>
             <div className="space-y-3">
               <div className="flex justify-between text-sm">

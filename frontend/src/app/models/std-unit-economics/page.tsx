@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ArrowLeft, Users, Save, RotateCcw } from "lucide-react";
@@ -76,6 +76,23 @@ export default function StdUnitEconomicsPage() {
     markDirty();
   };
 
+  const activeMonthRef = useRef(activeMonth);
+  useEffect(() => {
+    const leaving = activeMonthRef.current;
+    activeMonthRef.current = activeMonth;
+    const leavingIdx = MONTHS_ORDER.indexOf(leaving);
+    if (leavingIdx < 0 || leavingIdx >= MONTHS_ORDER.length - 1) return;
+    const nextMonth = MONTHS_ORDER[leavingIdx + 1];
+    if (nextMonth !== activeMonth) return;
+    const leavingTotal = Number(results.monthlyData[leaving]?.["Total Customers"] ?? 0);
+    if (!leavingTotal || leavingTotal <= 0) return;
+    setMonthData((prev) => ({
+      ...prev,
+      [nextMonth]: { ...prev[nextMonth], "Customers at the beginning": leavingTotal },
+    } as Record<string, Record<string, number>>));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeMonth]);
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
       e.preventDefault();
@@ -119,7 +136,7 @@ export default function StdUnitEconomicsPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-8">
-      <Link href="/models" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
+      <Link href="/models?tier=standard" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
         <ArrowLeft className="h-4 w-4" /> Back to Models
       </Link>
 
@@ -171,7 +188,7 @@ export default function StdUnitEconomicsPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6">
         {/* Inputs */}
-        <div className="rounded-2xl border border-border bg-card p-5" data-inputs>
+        <div className="rounded-2xl border border-border bg-card p-5 output-panel" data-inputs>
           <h3 className="font-semibold text-sm mb-4">{activeMonth} Inputs</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {INPUT_FIELDS.map((field) => {
@@ -207,7 +224,7 @@ export default function StdUnitEconomicsPage() {
 
         {/* Results sidebar */}
         <div className="space-y-4 h-fit sticky top-8">
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">{activeMonth} Results</h3>
             {cur ? (
               <div className="space-y-2 text-xs">
@@ -238,7 +255,7 @@ export default function StdUnitEconomicsPage() {
       {results.status.length > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
           {/* CAC vs LTV Trend */}
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">CAC vs LTV Trend</h3>
             <ReactECharts
               style={{ height: 240 }}
@@ -257,7 +274,7 @@ export default function StdUnitEconomicsPage() {
           </div>
 
           {/* Churn & Growth Trend */}
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">Churn & Growth Rates</h3>
             <ReactECharts
               style={{ height: 240 }}
@@ -276,7 +293,7 @@ export default function StdUnitEconomicsPage() {
           </div>
 
           {/* LTV/CAC Ratio Bar */}
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
             <h3 className="font-semibold text-sm mb-3">LTV/CAC Ratio by Month</h3>
             <ReactECharts
               style={{ height: 220 }}
@@ -301,7 +318,7 @@ export default function StdUnitEconomicsPage() {
           {(() => {
             const last = results.status[results.status.length - 1];
             return (
-              <div className="rounded-2xl border border-border bg-card p-5">
+              <div className="rounded-2xl border border-border bg-card p-5 output-panel">
                 <h3 className="font-semibold text-sm mb-3">Latest Month KPI Radar</h3>
                 <ReactECharts
                   style={{ height: 240 }}
