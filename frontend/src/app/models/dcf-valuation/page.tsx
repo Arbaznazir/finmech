@@ -45,6 +45,7 @@ export default function DCFValuationPage() {
 
   const handleCalculate = () => {
     setResults(calculateDCF(inputs));
+    persistState();
   };
 
   const handleReset = () => {

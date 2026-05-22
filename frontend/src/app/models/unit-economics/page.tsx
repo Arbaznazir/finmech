@@ -90,6 +90,7 @@ export default function UnitEconomicsPage() {
     const result = calculateUnitEconomics(monthsData);
     setResults(result);
     setActiveTab("monthly");
+    persistState();
   }, [monthsData]);
 
   const handleReset = () => {

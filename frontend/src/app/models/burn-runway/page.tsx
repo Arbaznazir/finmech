@@ -92,6 +92,7 @@ export default function BurnRunwayPage() {
     const result = calculateBurnRunway(monthsData, openingCash);
     setResults(result);
     setActiveTab("monthly");
+    persistState();
   }, [monthsData, openingCash]);
 
   const handleReset = () => {

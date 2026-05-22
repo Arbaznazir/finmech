@@ -53,6 +53,7 @@ export default function CapTablePage() {
     if (validSH.length === 0) return;
     const result = buildCapTable(validSH, rounds, exitValue > 0 ? exitValue : undefined);
     setResults(result);
+    persistState();
   };
 
   const handleReset = () => {

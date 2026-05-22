@@ -534,6 +534,98 @@ function generateCharts(calc: Calculation): string {
     }
   }
 
+  // ── Cash Flow Statement (monthlyData with CFO/CFI/CFF/Ending Cash) ──
+  if (slug === "cash-flow-statement" && md) {
+    const savedMonths = Object.keys(md).filter((m) => Object.values(md[m] || {}).some((v) => Number(v) !== 0));
+    if (savedMonths.length > 0) {
+      const months = savedMonths;
+      // CFO/CFI/CFF stacked bar
+      const cfoVals = months.map((m) => Number(md[m]?.["Net Cash Flow from Operating Activities (CFO)"]) || 0);
+      const cfiVals = months.map((m) => Number(md[m]?.["Cash Flow from Investing Activities (CFI)"]) || 0);
+      const cffVals = months.map((m) => Number(md[m]?.["Cash Flow from Financing Activities (CFF)"]) || 0);
+      if (cfoVals.some((v) => v !== 0) || cfiVals.some((v) => v !== 0) || cffVals.some((v) => v !== 0)) {
+        charts.push(svgLineChart(months,
+          [{ name: "CFO", values: cfoVals, color: "#22d3ee" },
+           { name: "CFI", values: cfiVals, color: "#a78bfa" },
+           { name: "CFF", values: cffVals, color: "#f59e0b" }],
+          "Monthly CFO, CFI & CFF"));
+      }
+      // Ending Cash line
+      const endingVals = months.map((m) => Number(md[m]?.["Ending Cash"]) || 0);
+      if (endingVals.some((v) => v !== 0)) {
+        charts.push(svgLineChart(months,
+          [{ name: "Ending Cash", values: endingVals, color: "#22d3ee" }],
+          "Ending Cash Trend"));
+      }
+      // Net Cash Flow bar
+      const netVals = months.map((m) => Number(md[m]?.["Net Cash Flow"]) || 0);
+      if (netVals.some((v) => v !== 0)) {
+        charts.push(svgBarChart(months, netVals, "#34d399", "Monthly Net Cash Flow"));
+      }
+      // Annual composition donut
+      const annual = out?.annual as Record<string, number> | undefined;
+      if (annual) {
+        const cfSegs = [
+          { name: "CFO", value: Math.abs(Number(annual["Net Cash Flow from Operating Activities (CFO)"]) || 0), color: "#22d3ee" },
+          { name: "CFI", value: Math.abs(Number(annual["Cash Flow from Investing Activities (CFI)"]) || 0), color: "#a78bfa" },
+          { name: "CFF", value: Math.abs(Number(annual["Cash Flow from Financing Activities (CFF)"]) || 0), color: "#f59e0b" },
+        ].filter((s) => s.value > 0);
+        if (cfSegs.length > 1) charts.push(svgDonutChart(cfSegs, "Annual Cash Flow Composition"));
+      }
+    }
+  }
+
+  // ── Cashflow Ops (sub-model of Cash Flow Statement) ──
+  if (slug === "cashflow-ops" && md) {
+    const cfMonths = Object.keys(md).filter((m) => Object.values(md[m] || {}).some((v) => Number(v) !== 0));
+    if (cfMonths.length > 0) {
+      // CFO/CFI/CFF lines
+      const cfoVals = cfMonths.map((m) => Number(md[m]?.["Net Cash Flow from Operating Activities (CFO)"]) || 0);
+      const cfiVals = cfMonths.map((m) => Number(md[m]?.["Cash Flow from Investing Activities (CFI)"]) || 0);
+      const cffVals = cfMonths.map((m) => Number(md[m]?.["Cash Flow from Financing Activities (CFF)"]) || 0);
+      if (cfoVals.some((v) => v !== 0) || cfiVals.some((v) => v !== 0) || cffVals.some((v) => v !== 0)) {
+        charts.push(svgLineChart(cfMonths,
+          [{ name: "CFO", values: cfoVals, color: "#22d3ee" },
+           { name: "CFI", values: cfiVals, color: "#a78bfa" },
+           { name: "CFF", values: cffVals, color: "#f59e0b" }],
+          "Monthly CFO, CFI & CFF"));
+      }
+      // Ending Cash line
+      const endingVals = cfMonths.map((m) => Number(md[m]?.["Closing Balance"]) || 0);
+      if (endingVals.some((v) => v !== 0)) {
+        charts.push(svgLineChart(cfMonths,
+          [{ name: "Closing Balance", values: endingVals, color: "#22d3ee" }],
+          "Closing Balance Trend"));
+      }
+      // Net Cash Flow bar
+      const netVals = cfMonths.map((m) => Number(md[m]?.["Net Cash Flow"]) || 0);
+      if (netVals.some((v) => v !== 0)) {
+        charts.push(svgBarChart(cfMonths, netVals, "#34d399", "Monthly Net Cash Flow"));
+      }
+    }
+  }
+
+  // ── Consolidated CFO (sub-model of Cash Flow Statement) ──
+  if (slug === "consolidated-cfo" && md) {
+    const cfoMonths = Object.keys(md);
+    if (cfoMonths.length > 0) {
+      // CFO/PAT trend
+      const patVals = cfoMonths.map((m) => Number(md[m]?.cfoPat) || 0);
+      if (patVals.some((v) => v !== 0)) {
+        charts.push(svgLineChart(cfoMonths,
+          [{ name: "CFO/PAT", values: patVals, color: "#f59e0b" }],
+          "CFO/PAT Ratio Trend"));
+      }
+      // Ending Cash trend
+      const endVals = cfoMonths.map((m) => Number(md[m]?.endingCash) || 0);
+      if (endVals.some((v) => v !== 0)) {
+        charts.push(svgLineChart(cfoMonths,
+          [{ name: "Ending Cash", values: endVals, color: "#22d3ee" }],
+          "Ending Cash Trend"));
+      }
+    }
+  }
+
   // ── Flat outputs: all model types ──────────────────────────────────────────
   if (!md) {
     const inp = calc.inputs as Record<string, any>;
@@ -1101,7 +1193,7 @@ function HistoryCharts({ outputs, inputs, modelSlug }: { outputs: Record<string,
   const charts = useMemo(() => {
     const md = outputs?.monthlyData as Record<string, any> | undefined;
     const hasStatus = Array.isArray(outputs?.status) && (outputs.status as any[]).length > 0;
-    if (!md && !hasStatus && !modelSlug.includes("break-even") && !modelSlug.includes("business-snapshot") && !modelSlug.includes("costing-model") && !modelSlug.includes("revenue-model") && !modelSlug.includes("know-your-numbers") && !modelSlug.includes("cap-table") && !modelSlug.includes("dcf") && !modelSlug.includes("funding-model") && modelSlug !== "income-statement") return [];
+    if (!md && !hasStatus && !modelSlug.includes("break-even") && !modelSlug.includes("business-snapshot") && !modelSlug.includes("costing-model") && !modelSlug.includes("revenue-model") && !modelSlug.includes("know-your-numbers") && !modelSlug.includes("cap-table") && !modelSlug.includes("dcf") && !modelSlug.includes("funding-model") && modelSlug !== "income-statement" && modelSlug !== "cash-flow-statement" && modelSlug !== "cashflow-ops" && modelSlug !== "consolidated-cfo") return [];
     // Find which months have any data
     const savedMonths = !md ? [] : Object.keys(md).filter((m) =>
       Object.values(md[m] || {}).some((v) => Number(v) !== 0)
@@ -1676,6 +1768,162 @@ function HistoryCharts({ outputs, inputs, modelSlug }: { outputs: Record<string,
               { value: gmPct, itemStyle: { color: "#60a5fa", borderRadius: [0,4,4,0] } },
             ]}],
           }});
+        }
+      }
+
+      // Cash Flow Statement (monthlyData + status)
+      if (modelSlug === "cash-flow-statement" && md) {
+        const cfMonths = savedMonths.length > 0 ? savedMonths : Object.keys(md);
+        if (cfMonths.length > 0) {
+          const PIE_CF = { trigger: "item" as const, backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 10 } };
+          // CFO/CFI/CFF line chart
+          const cfoData = cfMonths.map(m => Number(md[m]?.["Net Cash Flow from Operating Activities (CFO)"]) || 0);
+          const cfiData = cfMonths.map(m => Number(md[m]?.["Cash Flow from Investing Activities (CFI)"]) || 0);
+          const cffData = cfMonths.map(m => Number(md[m]?.["Cash Flow from Financing Activities (CFF)"]) || 0);
+          if (cfoData.some(v => v !== 0) || cfiData.some(v => v !== 0) || cffData.some(v => v !== 0)) {
+            result.push({ title: "Monthly CFO, CFI & CFF", option: {
+              tooltip: TIP, legend: { data: ["CFO","CFI","CFF"], textStyle: { color: "#aaa", fontSize: 9 }, top: 0 },
+              grid: { top: 28, right: 8, bottom: 28, left: 54 },
+              xAxis: { type: "category", data: cfMonths, axisLabel: { color: "#888", fontSize: 9 }, axisLine: { lineStyle: { color: "#333" } } },
+              yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 9, formatter: FMT }, splitLine: { lineStyle: { color: "#222" } } },
+              series: [
+                { name: "CFO", type: "line", smooth: true, data: cfoData, lineStyle: { color: "#22d3ee", width: 2 }, itemStyle: { color: "#22d3ee" }, symbol: "circle", symbolSize: 4 },
+                { name: "CFI", type: "line", smooth: true, data: cfiData, lineStyle: { color: "#a78bfa", width: 2 }, itemStyle: { color: "#a78bfa" }, symbol: "circle", symbolSize: 4 },
+                { name: "CFF", type: "line", smooth: true, data: cffData, lineStyle: { color: "#f59e0b", width: 2 }, itemStyle: { color: "#f59e0b" }, symbol: "circle", symbolSize: 4 },
+              ],
+            }});
+          }
+          // Ending Cash trend
+          const endingData = cfMonths.map(m => Number(md[m]?.["Ending Cash"]) || 0);
+          if (endingData.some(v => v !== 0)) {
+            result.push({ title: "Ending Cash Trend", option: {
+              tooltip: TIP,
+              grid: { top: 10, right: 8, bottom: 28, left: 54 },
+              xAxis: { type: "category", data: cfMonths, axisLabel: { color: "#888", fontSize: 9 }, axisLine: { lineStyle: { color: "#333" } } },
+              yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 9, formatter: FMT }, splitLine: { lineStyle: { color: "#222" } } },
+              series: [{ type: "line", smooth: true, data: endingData, lineStyle: { color: "#22d3ee", width: 2 }, areaStyle: { color: { type: "linear", x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: "rgba(34,211,238,0.3)" }, { offset: 1, color: "rgba(34,211,238,0)" }] } }, itemStyle: { color: "#22d3ee" }, symbol: "circle", symbolSize: 4 }],
+            }});
+          }
+          // Net Cash Flow bar
+          const netData = cfMonths.map(m => Number(md[m]?.["Net Cash Flow"]) || 0);
+          if (netData.some(v => v !== 0)) {
+            result.push({ title: "Monthly Net Cash Flow", option: {
+              tooltip: TIP,
+              grid: { top: 10, right: 8, bottom: 28, left: 54 },
+              xAxis: { type: "category", data: cfMonths, axisLabel: { color: "#888", fontSize: 9 }, axisLine: { lineStyle: { color: "#333" } } },
+              yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 9, formatter: FMT }, splitLine: { lineStyle: { color: "#222" } } },
+              series: [{ type: "bar", data: netData.map(v => ({ value: v, itemStyle: { color: v >= 0 ? "#34d399" : "#ef4444", borderRadius: [3,3,0,0] } })) }],
+            }});
+          }
+          // Annual composition donut
+          const annualCF = outputs.annual as Record<string, number> | undefined;
+          if (annualCF) {
+            const cfSegs = [
+              { name: "CFO", value: Math.abs(Number(annualCF["Net Cash Flow from Operating Activities (CFO)"]) || 0), color: "#22d3ee" },
+              { name: "CFI", value: Math.abs(Number(annualCF["Cash Flow from Investing Activities (CFI)"]) || 0), color: "#a78bfa" },
+              { name: "CFF", value: Math.abs(Number(annualCF["Cash Flow from Financing Activities (CFF)"]) || 0), color: "#f59e0b" },
+            ].filter(s => s.value > 0);
+            if (cfSegs.length > 1) result.push({ title: "Annual Cash Flow Composition", option: {
+              tooltip: PIE_CF,
+              series: [{ type: "pie", radius: ["40%","70%"], center: ["50%","50%"], label: { color: "#aaa", fontSize: 9 },
+                data: cfSegs.map(s => ({ name: s.name, value: s.value, itemStyle: { color: s.color } })),
+              }],
+            }});
+          }
+        }
+      }
+
+      // Cashflow Ops (sub-model of Cash Flow Statement)
+      if (modelSlug === "cashflow-ops" && md) {
+        const cfMonths = savedMonths.length > 0 ? savedMonths : Object.keys(md);
+        if (cfMonths.length > 0) {
+          // CFO/CFI/CFF lines
+          const cfoData = cfMonths.map(m => Number(md[m]?.["Net Cash Flow from Operating Activities (CFO)"]) || 0);
+          const cfiData = cfMonths.map(m => Number(md[m]?.["Cash Flow from Investing Activities (CFI)"]) || 0);
+          const cffData = cfMonths.map(m => Number(md[m]?.["Cash Flow from Financing Activities (CFF)"]) || 0);
+          if (cfoData.some(v => v !== 0) || cfiData.some(v => v !== 0) || cffData.some(v => v !== 0)) {
+            result.push({ title: "Monthly CFO, CFI & CFF", option: {
+              tooltip: TIP, legend: { data: ["CFO","CFI","CFF"], textStyle: { color: "#aaa", fontSize: 9 }, top: 0 },
+              grid: { top: 28, right: 8, bottom: 28, left: 54 },
+              xAxis: { type: "category", data: cfMonths, axisLabel: { color: "#888", fontSize: 9 }, axisLine: { lineStyle: { color: "#333" } } },
+              yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 9, formatter: FMT }, splitLine: { lineStyle: { color: "#222" } } },
+              series: [
+                { name: "CFO", type: "line", smooth: true, data: cfoData, lineStyle: { color: "#22d3ee", width: 2 }, itemStyle: { color: "#22d3ee" }, symbol: "circle", symbolSize: 4 },
+                { name: "CFI", type: "line", smooth: true, data: cfiData, lineStyle: { color: "#a78bfa", width: 2 }, itemStyle: { color: "#a78bfa" }, symbol: "circle", symbolSize: 4 },
+                { name: "CFF", type: "line", smooth: true, data: cffData, lineStyle: { color: "#f59e0b", width: 2 }, itemStyle: { color: "#f59e0b" }, symbol: "circle", symbolSize: 4 },
+              ],
+            }});
+          }
+          // Closing Balance trend
+          const closingData = cfMonths.map(m => Number(md[m]?.["Closing Balance"]) || 0);
+          if (closingData.some(v => v !== 0)) {
+            result.push({ title: "Closing Balance Trend", option: {
+              tooltip: TIP,
+              grid: { top: 10, right: 8, bottom: 28, left: 54 },
+              xAxis: { type: "category", data: cfMonths, axisLabel: { color: "#888", fontSize: 9 }, axisLine: { lineStyle: { color: "#333" } } },
+              yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 9, formatter: FMT }, splitLine: { lineStyle: { color: "#222" } } },
+              series: [{ type: "line", smooth: true, data: closingData, lineStyle: { color: "#22d3ee", width: 2 }, areaStyle: { color: { type: "linear", x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: "rgba(34,211,238,0.3)" }, { offset: 1, color: "rgba(34,211,238,0)" }] } }, itemStyle: { color: "#22d3ee" }, symbol: "circle", symbolSize: 4 }],
+            }});
+          }
+          // Net Cash Flow bar
+          const netCFData = cfMonths.map(m => Number(md[m]?.["Net Cash Flow"]) || 0);
+          if (netCFData.some(v => v !== 0)) {
+            result.push({ title: "Monthly Net Cash Flow", option: {
+              tooltip: TIP,
+              grid: { top: 10, right: 8, bottom: 28, left: 54 },
+              xAxis: { type: "category", data: cfMonths, axisLabel: { color: "#888", fontSize: 9 }, axisLine: { lineStyle: { color: "#333" } } },
+              yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 9, formatter: FMT }, splitLine: { lineStyle: { color: "#222" } } },
+              series: [{ type: "bar", data: netCFData.map(v => ({ value: v, itemStyle: { color: v >= 0 ? "#34d399" : "#ef4444", borderRadius: [3,3,0,0] } })) }],
+            }});
+          }
+        }
+      }
+
+      // Consolidated CFO (sub-model of Cash Flow Statement)
+      if (modelSlug === "consolidated-cfo" && md) {
+        const cfoMonths = Object.keys(md);
+        const cfData = md as Record<string, any>;
+        if (cfoMonths.length > 0) {
+          // CFO/PAT trend
+          const patData = cfoMonths.map(m => Number(cfData[m]?.cfoPat) || 0);
+          if (patData.some(v => v !== 0)) {
+            result.push({ title: "CFO/PAT Ratio Trend", option: {
+              tooltip: TIP,
+              grid: { top: 15, right: 15, bottom: 30, left: 50 },
+              xAxis: { type: "category", data: cfoMonths, axisLabel: { color: "#888", fontSize: 9 }, axisLine: { lineStyle: { color: "#333" } } },
+              yAxis: { type: "value", min: 0, max: 2, axisLabel: { color: "#888", fontSize: 9 }, splitLine: { lineStyle: { color: "#222" } } },
+              series: [{
+                type: "line", smooth: true, data: patData,
+                lineStyle: { color: "#f59e0b", width: 2 },
+                itemStyle: { color: (params: any) => {
+                  const val = params.value as number;
+                  if (val > 1.2) return "#34d399";
+                  if (val > 0.8) return "#f59e0b";
+                  if (val > 0) return "#fb923c";
+                  return "#ef4444";
+                }},
+                symbol: "circle", symbolSize: 8,
+                markLine: {
+                  data: [
+                    { yAxis: 1.2, lineStyle: { color: "#34d399", type: "dashed" }, label: { show: false } },
+                    { yAxis: 0.8, lineStyle: { color: "#f59e0b", type: "dashed" }, label: { show: false } },
+                  ],
+                  symbol: "none",
+                },
+              }],
+            }});
+          }
+          // Ending Cash trend
+          const endingData = cfoMonths.map(m => Number(cfData[m]?.endingCash) || 0);
+          if (endingData.some(v => v !== 0)) {
+            result.push({ title: "Ending Cash Trend", option: {
+              tooltip: TIP,
+              grid: { top: 10, right: 8, bottom: 28, left: 54 },
+              xAxis: { type: "category", data: cfoMonths, axisLabel: { color: "#888", fontSize: 9 }, axisLine: { lineStyle: { color: "#333" } } },
+              yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 9, formatter: FMT }, splitLine: { lineStyle: { color: "#222" } } },
+              series: [{ type: "line", smooth: true, data: endingData, lineStyle: { color: "#f59e0b", width: 2 }, areaStyle: { color: { type: "linear", x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: "rgba(245,158,11,0.3)" }, { offset: 1, color: "rgba(245,158,11,0)" }] } }, itemStyle: { color: "#f59e0b" }, symbol: "circle", symbolSize: 4 }],
+            }});
+          }
         }
       }
 

@@ -43,6 +43,7 @@ export default function RevenueModelPage() {
     const r = calculateRevenue(inputs);
     setResults(r);
     saveModelResults("revenue-model", r);
+    persistState();
   };
 
   const handleReset = () => { setInputs(createEmptyRevenueInputs()); setResults(null); clearModelResults("revenue-model"); clearPersisted(); };

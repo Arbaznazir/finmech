@@ -68,6 +68,7 @@ export default function InvCapTablePage() {
       shareholderCount: result.shareholders.length,
       roundCount: result.rounds.length,
     });
+    persistState();
   };
 
   const handleReset = () => {

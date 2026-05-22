@@ -65,7 +65,10 @@ export default function BreakEvenBasicPage() {
     markDirty();
   };
 
-  const handleCalculate = () => setResults(calculateBreakEvenFree(inputs));
+  const handleCalculate = () => {
+    setResults(calculateBreakEvenFree(inputs));
+    persistState();
+  };
 
   const handleReset = () => { setInputs(createEmptyBreakEvenInputs()); setResults(null); clearPersisted(); };
 

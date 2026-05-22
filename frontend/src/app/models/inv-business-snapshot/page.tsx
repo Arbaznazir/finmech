@@ -180,6 +180,7 @@ export default function InvBusinessSnapshotPage() {
     const r = calculateSnapshot(inputs);
     setResults(r);
     saveModelResults("inv-business-snapshot", { ...inputs, ...r });
+    persistState();
   };
 
   const handleReset = () => {

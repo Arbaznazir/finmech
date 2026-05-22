@@ -63,6 +63,7 @@ export default function InvDCFValuationPage() {
       equityValue: r.equityValue,
       wacc: r.wacc,
     });
+    persistState();
   };
 
   const handleReset = () => {

@@ -70,6 +70,7 @@ export default function InvBreakEvenPage() {
       contributionPerUnit: r.contributionPerUnit,
       fixedCostMonthly: r.fixedCostMonthly,
     });
+    persistState();
   };
 
   const handleReset = () => {

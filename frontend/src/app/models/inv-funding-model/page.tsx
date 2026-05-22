@@ -122,6 +122,7 @@ export default function InvFundingModelPage() {
       fundingRequired: r.summary.fundingRequired,
       totalFunding: r.summary.totalFunding,
     });
+    persistState();
   };
 
   const handleReset = () => {

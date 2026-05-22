@@ -45,6 +45,7 @@ export default function BreakEvenPage() {
   const handleCalculate = () => {
     if (inputs.pricePerUnit <= 0) return;
     setResults(calculateBreakEven(inputs));
+    persistState();
   };
 
   const handleReset = () => {

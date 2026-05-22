@@ -170,6 +170,7 @@ export default function StdBusinessSnapshotPage() {
     const r = calculateSnapshot(inputs);
     setResults(r);
     saveModelResults("std-business-snapshot", { ...inputs, ...r });
+    persistState();
   };
 
   const handleReset = () => {

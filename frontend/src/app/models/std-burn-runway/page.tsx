@@ -163,18 +163,33 @@ export default function StdBurnRunwayPage() {
         )}
       </div>
 
-      {/* Opening Cash */}
-      <div className="rounded-2xl border border-border bg-card p-5 mb-6">
-        <label className="flex items-center text-xs text-muted-foreground mb-1">Opening Cash Balance<FieldHint hint={{ what: "Cash and bank balance at the start of this period.", why: "Runway = Opening Cash ÷ Monthly Net Burn. Your starting cash sets how long you can operate.", how: "From your bank statement on 1st April or start of the financial year." }} /></label>
-        <div className="relative max-w-xs">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">$</span>
-          <input type="number" value={openingCash || ""}
-            onChange={(e) => { setOpeningCash(parseFloat(e.target.value) || 0); markDirty(); }}
-            placeholder="100000"
-            className="w-full rounded-lg border border-border bg-input pl-7 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-          />
+      {/* Opening Cash (April only) OR Cumulative Cash tile (other months) */}
+      {activeMonth === "April" ? (
+        <div className="rounded-2xl border border-border bg-card p-5 mb-6">
+          <label className="flex items-center text-xs text-muted-foreground mb-1">Opening Cash Balance (Year Start)<FieldHint hint={{ what: "Cash and bank balance at the start of the financial year.", why: "Runway = Cumulative Cash ÷ Avg Net Burn. Your starting cash sets how long you can operate.", how: "From your bank statement on 1st April or start of the financial year." }} /></label>
+          <div className="relative max-w-xs">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">$</span>
+            <input type="number" value={openingCash || ""}
+              onChange={(e) => { setOpeningCash(parseFloat(e.target.value) || 0); markDirty(); }}
+              placeholder="100000"
+              className="w-full rounded-lg border border-border bg-input pl-7 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+            />
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="rounded-2xl border border-border bg-card p-5 mb-6 flex items-center justify-between">
+          <div>
+            <p className="text-xs text-muted-foreground mb-0.5">Cumulative Cash (end of previous month)</p>
+            <p className="text-lg font-bold">
+              {formatCurrency(results.monthlyData[MONTHS_ORDER[MONTHS_ORDER.indexOf(activeMonth) - 1]]?.["Cumulative Cash"] ?? openingCash)}
+            </p>
+          </div>
+          <div className="text-xs text-muted-foreground text-right">
+            <p>Opening Cash (Year Start)</p>
+            <p className="font-medium text-foreground">{formatCurrency(openingCash)}</p>
+          </div>
+        </div>
+      )}
 
       {/* Month tabs */}
       <div className="flex gap-1 overflow-x-auto pb-2 mb-6">

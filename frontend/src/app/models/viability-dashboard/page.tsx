@@ -70,6 +70,7 @@ export default function ViabilityDashboardPage() {
   const handleCalculate = () => {
     if (inputs.averagePricePerUnit <= 0) return;
     setResults(calculateViability(inputs));
+    persistState();
   };
 
   const handleReset = () => {

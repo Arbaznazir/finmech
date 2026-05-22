@@ -10,7 +10,7 @@ const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
 import api from "@/lib/api";
-import { loadModelResults, saveModelResults, clearModelResults } from "@/lib/model-link";
+import { saveModelResults, clearModelResults } from "@/lib/model-link";
 import { useSavedModel } from "@/lib/use-saved-model";
 import {
   calculateBreakEven,
@@ -24,8 +24,6 @@ export default function StdBreakEvenPage() {
     pricePerUnit: 0, variableCostPerUnit: 0, fixedCostMonthly: 0, unitsSoldForProjection: 0,
   });
   const [results, setResults] = useState<BreakEvenResults | null>(null);
-  const [linkedFields, setLinkedFields] = useState<Set<string>>(new Set());
-
   const { save: persistState, reset: clearPersisted, saving, saved, markDirty } = useSavedModel({
     modelSlug: "std-break-even",
     onLoad: (data: Record<string, unknown>) => {
@@ -34,19 +32,7 @@ export default function StdBreakEvenPage() {
     getState: useCallback(() => ({ inputs }), [inputs]),
   });
 
-  useEffect(() => {
-    hydrate();
-    const hub = loadModelResults<Record<string, number>>("std-common-utility");
-    const linked = new Set<string>();
-    if (hub) {
-      setInputs((prev) => {
-        const next = { ...prev };
-        if (hub.totalFixedCosts > 0) { next.fixedCostMonthly = hub.totalFixedCosts; linked.add("fixedCostMonthly"); }
-        return next;
-      });
-    }
-    setLinkedFields(linked);
-  }, [hydrate]);
+  useEffect(() => { hydrate(); }, [hydrate]);
 
   const handleChange = (key: keyof BreakEvenInputs, value: string) => {
     setInputs((prev) => ({ ...prev, [key]: parseFloat(value) || 0 }));
@@ -62,11 +48,12 @@ export default function StdBreakEvenPage() {
       contributionPerUnit: r.contributionPerUnit,
       fixedCostMonthly: r.fixedCostMonthly,
     });
+    persistState();
   };
 
   const handleReset = () => {
     setInputs({ pricePerUnit: 0, variableCostPerUnit: 0, fixedCostMonthly: 0, unitsSoldForProjection: 0 });
-    setResults(null); setLinkedFields(new Set());
+    setResults(null);
     clearModelResults("std-break-even");
     clearPersisted();
   };
@@ -79,10 +66,10 @@ export default function StdBreakEvenPage() {
     } catch (err) { console.error("Failed to save:", err); }
   };
 
-  const fields: { key: keyof BreakEvenInputs; label: string; prefix: string; linked?: boolean }[] = [
+  const fields: { key: keyof BreakEvenInputs; label: string; prefix: string }[] = [
     { key: "pricePerUnit", label: "Price Per Unit", prefix: "$" },
     { key: "variableCostPerUnit", label: "Variable Cost Per Unit", prefix: "$" },
-    { key: "fixedCostMonthly", label: "Fixed Cost (Monthly)", prefix: "$", linked: true },
+    { key: "fixedCostMonthly", label: "Fixed Cost (Monthly)", prefix: "$" },
     { key: "unitsSoldForProjection", label: "Units Sold (for projection)", prefix: "#" },
   ];
 
@@ -102,10 +89,7 @@ export default function StdBreakEvenPage() {
               <h1 className="text-2xl font-bold">Break-even Model</h1>
               <span className="rounded px-2 py-0.5 text-xs font-medium uppercase bg-primary/10 text-primary">Standard</span>
             </div>
-            <p className="text-muted-foreground mt-1">
-              Linked with Common Utility for integrated analysis.
-              <span className="text-blue-400 ml-2 text-xs font-medium">&larr; Common Utility</span>
-            </p>
+            <p className="text-muted-foreground mt-1">Calculate your break-even point, contribution margin and profit projection.</p>
           </div>
         </div>
         {results && user && (
@@ -123,20 +107,12 @@ export default function StdBreakEvenPage() {
           <div className="space-y-4">
             {fields.map((field) => (
               <div key={field.key}>
-                <div className="flex items-center gap-2 mb-1">
-                  <label className="flex items-center text-xs text-muted-foreground">{field.label}{FIELD_HINTS[field.key] && <FieldHint hint={FIELD_HINTS[field.key]} />}</label>
-                  {field.linked && linkedFields.has(field.key) && (
-                    <span className="text-[10px] rounded px-1.5 py-0.5 text-success bg-success/10">
-                      Auto-filled
-                    </span>
-                  )}
-                </div>
+                <label className="flex items-center text-xs text-muted-foreground mb-1">{field.label}{FIELD_HINTS[field.key] && <FieldHint hint={FIELD_HINTS[field.key]} />}</label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">{field.prefix}</span>
                   <input type="number" step="0.01" data-field={field.key}
                     value={inputs[field.key] || ""}
                     onChange={(e) => handleChange(field.key, e.target.value)}
-                    disabled={linkedFields.has(field.key)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
                         e.preventDefault();
@@ -147,7 +123,7 @@ export default function StdBreakEvenPage() {
                       }
                     }}
                     placeholder="0"
-                    className={`w-full rounded-lg border border-border pl-7 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 ${linkedFields.has(field.key) ? "bg-muted text-muted-foreground cursor-not-allowed opacity-60" : "bg-input"}`}
+                    className="w-full rounded-lg border border-border bg-input pl-7 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
                   />
                 </div>
               </div>

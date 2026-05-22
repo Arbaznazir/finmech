@@ -62,6 +62,7 @@ export default function StdCapTablePage() {
       shareholderCount: result.shareholders.length,
       roundCount: result.rounds.length,
     });
+    persistState();
   };
 
   const handleReset = () => {

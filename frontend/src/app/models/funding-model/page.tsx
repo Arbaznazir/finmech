@@ -62,6 +62,7 @@ export default function FundingModelPage() {
     const result = calculateFunding(monthsData, openingCash, contingencyPct);
     setResults(result);
     setActiveTab("monthly");
+    persistState();
   }, [monthsData, openingCash, contingencyPct]);
 
   const handleReset = () => {

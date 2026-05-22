@@ -54,6 +54,7 @@ export default function CostingModelPage() {
     const r = calculateCosting(inputs);
     setResults(r);
     saveModelResults("costing-model", r);
+    persistState();
   };
 
   const handleReset = () => { setInputs(createEmptyCostingInputs()); setResults(null); setRevenueLinked(false); clearModelResults("costing-model"); clearPersisted(); };

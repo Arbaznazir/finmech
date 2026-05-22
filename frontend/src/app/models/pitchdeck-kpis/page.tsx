@@ -71,6 +71,7 @@ export default function PitchDeckKPIsPage() {
 
   const handleCalculate = () => {
     setResults(calculatePitchDeck(inputs));
+    persistState();
   };
 
   const handleReset = () => {

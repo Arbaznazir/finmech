@@ -25,6 +25,17 @@ router.post('/', authenticate, async (req, res) => {
       },
     });
 
+    // Keep only the latest 60 calculations total per user across all models
+    const all = await prisma.calculation.findMany({
+      where: { userId: req.user.id },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true },
+    });
+    if (all.length > 60) {
+      const idsToDelete = all.slice(60).map(c => c.id);
+      await prisma.calculation.deleteMany({ where: { id: { in: idsToDelete } } });
+    }
+
     res.status(201).json(calculation);
   } catch (err) {
     console.error(err);

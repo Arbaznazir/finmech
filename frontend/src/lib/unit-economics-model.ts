@@ -120,14 +120,14 @@ export function calculateUnitEconomics(
     const activeCustomers = Number(m["Total Active Customers (Monthly)"]);
     m["ARPU"] = activeCustomers > 0 ? salesRevenue / activeCustomers : 0;
 
-    const churnRate = custBegin > 0 ? churned / custBegin : 0;
+    const churnRate = totalCustomers > 0 ? churned / totalCustomers : 0;
     m["Churn Rate %"] = churnRate * 100;
     m["LTV"] = churnRate > 0 ? Number(m["ARPU"]) / churnRate : 0;
 
     m["CAC Payback Period (Months)"] = Number(m["ARPU"]) > 0 ? Number(m["CAC"]) / Number(m["ARPU"]) : 0;
 
     m["Growth Rate %"] = custBegin > 0
-      ? ((newCust - churned) / custBegin) * 100
+      ? ((totalCustomers - custBegin) / custBegin) * 100
       : 0;
 
     prevCustomers = totalCustomers;

@@ -70,6 +70,7 @@ export default function BalanceSheetPage() {
     const result = calculateBalanceSheet(monthsData);
     setResults(result);
     setActiveTab("monthly");
+    persistState();
   }, [monthsData]);
 
   const handleReset = () => {

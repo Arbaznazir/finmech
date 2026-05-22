@@ -41,7 +41,10 @@ export default function KnowYourNumbersPage() {
     markDirty();
   };
 
-  const handleCalculate = () => setResults(calculateChecklist(answers));
+  const handleCalculate = () => {
+    setResults(calculateChecklist(answers));
+    persistState();
+  };
 
   const handleReset = () => { setAnswers({}); setResults(null); clearPersisted(); };
 

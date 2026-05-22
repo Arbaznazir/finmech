@@ -13,7 +13,6 @@ interface UseSavedModelOptions<T> {
 
 /**
  * Hook that loads saved model state on mount and provides save/reset helpers.
- *
  * Usage:
  *   const { save, reset, saving, saved, loaded } = useSavedModel({
  *     modelSlug: "inv-burn-runway",
@@ -33,7 +32,6 @@ export function useSavedModel<T = Record<string, unknown>>({
   onLoadRef.current = onLoad;
   const getStateRef = useRef(getState);
   getStateRef.current = getState;
-
   useEffect(() => {
     let cancelled = false;
     loadSavedState<T>(modelSlug).then((data) => {

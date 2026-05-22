@@ -81,11 +81,7 @@ const TIER_META: Record<Tier, {
 function ModelsPageInner() {
   const { user, hydrate } = useAuth();
   const searchParams = useSearchParams();
-  const [openTier, setOpenTier] = useState<Tier | null>(() => {
-    if (typeof window === "undefined") return null;
-    const t = new URLSearchParams(window.location.search).get("tier");
-    return TIER_ORDER.includes(t as Tier) ? (t as Tier) : null;
-  });
+  const [openTier, setOpenTier] = useState<Tier | null>(null);
   const [search, setSearch] = useState("");
 
   useEffect(() => { hydrate(); }, [hydrate]);
