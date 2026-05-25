@@ -1,15 +1,24 @@
 // ========================================================
-// BREAK-EVEN MODEL – FULL EXCEL MATCH
-// Parameters → Contribution, Break-even Units & Revenue
-// + full projection table
+// BREAK-EVEN MODEL – MONTHLY VERSION (Apr-Mar)
+// Month-by-month → Price, Variable Cost, Fixed Cost, Units
+// + break-even calculation per month
 // ========================================================
 
-export interface BreakEvenInputs {
+export const MONTHS_ORDER = [
+  "Apr", "May", "Jun", "Jul", "Aug", "Sep",
+  "Oct", "Nov", "Dec", "Jan", "Feb", "Mar",
+] as const;
+
+export type MonthName = (typeof MONTHS_ORDER)[number];
+
+export interface BreakEvenMonthInputs {
   pricePerUnit: number;
   variableCostPerUnit: number;
   fixedCostMonthly: number;
   unitsSoldForProjection: number;
 }
+
+export type BreakEvenInputs = Record<string, BreakEvenMonthInputs>;
 
 export interface ProjectionRow {
   units: number;
@@ -18,14 +27,10 @@ export interface ProjectionRow {
   profit: number;
 }
 
-export interface BreakEvenResults {
-  pricePerUnit: number;
-  variableCostPerUnit: number;
-  fixedCostMonthly: number;
+export interface BreakEvenMonthResults extends BreakEvenMonthInputs {
   contributionPerUnit: number;
   breakEvenUnits: number;
   breakEvenRevenue: number;
-  unitsSoldForProjection: number;
   revenueAtUnits: number;
   totalCostAtUnits: number;
   profitAtUnits: number;
@@ -34,7 +39,27 @@ export interface BreakEvenResults {
   projection: ProjectionRow[];
 }
 
-export function calculateBreakEven(inputs: BreakEvenInputs): BreakEvenResults {
+export interface BreakEvenResults {
+  monthlyData: Record<string, BreakEvenMonthResults>;
+  monthsAdded: string[];
+  annual: {
+    totalRevenue: number;
+    totalVariableCosts: number;
+    totalFixedCosts: number;
+    totalProfit: number;
+  };
+}
+
+export function createEmptyMonthInputs(): BreakEvenMonthInputs {
+  return {
+    pricePerUnit: 0,
+    variableCostPerUnit: 0,
+    fixedCostMonthly: 0,
+    unitsSoldForProjection: 0,
+  };
+}
+
+function calculateMonth(inputs: BreakEvenMonthInputs): BreakEvenMonthResults {
   const { pricePerUnit, variableCostPerUnit, fixedCostMonthly, unitsSoldForProjection } = inputs;
 
   const contributionPerUnit = pricePerUnit - variableCostPerUnit;
@@ -57,7 +82,6 @@ export function calculateBreakEven(inputs: BreakEvenInputs): BreakEvenResults {
 
   // Projection table
   const projectionUnits = [10, 20, 50, 100, 125, 150, 200, 300, 500, 700, 1000];
-  // Also add breakEvenUnits and unitsSoldForProjection if not already present
   if (breakEvenUnits !== Infinity && !projectionUnits.includes(breakEvenUnits)) {
     projectionUnits.push(breakEvenUnits);
   }
@@ -74,18 +98,49 @@ export function calculateBreakEven(inputs: BreakEvenInputs): BreakEvenResults {
   }));
 
   return {
-    pricePerUnit,
-    variableCostPerUnit,
-    fixedCostMonthly,
+    ...inputs,
     contributionPerUnit,
     breakEvenUnits,
     breakEvenRevenue,
-    unitsSoldForProjection: units,
     revenueAtUnits,
     totalCostAtUnits,
     profitAtUnits,
     isProfitable: profitAtUnits > 0,
     status: profitAtUnits >= 0 ? "GREEN" : "RED",
     projection,
+  };
+}
+
+export function calculateBreakEven(monthData: Record<string, BreakEvenMonthInputs>): BreakEvenResults {
+  const monthlyData: Record<string, BreakEvenMonthResults> = {};
+  const monthsAdded: string[] = [];
+  let totalRevenue = 0;
+  let totalVariableCosts = 0;
+  let totalFixedCosts = 0;
+  let totalProfit = 0;
+
+  MONTHS_ORDER.forEach((month) => {
+    const inputs = monthData[month];
+    if (!inputs) return;
+    
+    monthsAdded.push(month);
+    const result = calculateMonth(inputs);
+    monthlyData[month] = result;
+    
+    totalRevenue += result.revenueAtUnits;
+    totalVariableCosts += inputs.variableCostPerUnit * inputs.unitsSoldForProjection;
+    totalFixedCosts += inputs.fixedCostMonthly;
+    totalProfit += result.profitAtUnits;
+  });
+
+  return {
+    monthlyData,
+    monthsAdded,
+    annual: {
+      totalRevenue,
+      totalVariableCosts,
+      totalFixedCosts,
+      totalProfit,
+    },
   };
 }
