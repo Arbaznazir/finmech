@@ -14,42 +14,41 @@ import api from "@/lib/api";
 import { useSavedModel } from "@/lib/use-saved-model";
 import {
   calculateBreakEven,
-  type BreakEvenInputs,
-  type BreakEvenResults,
+  createEmptyMonthInputs,
+  type BreakEvenMonthInputs,
+  type BreakEvenMonthResults,
 } from "@/lib/breakeven-model";
 
 export default function BreakEvenPage() {
   const { user, hydrate } = useAuth();
-  const [inputs, setInputs] = useState<BreakEvenInputs>({
-    pricePerUnit: 0,
-    variableCostPerUnit: 0,
-    fixedCostMonthly: 0,
-    unitsSoldForProjection: 0,
-  });
-  const [results, setResults] = useState<BreakEvenResults | null>(null);
+  const [inputs, setInputs] = useState<BreakEvenMonthInputs>(createEmptyMonthInputs());
+  const [results, setResults] = useState<BreakEvenMonthResults | null>(null);
   const { save: persistState, reset: clearPersisted, saving, saved, markDirty } = useSavedModel({
     modelSlug: "break-even-pro",
     onLoad: (data: Record<string, unknown>) => {
-      if (data.inputs) setInputs(data.inputs as BreakEvenInputs);
+      if (data.inputs) setInputs(data.inputs as BreakEvenMonthInputs);
     },
     getState: useCallback(() => ({ inputs }), [inputs]),
   });
 
   useEffect(() => { hydrate(); }, [hydrate]);
 
-  const handleChange = (key: keyof BreakEvenInputs, value: string) => {
+  const handleChange = (key: keyof BreakEvenMonthInputs, value: string) => {
     setInputs((prev) => ({ ...prev, [key]: parseFloat(value) || 0 }));
     markDirty();
   };
 
   const handleCalculate = () => {
     if (inputs.pricePerUnit <= 0) return;
-    setResults(calculateBreakEven(inputs));
+    // Wrap single month in monthly structure for calculation
+    const monthlyData = { "Apr": inputs };
+    const fullResults = calculateBreakEven(monthlyData);
+    setResults(fullResults.monthlyData["Apr"] || null);
     persistState();
   };
 
   const handleReset = () => {
-    setInputs({ pricePerUnit: 0, variableCostPerUnit: 0, fixedCostMonthly: 0, unitsSoldForProjection: 0 });
+    setInputs(createEmptyMonthInputs());
     setResults(null);
     clearPersisted();
   };
@@ -74,7 +73,7 @@ export default function BreakEvenPage() {
     }
   };
 
-  const fields: { key: keyof BreakEvenInputs; label: string; prefix: string; placeholder: string }[] = [
+  const fields: { key: keyof BreakEvenMonthInputs; label: string; prefix: string; placeholder: string }[] = [
     { key: "pricePerUnit", label: "Selling Price per Unit", prefix: "$", placeholder: "3000" },
     { key: "variableCostPerUnit", label: "Variable Cost per Unit", prefix: "$", placeholder: "2295" },
     { key: "fixedCostMonthly", label: "Fixed Cost (Monthly)", prefix: "$", placeholder: "87500" },

@@ -14,22 +14,21 @@ import { loadModelResults, saveModelResults, clearModelResults } from "@/lib/mod
 import { useSavedModel } from "@/lib/use-saved-model";
 import {
   calculateBreakEven,
-  type BreakEvenInputs,
-  type BreakEvenResults,
+  createEmptyMonthInputs,
+  type BreakEvenMonthInputs,
+  type BreakEvenMonthResults,
 } from "@/lib/breakeven-model";
 
 export default function InvBreakEvenPage() {
   const { user, hydrate } = useAuth();
-  const [inputs, setInputs] = useState<BreakEvenInputs>({
-    pricePerUnit: 0, variableCostPerUnit: 0, fixedCostMonthly: 0, unitsSoldForProjection: 0,
-  });
-  const [results, setResults] = useState<BreakEvenResults | null>(null);
+  const [inputs, setInputs] = useState<BreakEvenMonthInputs>(createEmptyMonthInputs());
+  const [results, setResults] = useState<BreakEvenMonthResults | null>(null);
   const [linkedFields, setLinkedFields] = useState<Set<string>>(new Set());
 
   const { save: persistState, reset: clearPersisted, saving, saved, markDirty } = useSavedModel({
     modelSlug: "inv-break-even",
     onLoad: (data: Record<string, unknown>) => {
-      if (data.inputs) setInputs(data.inputs as BreakEvenInputs);
+      if (data.inputs) setInputs(data.inputs as BreakEvenMonthInputs);
     },
     getState: useCallback(() => ({ inputs }), [inputs]),
   });
@@ -62,19 +61,22 @@ export default function InvBreakEvenPage() {
   }, [hydrate]);
 
   const handleCalculate = () => {
-    const r = calculateBreakEven(inputs);
-    setResults(r);
+    const monthlyData = { "Apr": inputs };
+    const r = calculateBreakEven(monthlyData);
+    const monthResult = r.monthlyData["Apr"];
+    if (!monthResult) return;
+    setResults(monthResult);
     saveModelResults("inv-break-even", {
-      breakEvenUnits: r.breakEvenUnits,
-      breakEvenRevenue: r.breakEvenRevenue,
-      contributionPerUnit: r.contributionPerUnit,
-      fixedCostMonthly: r.fixedCostMonthly,
+      breakEvenUnits: monthResult.breakEvenUnits,
+      breakEvenRevenue: monthResult.breakEvenRevenue,
+      contributionPerUnit: monthResult.contributionPerUnit,
+      fixedCostMonthly: monthResult.fixedCostMonthly,
     });
     persistState();
   };
 
   const handleReset = () => {
-    setInputs({ pricePerUnit: 0, variableCostPerUnit: 0, fixedCostMonthly: 0, unitsSoldForProjection: 0 });
+    setInputs(createEmptyMonthInputs());
     setResults(null); setLinkedFields(new Set());
     clearModelResults("inv-break-even");
     clearPersisted();
@@ -88,7 +90,7 @@ export default function InvBreakEvenPage() {
     } catch (err) { console.error("Failed to save:", err); }
   };
 
-  const fields: { key: keyof BreakEvenInputs; label: string; prefix: string; linked?: boolean }[] = [
+  const fields: { key: keyof BreakEvenMonthInputs; label: string; prefix: string; linked?: boolean }[] = [
     { key: "pricePerUnit", label: "Price Per Unit", prefix: "$" },
     { key: "variableCostPerUnit", label: "Variable Cost Per Unit", prefix: "$" },
     { key: "fixedCostMonthly", label: "Fixed Cost (Monthly)", prefix: "$", linked: linkedFields.has("fixedCostMonthly") },
