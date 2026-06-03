@@ -11,6 +11,7 @@ import calculationRoutes from './routes/calculations.js';
 import userRoutes from './routes/user.js';
 import savedModelRoutes from './routes/saved-models.js';
 import paymentRoutes from './routes/payments.js';
+import adminRoutes from './routes/admin.js';
 
 const app = express();
 
@@ -29,6 +30,7 @@ app.use('/api/calculations', calculationRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/saved-models', savedModelRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/admin', adminRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
