@@ -10,9 +10,8 @@ const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
 import api from "@/lib/api";
-import { loadModelResults, saveModelResults, clearModelResults } from "@/lib/model-link";
+import { clearModelResults } from "@/lib/model-link";
 import { useSavedModel } from "@/lib/use-saved-model";
-import { type RevenueResults } from "@/lib/revenue-free-model";
 import {
   FIXED_COST_FIELDS,
   VARIABLE_COST_FIELDS,
@@ -26,7 +25,6 @@ export default function CostingModelPage() {
   const { user, hydrate } = useAuth();
   const [inputs, setInputs] = useState<CostingInputs>(createEmptyCostingInputs());
   const [results, setResults] = useState<CostingResults | null>(null);
-  const [revenueLinked, setRevenueLinked] = useState(false);
 
   const { save: persistState, reset: clearPersisted, saving, saved, markDirty } = useSavedModel({
     modelSlug: "costing-model",
@@ -38,11 +36,6 @@ export default function CostingModelPage() {
 
   useEffect(() => {
     hydrate();
-    const rev = loadModelResults<RevenueResults>("revenue-model");
-    if (rev && rev.monthlyUnitsSold > 0) {
-      setInputs((prev) => ({ ...prev, unitsSold: rev.monthlyUnitsSold }));
-      setRevenueLinked(true);
-    }
   }, [hydrate]);
 
   const handleChange = (key: keyof CostingInputs, value: string) => {
@@ -53,11 +46,10 @@ export default function CostingModelPage() {
   const handleCalculate = () => {
     const r = calculateCosting(inputs);
     setResults(r);
-    saveModelResults("costing-model", r);
     persistState();
   };
 
-  const handleReset = () => { setInputs(createEmptyCostingInputs()); setResults(null); setRevenueLinked(false); clearModelResults("costing-model"); clearPersisted(); };
+  const handleReset = () => { setInputs(createEmptyCostingInputs()); setResults(null); clearModelResults("costing-model"); clearPersisted(); };
 
   const handleSave = async () => {
     if (!user || !results) return;
@@ -85,7 +77,6 @@ export default function CostingModelPage() {
             </div>
             <p className="text-muted-foreground mt-1">
               Fixed + variable cost breakdown.
-              <span className="text-blue-400 ml-2 text-xs font-medium">← Revenue Model (units) | → Break-even (costs)</span>
             </p>
           </div>
         </div>
@@ -103,12 +94,7 @@ export default function CostingModelPage() {
         <div className="space-y-6" data-inputs>
           {/* Units Sold */}
           <div className="rounded-2xl border border-border bg-card p-6 output-panel">
-            <div className="flex items-center gap-2 mb-3">
-              <h2 className="font-semibold text-sm">Units Sold (Monthly)</h2>
-              <span className={`text-xs rounded px-2 py-0.5 ${revenueLinked ? "text-success bg-success/10" : "text-blue-400 bg-blue-400/10"}`}>
-                {revenueLinked ? "✓ Auto-filled from Revenue Model" : "Can come from Revenue Model"}
-              </span>
-            </div>
+            <h2 className="font-semibold text-sm mb-3">Units Sold (Monthly)</h2>
             <div className="relative max-w-xs">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">#</span>
               <input
@@ -274,15 +260,6 @@ export default function CostingModelPage() {
               />
             </div>
 
-            <div className="rounded-xl bg-blue-400/5 border border-blue-400/20 p-4">
-              <p className="text-xs text-blue-400 font-medium mb-2 flex items-center gap-1.5">
-                <ArrowRight className="h-3.5 w-3.5" /> Data flows to Break-even
-              </p>
-              <p className="text-xs text-muted-foreground">
-                <code className="bg-background/80 px-1 rounded">variableCostPerUnit = {formatCurrency(results.totalVariableCostPerUnit)}</code><br />
-                <code className="bg-background/80 px-1 rounded">fixedCostMonthly = {formatCurrency(results.totalFixedCosts)}</code>
-              </p>
-            </div>
           </div>
         ) : (
           <div className="flex items-center justify-center rounded-2xl border border-border bg-card min-h-[300px]">

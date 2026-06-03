@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useAuth } from "@/lib/store";
 import { useEffect, useState } from "react";
-import { BarChart3, Menu, X, LogOut, User, ChevronDown } from "lucide-react";
+import { BarChart3, Menu, X, LogOut, User, ChevronDown, CreditCard } from "lucide-react";
 
 export default function Navbar() {
   const { user, logout, hydrate } = useAuth();
@@ -58,6 +58,13 @@ export default function Navbar() {
                       className="flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-muted transition-colors rounded-t-lg"
                     >
                       <BarChart3 className="h-4 w-4" /> Dashboard
+                    </Link>
+                    <Link
+                      href="/billing"
+                      onClick={() => setDropdownOpen(false)}
+                      className="flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-muted transition-colors"
+                    >
+                      <CreditCard className="h-4 w-4" /> Billing & Invoices
                     </Link>
                     <Link
                       href="/history"

@@ -1,0 +1,11 @@
+/opt/homebrew/opt/postgresql@16/bin/pg_ctl -D ~/.postgres_data -l /tmp/postgres.log start
+
+cd /Users/the_ghost/Freelancing/finmech/backend
+export DATABASE_URL="postgresql://postgres:postgres@localhost:5432/finmech?schema=public"
+export PORT=5001
+export JWT_SECRET="finmech-super-secret-key-change-in-production"
+export FRONTEND_URL="http://localhost:3000"
+node --experimental-strip-types src/index.js
+
+cd /Users/the_ghost/Freelancing/finmech/frontend
+npm run dev

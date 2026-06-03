@@ -1,15 +1,16 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Check, Zap } from "lucide-react";
 import { useAuth } from "@/lib/store";
+import { PaymentCheckout } from "@/components/payment-checkout";
 
 const plans = [
   {
     id: "free",
     name: "Free",
-    price: "$0",
+    price: "₹0",
     period: "forever",
     description: "Get started with essential calculators",
     features: [
@@ -22,11 +23,12 @@ const plans = [
     ],
     cta: "Get Started",
     highlighted: false,
+    isSubscription: false,
   },
   {
     id: "standalone",
     name: "Standalone Models",
-    price: "$29",
+    price: "₹2,399",
     period: "per model",
     description: "Professional models — buy only what you need",
     features: [
@@ -45,11 +47,12 @@ const plans = [
     ],
     cta: "View Models",
     highlighted: false,
+    isSubscription: false,
   },
   {
     id: "standard",
     name: "Standard Tool Package",
-    price: "$99",
+    price: "₹99",
     period: "/month",
     description: "Integrated suite with linked models & Common Utility hub",
     features: [
@@ -66,11 +69,12 @@ const plans = [
     ],
     cta: "Start Standard",
     highlighted: true,
+    isSubscription: true,
   },
   {
     id: "investor",
     name: "Investor Grade",
-    price: "$199",
+    price: "₹199",
     period: "/month",
     description: "Complete financial mechanics for fundraising-ready startups",
     features: [
@@ -87,11 +91,13 @@ const plans = [
     ],
     cta: "Go Investor Grade",
     highlighted: false,
+    isSubscription: true,
   },
 ];
 
 export default function PricingPage() {
   const { user, hydrate } = useAuth();
+  const [checkoutPlan, setCheckoutPlan] = useState<"standard" | "investor" | null>(null);
 
   useEffect(() => { hydrate(); }, [hydrate]);
 
@@ -147,9 +153,20 @@ export default function PricingPage() {
                 <div className="block text-center rounded-xl py-2.5 text-sm font-semibold bg-muted text-muted-foreground">
                   Current Plan
                 </div>
+              ) : plan.isSubscription && plan.id !== "free" ? (
+                <button
+                  onClick={() => setCheckoutPlan(plan.id as "standard" | "investor")}
+                  className={`w-full block text-center rounded-xl py-2.5 text-sm font-semibold transition-all ${
+                    plan.highlighted
+                      ? "bg-primary text-primary-foreground hover:bg-accent shadow-lg shadow-primary/25"
+                      : "border border-border hover:bg-muted"
+                  }`}
+                >
+                  {plan.cta}
+                </button>
               ) : (
                 <Link
-                  href={user ? "/dashboard" : "/signup"}
+                  href={user ? "/models" : "/signup"}
                   className={`block text-center rounded-xl py-2.5 text-sm font-semibold transition-all ${
                     plan.highlighted
                       ? "bg-primary text-primary-foreground hover:bg-accent shadow-lg shadow-primary/25"
@@ -172,6 +189,18 @@ export default function PricingPage() {
           </a>
         </p>
       </div>
+
+      {/* Payment Checkout Modal */}
+      {checkoutPlan && (
+        <PaymentCheckout
+          isOpen={true}
+          onClose={() => setCheckoutPlan(null)}
+          plan={checkoutPlan}
+          planName={plans.find(p => p.id === checkoutPlan)?.name || ""}
+          price={checkoutPlan === "standard" ? 99 : 199}
+          period="month"
+        />
+      )}
     </div>
   );
 }

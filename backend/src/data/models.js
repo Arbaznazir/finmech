@@ -1,17 +1,13 @@
 export const MODELS = {
   // ===== FREE TIER =====
-  'break-even-basic': {
-    slug: 'break-even-basic',
-    name: 'Break-even Calculator',
-    description: 'Calculate your break-even point quickly. Know exactly how many units you need to sell to cover your costs.',
+  'break-even-pro': {
+    slug: 'break-even-pro',
+    name: 'Break-even Model',
+    description: 'Contribution per unit, break-even units & revenue with full projection table — exact Excel match.',
     tier: 'free',
     category: 'Profitability',
     icon: 'TrendingUp',
-    fields: [
-      { key: 'fixedCosts', label: 'Total Fixed Costs', type: 'currency', placeholder: '50000' },
-      { key: 'pricePerUnit', label: 'Selling Price Per Unit', type: 'currency', placeholder: '100' },
-      { key: 'variableCostPerUnit', label: 'Variable Cost Per Unit', type: 'currency', placeholder: '40' },
-    ],
+    fields: [],
     calculate: null, // handled on frontend
   },
   'costing-model': {
@@ -158,28 +154,6 @@ export const MODELS = {
     category: 'Financial Statements',
     icon: 'TrendingUp',
     fields: [],
-    calculate: null,
-  },
-  'break-even-pro': {
-    slug: 'break-even-pro',
-    name: 'Break-even Model Pro',
-    description: 'Advanced break-even analysis with multiple products, sensitivity analysis, and scenario modeling.',
-    tier: 'standalone',
-    category: 'Profitability',
-    icon: 'TrendingUp',
-    fields: [
-      { key: 'fixedCosts', label: 'Total Fixed Costs', type: 'currency', placeholder: '100000' },
-      { key: 'products', label: 'Number of Products', type: 'number', placeholder: '3' },
-      { key: 'price1', label: 'Product 1 Price', type: 'currency', placeholder: '100' },
-      { key: 'vc1', label: 'Product 1 Variable Cost', type: 'currency', placeholder: '40' },
-      { key: 'mix1', label: 'Product 1 Sales Mix %', type: 'percent', placeholder: '50' },
-      { key: 'price2', label: 'Product 2 Price', type: 'currency', placeholder: '200' },
-      { key: 'vc2', label: 'Product 2 Variable Cost', type: 'currency', placeholder: '90' },
-      { key: 'mix2', label: 'Product 2 Sales Mix %', type: 'percent', placeholder: '30' },
-      { key: 'price3', label: 'Product 3 Price', type: 'currency', placeholder: '50' },
-      { key: 'vc3', label: 'Product 3 Variable Cost', type: 'currency', placeholder: '20' },
-      { key: 'mix3', label: 'Product 3 Sales Mix %', type: 'percent', placeholder: '20' },
-    ],
     calculate: null,
   },
   'viability-dashboard': {

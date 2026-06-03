@@ -10,7 +10,7 @@ const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
 import api from "@/lib/api";
-import { saveModelResults, clearModelResults } from "@/lib/model-link";
+import { clearModelResults } from "@/lib/model-link";
 import { useSavedModel } from "@/lib/use-saved-model";
 import {
   REVENUE_FIELDS,
@@ -42,7 +42,6 @@ export default function RevenueModelPage() {
   const handleCalculate = () => {
     const r = calculateRevenue(inputs);
     setResults(r);
-    saveModelResults("revenue-model", r);
     persistState();
   };
 
@@ -74,7 +73,6 @@ export default function RevenueModelPage() {
             </div>
             <p className="text-muted-foreground mt-1">
               Calculate monthly &amp; annual revenue from customers, units, and pricing.
-              <span className="text-primary ml-2 text-xs font-medium">Feeds into → Costing &amp; Break-even</span>
             </p>
           </div>
         </div>
@@ -191,16 +189,6 @@ export default function RevenueModelPage() {
               />
             </div>
 
-            {/* Interlink hint */}
-            <div className="rounded-xl bg-blue-400/5 border border-blue-400/20 p-4">
-              <p className="text-xs text-blue-400 font-medium mb-2 flex items-center gap-1.5">
-                <ArrowRight className="h-3.5 w-3.5" /> Data flows to other models
-              </p>
-              <p className="text-xs text-muted-foreground">
-                <strong>Costing Model</strong> receives <code className="bg-background/80 px-1 rounded">monthlyUnitsSold = {results.monthlyUnitsSold}</code><br />
-                <strong>Break-even Model</strong> receives <code className="bg-background/80 px-1 rounded">pricePerUnit = {formatCurrency(results.pricePerUnit)}</code>
-              </p>
-            </div>
           </div>
         ) : (
           <div className="flex items-center justify-center rounded-2xl border border-border bg-card min-h-[300px]">

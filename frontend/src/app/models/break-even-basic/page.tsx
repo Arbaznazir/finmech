@@ -10,10 +10,7 @@ const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
 import api from "@/lib/api";
-import { loadModelResults } from "@/lib/model-link";
 import { useSavedModel } from "@/lib/use-saved-model";
-import { type RevenueResults } from "@/lib/revenue-free-model";
-import { type CostingResults } from "@/lib/costing-free-model";
 import {
   BREAKEVEN_FREE_FIELDS,
   calculateBreakEvenFree,
@@ -26,7 +23,6 @@ export default function BreakEvenBasicPage() {
   const { user, hydrate } = useAuth();
   const [inputs, setInputs] = useState<BreakEvenFreeInputs>(createEmptyBreakEvenInputs());
   const [results, setResults] = useState<BreakEvenFreeResults | null>(null);
-  const [linkedFields, setLinkedFields] = useState<Set<string>>(new Set());
 
   const { save: persistState, reset: clearPersisted, saving, saved, markDirty } = useSavedModel({
     modelSlug: "break-even-basic",
@@ -38,26 +34,6 @@ export default function BreakEvenBasicPage() {
 
   useEffect(() => {
     hydrate();
-    const rev = loadModelResults<RevenueResults>("revenue-model");
-    const cost = loadModelResults<CostingResults>("costing-model");
-    const linked = new Set<string>();
-    setInputs((prev) => {
-      const next = { ...prev };
-      if (rev && rev.pricePerUnit > 0) {
-        next.pricePerUnit = rev.pricePerUnit;
-        linked.add("pricePerUnit");
-      }
-      if (cost && cost.totalVariableCostPerUnit > 0) {
-        next.variableCostPerUnit = cost.totalVariableCostPerUnit;
-        linked.add("variableCostPerUnit");
-      }
-      if (cost && cost.totalFixedCosts > 0) {
-        next.fixedCostMonthly = cost.totalFixedCosts;
-        linked.add("fixedCostMonthly");
-      }
-      return next;
-    });
-    setLinkedFields(linked);
   }, [hydrate]);
 
   const handleChange = (key: keyof BreakEvenFreeInputs, value: string) => {
@@ -98,7 +74,6 @@ export default function BreakEvenBasicPage() {
             </div>
             <p className="text-muted-foreground mt-1">
               Contribution margin, break-even units &amp; revenue, with optional projection.
-              <span className="text-blue-400 ml-2 text-xs font-medium">← Revenue + Costing</span>
             </p>
           </div>
         </div>
@@ -118,14 +93,7 @@ export default function BreakEvenBasicPage() {
           <div className="space-y-4">
             {BREAKEVEN_FREE_FIELDS.map((field) => (
               <div key={field.key}>
-                <div className="flex items-center gap-2 mb-1">
-                  <label className="flex items-center text-xs text-muted-foreground">{field.label}{FIELD_HINTS[field.key] && <FieldHint hint={FIELD_HINTS[field.key]} />}</label>
-                  {field.linked && (
-                    <span className={`text-[10px] rounded px-1.5 py-0.5 ${linkedFields.has(field.key) ? "text-success bg-success/10" : "text-blue-400 bg-blue-400/10"}`}>
-                      {linkedFields.has(field.key) ? "✓ Auto-filled" : "From Revenue / Costing"}
-                    </span>
-                  )}
-                </div>
+                <label className="flex items-center text-xs text-muted-foreground mb-1">{field.label}{FIELD_HINTS[field.key] && <FieldHint hint={FIELD_HINTS[field.key]} />}</label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">{field.prefix}</span>
                   <input

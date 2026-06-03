@@ -1,114 +1,269 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import dynamic from "next/dynamic";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import {
-  ArrowLeft, PieChart, Save, RotateCcw, Plus, Trash2, Play,
+  ArrowLeft, PieChart, RotateCcw, Plus, TrendingUp, Calculator, FileText, Download,
 } from "lucide-react";
-import { FieldHint } from "@/components/FieldHint";
-import { FIELD_HINTS } from "@/lib/field-hints";
-const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
-import api from "@/lib/api";
 import { useSavedModel } from "@/lib/use-saved-model";
-import {
-  buildCapTable,
-  type InitialShareholder,
-  type CapTableResults,
-} from "@/lib/captable-model";
+import { CapTableMechanicsModel, type Round, type ExitResult } from "@/lib/cap-table-mechanics-model";
 
-type TabView = "shareholders" | "rounds" | "exit";
+const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 
-const EMPTY_SHAREHOLDER: InitialShareholder = {
-  name: "", role: "Founder", shares: 0, shareClass: "Common", investment: 0,
-};
+type TabView = "simulation" | "original";
 
-const EMPTY_ROUND = {
-  roundName: "", investmentAmount: 0, pricePerShare: 0, shareClass: "Preferred",
-};
+// Create singleton model instance
+const model = new CapTableMechanicsModel();
 
 export default function CapTablePage() {
   const { user, hydrate } = useAuth();
-  const [shareholders, setShareholders] = useState<InitialShareholder[]>([{ ...EMPTY_SHAREHOLDER }]);
-  const [rounds, setRounds] = useState<{ roundName: string; investmentAmount: number; pricePerShare: number; shareClass: string }[]>([]);
-  const [exitValue, setExitValue] = useState(0);
-  const [results, setResults] = useState<CapTableResults | null>(null);
-  const [activeTab, setActiveTab] = useState<TabView>("shareholders");
-  const { save: persistState, reset: clearPersisted, saving, saved, markDirty } = useSavedModel({
+  const [activeTab, setActiveTab] = useState<TabView>("simulation");
+  
+  // Simulation state
+  const [rounds, setRounds] = useState<Round[]>([]);
+  const [exitValue, setExitValue] = useState(30000000);
+  const [result, setResult] = useState<ExitResult | null>(null);
+  
+  // Add round form
+  const [newRound, setNewRound] = useState({ name: "", preMoney: "", investment: "" });
+  
+  // 7-input quick form
+  const [quickInputs, setQuickInputs] = useState({
+    preSeed: 2000000,
+    invSeed: 500000,
+    preA: 8000000,
+    invA: 3000000,
+    preB: 25000000,
+    invB: 10000000,
+    exitVal: 100000000,
+  });
+
+  const { save: persistState, reset: clearPersisted } = useSavedModel({
     modelSlug: "cap-table",
     onLoad: (data: Record<string, unknown>) => {
-      if (data.shareholders) setShareholders(data.shareholders as InitialShareholder[]);
-      if (Array.isArray(data.rounds)) setRounds(data.rounds as typeof rounds);
+      if (data.rounds) {
+        setRounds(data.rounds as Round[]);
+        // Restore model state
+        model.reset();
+        (data.rounds as Round[]).forEach((r) => {
+          model.addRound(r.roundName, r.preMoney, r.investment);
+        });
+      }
       if (typeof data.exitValue === "number") setExitValue(data.exitValue);
     },
-    getState: useCallback(() => ({ shareholders, rounds, exitValue }), [shareholders, rounds, exitValue]),
+    getState: useCallback(() => ({ rounds, exitValue }), [rounds, exitValue]),
   });
 
   useEffect(() => { hydrate(); }, [hydrate]);
 
-  const handleCalculate = () => {
-    const validSH = shareholders.filter((s) => s.name && s.shares > 0);
-    if (validSH.length === 0) return;
-    const result = buildCapTable(validSH, rounds, exitValue > 0 ? exitValue : undefined);
-    setResults(result);
+  const addRound = () => {
+    if (!newRound.name || !newRound.preMoney || !newRound.investment) return;
+
+    model.addRound(
+      newRound.name,
+      Number(newRound.preMoney),
+      Number(newRound.investment)
+    );
+
+    setRounds([...model.rounds]);
+    setNewRound({ name: "", preMoney: "", investment: "" });
+  };
+
+  const runExit = () => {
+    const res = model.runExit(exitValue);
+    setResult(res);
     persistState();
   };
 
-  const handleReset = () => {
-    setShareholders([{ ...EMPTY_SHAREHOLDER }]);
+  const runQuickCalculate = () => {
+    model.reset();
+    model.addRound("Seed", quickInputs.preSeed, quickInputs.invSeed);
+    model.addRound("Series A", quickInputs.preA, quickInputs.invA);
+    model.addRound("Series B", quickInputs.preB, quickInputs.invB);
+    setRounds([...model.rounds]);
+    setExitValue(quickInputs.exitVal);
+    const res = model.runExit(quickInputs.exitVal);
+    setResult(res);
+    persistState();
+  };
+
+  const loadTemplate = () => {
+    model.reset();
+    model.addRound("Seed", 2000000, 500000);
+    model.addRound("Series A", 8000000, 3000000);
+    model.addRound("Series B", 25000000, 10000000);
+    setRounds([...model.rounds]);
+    setExitValue(100000000);
+    setResult(null);
+  };
+
+  const resetAll = () => {
+    model.reset();
     setRounds([]);
-    setExitValue(0);
-    setResults(null);
+    setResult(null);
+    setExitValue(30000000);
+    setNewRound({ name: "", preMoney: "", investment: "" });
     clearPersisted();
   };
 
-  const handleSave = async () => {
-    if (!user || !results) return;
-    try {
-      await api.post("/calculations", {
-        modelSlug: "cap-table",
-        inputs: { shareholders, rounds, exitValue },
-        outputs: {
-          totalShares: results.totalShares,
-          shareholderCount: results.shareholders.length,
-          roundCount: results.rounds.length,
-          exitValue: results.exit?.exitValue,
+  // PDF Export function
+  const exportToPDF = () => {
+    if (!result) return;
+    
+    const content = `
+CAP TABLE MECHANICS REPORT
+==========================
+
+Generated: ${new Date().toLocaleString()}
+Exit Value: ${formatCurrency(result.exitValue)}
+Total Shares: ${result.totalShares.toLocaleString()}
+
+FINAL OWNERSHIP
+---------------
+${Object.entries(result.ownership).map(([key, pct]) => 
+  `${key}: ${(pct * 100).toFixed(2)}%`
+).join('\n')}
+
+PAYOUT WATERFALL
+----------------
+${Object.entries(result.waterfall).map(([key, data]) => 
+  `${key}: ${formatCurrency(data.payout)} (${data.ownershipPct}%)`
+).join('\n')}
+
+FUNDING ROUNDS
+--------------
+${rounds.map((r, i) => `
+Round ${i + 1}: ${r.roundName}
+  Pre-Money: ${formatCurrency(r.preMoney)}
+  Investment: ${formatCurrency(r.investment)}
+  Post-Money: ${formatCurrency(r.postMoney)}
+  Price/Share: ₹${r.pricePerShare}
+  New Shares: ${r.newShares.toLocaleString()}
+  Total Shares: ${r.totalShares.toLocaleString()}
+`).join('\n')}
+
+---
+FinMech - Cap Table Mechanics
+    `;
+    
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `cap-table-report-${new Date().toISOString().split('T')[0]}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  // Chart options for ownership pie chart
+  const getOwnershipChartOption = () => {
+    if (!result) return {};
+    return {
+      title: {
+        text: 'Final Ownership Distribution',
+        left: 'center',
+        textStyle: { color: '#fff', fontSize: 16 }
+      },
+      tooltip: {
+        trigger: 'item',
+        formatter: '{b}: {d}%'
+      },
+      legend: {
+        orient: 'vertical',
+        left: 'left',
+        textStyle: { color: '#aaa' }
+      },
+      series: [
+        {
+          name: 'Ownership',
+          type: 'pie',
+          radius: ['40%', '70%'],
+          avoidLabelOverlap: false,
+          itemStyle: {
+            borderRadius: 10,
+            borderColor: '#1a1a1a',
+            borderWidth: 2
+          },
+          label: {
+            show: true,
+            formatter: '{b}\n{d}%',
+            color: '#fff'
+          },
+          emphasis: {
+            label: {
+              show: true,
+              fontSize: 14,
+              fontWeight: 'bold'
+            }
+          },
+          data: Object.entries(result.ownership).map(([name, value]) => ({
+            name,
+            value: Number((value * 100).toFixed(2))
+          }))
+        }
+      ]
+    };
+  };
+
+  // Chart options for payout bar chart
+  const getPayoutChartOption = () => {
+    if (!result) return {};
+    return {
+      title: {
+        text: 'Exit Payout Distribution',
+        left: 'center',
+        textStyle: { color: '#fff', fontSize: 16 }
+      },
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: { type: 'shadow' },
+        formatter: (params: any) => {
+          return `${params[0].name}: ${formatCurrency(params[0].value * 100000)}`;
+        }
+      },
+      grid: {
+        left: '3%',
+        right: '4%',
+        bottom: '3%',
+        containLabel: true
+      },
+      xAxis: {
+        type: 'category',
+        data: Object.keys(result.waterfall),
+        axisLabel: { color: '#aaa', rotate: 30 },
+        axisLine: { lineStyle: { color: '#444' } }
+      },
+      yAxis: {
+        type: 'value',
+        axisLabel: { 
+          color: '#aaa',
+          formatter: (value: number) => `₹${value}L`
         },
-      });
-      await persistState();
-    } catch (err) {
-      console.error("Failed to save:", err);
-    }
-  };
-
-  // Shareholder helpers
-  const addShareholder = () => setShareholders((prev) => [...prev, { ...EMPTY_SHAREHOLDER }]);
-  const removeShareholder = (i: number) => setShareholders((prev) => prev.filter((_, idx) => idx !== i));
-  const updateShareholder = (i: number, key: keyof InitialShareholder, value: string | number) => {
-    setShareholders((prev) => {
-      const next = [...prev];
-      next[i] = { ...next[i], [key]: value };
-      return next;
-    });
-    markDirty();
-  };
-
-  // Round helpers
-  const addRound = () => setRounds((prev) => [...prev, { ...EMPTY_ROUND }]);
-  const removeRound = (i: number) => setRounds((prev) => prev.filter((_, idx) => idx !== i));
-  const updateRound = (i: number, key: string, value: string | number) => {
-    setRounds((prev) => {
-      const next = [...prev];
-      next[i] = { ...next[i], [key]: value };
-      return next;
-    });
-    markDirty();
+        axisLine: { lineStyle: { color: '#444' } },
+        splitLine: { lineStyle: { color: '#333' } }
+      },
+      series: [
+        {
+          name: 'Payout',
+          type: 'bar',
+          barWidth: '60%',
+          data: Object.values(result.waterfall).map(w => Math.round(w.payout / 100000)),
+          itemStyle: {
+            color: '#22c55e',
+            borderRadius: [8, 8, 0, 0]
+          }
+        }
+      ]
+    };
   };
 
   return (
-    <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-8">
+    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
       <Link href="/models?tier=standalone" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
         <ArrowLeft className="h-4 w-4" /> Back to Models
@@ -131,456 +286,395 @@ export default function CapTablePage() {
             </p>
           </div>
         </div>
-        {results && user && (
-          <button
-            onClick={handleSave}
-            disabled={saving || saved}
-            className={`inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-              saved ? "bg-success/10 text-success" : "bg-primary/10 text-primary hover:bg-primary/20"
-            }`}
-          >
-            <Save className="h-4 w-4" />
-            {saved ? "Saved!" : saving ? "Saving..." : "Save Results"}
-          </button>
-        )}
+        <button onClick={resetAll} className="rounded-lg border border-border px-4 py-2 text-sm hover:bg-muted transition-colors inline-flex items-center gap-2">
+          <RotateCcw className="h-4 w-4" /> Reset
+        </button>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 mb-6 rounded-xl bg-card border border-border p-1 overflow-x-auto">
-        {(["shareholders", "rounds", "exit"] as TabView[]).map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`rounded-lg px-4 py-2 text-sm font-medium capitalize transition-colors whitespace-nowrap ${
-              activeTab === tab ? "bg-primary text-primary-foreground" : "hover:bg-muted text-muted-foreground"
-            }`}
-          >
-            {tab === "shareholders" ? "Shareholders" : tab === "rounds" ? "Funding Rounds" : "Exit Waterfall"}
-          </button>
-        ))}
+      {/* Tabs - Two clean tabs as requested */}
+      <div className="flex gap-2 mb-8">
+        <button
+          onClick={() => setActiveTab("simulation")}
+          className={`flex items-center gap-2 px-6 py-3 font-medium rounded-t-xl border-b-2 transition-all ${
+            activeTab === "simulation" 
+              ? "bg-primary text-primary-foreground border-primary" 
+              : "bg-card border-transparent text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <Calculator className="h-4 w-4" />
+          Round Simulation & Exit
+        </button>
+        <button
+          onClick={() => setActiveTab("original")}
+          className={`flex items-center gap-2 px-6 py-3 font-medium rounded-t-xl border-b-2 transition-all ${
+            activeTab === "original" 
+              ? "bg-primary text-primary-foreground border-primary" 
+              : "bg-card border-transparent text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <FileText className="h-4 w-4" />
+          Original Cap Table
+        </button>
       </div>
 
-      {/* ============ SHAREHOLDERS TAB ============ */}
-      {activeTab === "shareholders" && (
-        <div className="space-y-6">
-          <div className="rounded-2xl border border-border bg-card p-6 output-panel">
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="font-semibold">Initial Shareholders (Promoters)</h2>
-              <button onClick={addShareholder} className="inline-flex items-center gap-1.5 rounded-lg bg-primary/10 text-primary px-3 py-1.5 text-xs font-medium hover:bg-primary/20 transition-colors">
-                <Plus className="h-3.5 w-3.5" /> Add Shareholder
-              </button>
-            </div>
-
-            <div className="space-y-3">
-              {shareholders.map((sh, i) => (
-                <div key={i} className="grid grid-cols-1 sm:grid-cols-[1fr_100px_120px_100px_120px_36px] gap-2 items-end rounded-lg bg-background/50 border border-border/50 p-3">
-                  <div>
-                    <label className="flex items-center text-xs text-muted-foreground mb-1">Name<FieldHint hint={{ what: "Full legal name of the shareholder — founder, co-founder, employee, or advisor.", why: "Identifies each person's stake in the company for legal and ROC filings.", how: "Use name matching PAN card. Directors listed in Form DIR-12 with ROC." }} /></label>
-                    <input
-                      type="text"
-                      value={sh.name}
-                      onChange={(e) => updateShareholder(i, "name", e.target.value)}
-                      placeholder="Promoter 1"
-                      className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-                    />
-                  </div>
-                  <div>
-                    <label className="flex items-center text-xs text-muted-foreground mb-1">Role</label>
-                    <select
-                      value={sh.role}
-                      onChange={(e) => updateShareholder(i, "role", e.target.value)}
-                      className="w-full rounded-lg border border-border bg-input px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-                    >
-                      <option value="Founder">Founder</option>
-                      <option value="Co-Founder">Co-Founder</option>
-                      <option value="Advisor">Advisor</option>
-                      <option value="Employee">Employee</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="flex items-center text-xs text-muted-foreground mb-1">Shares{FIELD_HINTS["shares"] && <FieldHint hint={FIELD_HINTS["shares"]} />}</label>
-                    <input
-                      type="number"
-                      value={sh.shares || ""}
-                      onChange={(e) => updateShareholder(i, "shares", parseFloat(e.target.value) || 0)}
-                      placeholder="250000"
-                      className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-                    />
-                  </div>
-                  <div>
-                    <label className="flex items-center text-xs text-muted-foreground mb-1">Class</label>
-                    <select
-                      value={sh.shareClass}
-                      onChange={(e) => updateShareholder(i, "shareClass", e.target.value)}
-                      className="w-full rounded-lg border border-border bg-input px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-                    >
-                      <option value="Common">Common</option>
-                      <option value="Preferred">Preferred</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="flex items-center text-xs text-muted-foreground mb-1">Investment{FIELD_HINTS["investment"] && <FieldHint hint={FIELD_HINTS["investment"]} />}</label>
-                    <input
-                      type="number"
-                      value={sh.investment || ""}
-                      onChange={(e) => updateShareholder(i, "investment", parseFloat(e.target.value) || 0)}
-                      placeholder="500000"
-                      className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-                    />
-                  </div>
-                  <button
-                    onClick={() => removeShareholder(i)}
-                    disabled={shareholders.length <= 1}
-                    className="rounded-lg border border-border p-2 hover:bg-danger/10 hover:text-danger transition-colors disabled:opacity-30"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex gap-3">
-            <button
-              onClick={() => { handleCalculate(); setActiveTab("rounds"); }}
-              disabled={shareholders.every((s) => !s.name || s.shares <= 0)}
-              className="rounded-lg bg-primary px-8 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-accent transition-colors disabled:opacity-50"
-            >
-              Next: Funding Rounds
-            </button>
-            <button onClick={handleReset} className="rounded-lg border border-border px-4 py-2.5 text-sm hover:bg-muted transition-colors">
-              <RotateCcw className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ============ ROUNDS TAB ============ */}
-      {activeTab === "rounds" && (
-        <div className="space-y-6">
-          <div className="rounded-2xl border border-border bg-card p-6 output-panel">
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="font-semibold">Funding Rounds</h2>
-              <button onClick={addRound} className="inline-flex items-center gap-1.5 rounded-lg bg-primary/10 text-primary px-3 py-1.5 text-xs font-medium hover:bg-primary/20 transition-colors">
-                <Plus className="h-3.5 w-3.5" /> Add Round
-              </button>
-            </div>
-
-            {rounds.length === 0 && (
-              <div className="text-center py-10 text-muted-foreground text-sm">
-                <p>No funding rounds added yet.</p>
-                <p className="text-xs mt-1">Add a round or skip to exit waterfall.</p>
-              </div>
-            )}
-
-            <div className="space-y-3">
-              {rounds.map((round, i) => (
-                <div key={i} className="grid grid-cols-1 sm:grid-cols-[1fr_140px_140px_100px_36px] gap-2 items-end rounded-lg bg-background/50 border border-border/50 p-3">
-                  <div>
-                    <label className="flex items-center text-xs text-muted-foreground mb-1">Round Name{FIELD_HINTS["roundName"] && <FieldHint hint={FIELD_HINTS["roundName"]} />}</label>
-                    <input
-                      type="text"
-                      value={round.roundName}
-                      onChange={(e) => updateRound(i, "roundName", e.target.value)}
-                      placeholder="Angel Investor"
-                      className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-                    />
-                  </div>
-                  <div>
-                    <label className="flex items-center text-xs text-muted-foreground mb-1">Investment ($){FIELD_HINTS["investmentAmount"] && <FieldHint hint={FIELD_HINTS["investmentAmount"]} />}</label>
-                    <input
-                      type="number"
-                      value={round.investmentAmount || ""}
-                      onChange={(e) => updateRound(i, "investmentAmount", parseFloat(e.target.value) || 0)}
-                      placeholder="1000000"
-                      className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-                    />
-                  </div>
-                  <div>
-                    <label className="flex items-center text-xs text-muted-foreground mb-1">Price/Share ($){FIELD_HINTS["pricePerShare"] && <FieldHint hint={FIELD_HINTS["pricePerShare"]} />}</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={round.pricePerShare || ""}
-                      onChange={(e) => updateRound(i, "pricePerShare", parseFloat(e.target.value) || 0)}
-                      placeholder="2.00"
-                      className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-                    />
-                  </div>
-                  <div>
-                    <label className="flex items-center text-xs text-muted-foreground mb-1">Class</label>
-                    <select
-                      value={round.shareClass}
-                      onChange={(e) => updateRound(i, "shareClass", e.target.value)}
-                      className="w-full rounded-lg border border-border bg-input px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-                    >
-                      <option value="Preferred">Preferred</option>
-                      <option value="Common">Common</option>
-                    </select>
-                  </div>
-                  <button
-                    onClick={() => removeRound(i)}
-                    className="rounded-lg border border-border p-2 hover:bg-danger/10 hover:text-danger transition-colors"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Ownership Table */}
-          {(() => {
-            const preview = buildCapTable(
-              shareholders.filter((s) => s.name && s.shares > 0),
-              rounds.filter((r) => r.roundName && r.investmentAmount > 0 && r.pricePerShare > 0),
-            );
-            return preview.shareholders.length > 0 ? (
-              <div className="rounded-2xl border border-border bg-card overflow-hidden">
-                <div className="px-4 py-3 border-b border-border bg-background/50">
-                  <h3 className="font-semibold text-sm">Current Ownership</h3>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-border bg-background/50">
-                        <th className="text-left px-4 py-2.5 text-muted-foreground font-semibold">Name</th>
-                        <th className="text-left px-4 py-2.5 text-muted-foreground font-semibold">Role</th>
-                        <th className="text-right px-4 py-2.5 text-muted-foreground font-semibold">Shares</th>
-                        <th className="text-left px-4 py-2.5 text-muted-foreground font-semibold">Class</th>
-                        <th className="text-right px-4 py-2.5 text-muted-foreground font-semibold">Ownership</th>
-                        <th className="text-right px-4 py-2.5 text-muted-foreground font-semibold">Investment</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {preview.shareholders.map((s, i) => (
-                        <tr key={i} className="border-b border-border/30">
-                          <td className="px-4 py-2.5 font-medium">{s.name}</td>
-                          <td className="px-4 py-2.5 text-muted-foreground">{s.role}</td>
-                          <td className="text-right px-4 py-2.5">{s.shares.toLocaleString()}</td>
-                          <td className="px-4 py-2.5">
-                            <span className={`text-xs px-2 py-0.5 rounded ${s.shareClass === "Common" ? "bg-blue-400/10 text-blue-400" : "bg-purple-400/10 text-purple-400"}`}>
-                              {s.shareClass}
-                            </span>
-                          </td>
-                          <td className="text-right px-4 py-2.5 font-semibold">{s.ownershipPct.toFixed(1)}%</td>
-                          <td className="text-right px-4 py-2.5">{formatCurrency(s.investment)}</td>
-                        </tr>
-                      ))}
-                      <tr className="bg-background/50 font-semibold">
-                        <td className="px-4 py-2.5">Total</td>
-                        <td className="px-4 py-2.5" />
-                        <td className="text-right px-4 py-2.5">{preview.totalShares.toLocaleString()}</td>
-                        <td className="px-4 py-2.5" />
-                        <td className="text-right px-4 py-2.5">100.0%</td>
-                        <td className="text-right px-4 py-2.5">{formatCurrency(preview.shareholders.reduce((s, sh) => s + sh.investment, 0))}</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            ) : null;
-          })()}
-
-          <div className="flex gap-3">
-            <button
-              onClick={() => { handleCalculate(); setActiveTab("exit"); }}
-              className="rounded-lg bg-primary px-8 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-accent transition-colors"
-            >
-              Next: Exit Waterfall
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ============ EXIT TAB ============ */}
-      {activeTab === "exit" && (
-        <div className="space-y-6">
-          <div className="rounded-2xl border border-border bg-card p-6 output-panel">
-            <h2 className="font-semibold mb-4">Exit Scenario</h2>
-            <div className="max-w-sm">
-              <label className="flex items-center text-xs text-muted-foreground mb-1">Exit Value ($){FIELD_HINTS["exitValue"] && <FieldHint hint={FIELD_HINTS["exitValue"]} />}</label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">$</span>
+      {/* ==================== TAB 1: ROUND SIMULATION & EXIT ==================== */}
+      {activeTab === "simulation" && (
+        <div className="space-y-8">
+          {/* Quick 7-Input Calculator */}
+          <div className="rounded-2xl border border-border bg-card p-6">
+            <h2 className="font-semibold text-lg mb-4 flex items-center gap-2">
+              <Calculator className="h-5 w-5 text-primary" />
+              Quick Calculator (7 Inputs)
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Seed Pre-Money</label>
                 <input
                   type="number"
-                  value={exitValue || ""}
-                  onChange={(e) => { setExitValue(parseFloat(e.target.value) || 0); markDirty(); }}
-                  placeholder="30000000"
-                  className="w-full rounded-lg border border-border bg-input pl-7 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  value={quickInputs.preSeed}
+                  onChange={(e) => setQuickInputs({ ...quickInputs, preSeed: Number(e.target.value) })}
+                  className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm"
                 />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Seed Investment</label>
+                <input
+                  type="number"
+                  value={quickInputs.invSeed}
+                  onChange={(e) => setQuickInputs({ ...quickInputs, invSeed: Number(e.target.value) })}
+                  className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Series A Pre-Money</label>
+                <input
+                  type="number"
+                  value={quickInputs.preA}
+                  onChange={(e) => setQuickInputs({ ...quickInputs, preA: Number(e.target.value) })}
+                  className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Series A Investment</label>
+                <input
+                  type="number"
+                  value={quickInputs.invA}
+                  onChange={(e) => setQuickInputs({ ...quickInputs, invA: Number(e.target.value) })}
+                  className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Series B Pre-Money</label>
+                <input
+                  type="number"
+                  value={quickInputs.preB}
+                  onChange={(e) => setQuickInputs({ ...quickInputs, preB: Number(e.target.value) })}
+                  className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Series B Investment</label>
+                <input
+                  type="number"
+                  value={quickInputs.invB}
+                  onChange={(e) => setQuickInputs({ ...quickInputs, invB: Number(e.target.value) })}
+                  className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Exit Value</label>
+                <input
+                  type="number"
+                  value={quickInputs.exitVal}
+                  onChange={(e) => setQuickInputs({ ...quickInputs, exitVal: Number(e.target.value) })}
+                  className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm"
+                />
+              </div>
+              <div className="flex items-end">
+                <button
+                  onClick={runQuickCalculate}
+                  className="w-full rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-accent transition-colors"
+                >
+                  Calculate All
+                </button>
               </div>
             </div>
             <button
-              onClick={handleCalculate}
-              disabled={exitValue <= 0}
-              className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-accent transition-colors disabled:opacity-50"
+              onClick={loadTemplate}
+              className="text-xs text-muted-foreground hover:text-primary underline"
             >
-              <Play className="h-4 w-4" /> Run Exit Waterfall
+              Load Template (3 rounds + ₹30M exit)
             </button>
           </div>
 
-          {results?.exit && (
-            <>
-              {/* Big number */}
-              <div className="rounded-2xl border-2 border-primary/30 bg-primary/5 p-6 text-center output-panel-primary">
-                <p className="text-sm text-muted-foreground mb-2">Exit Value</p>
-                <p className="text-3xl font-bold text-primary">{formatCurrency(results.exit.exitValue)}</p>
+          {/* Step-by-Step Round Builder */}
+          <div className="rounded-2xl border border-border bg-card p-6">
+            <h2 className="font-semibold text-lg mb-4 flex items-center gap-2">
+              <Plus className="h-5 w-5 text-primary" />
+              Add Rounds Step-by-Step
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+              <input
+                type="text"
+                placeholder="Round Name (e.g. Seed)"
+                className="bg-input p-3 rounded-xl border border-border"
+                value={newRound.name}
+                onChange={(e) => setNewRound({ ...newRound, name: e.target.value })}
+              />
+              <input
+                type="number"
+                placeholder="Pre-Money Valuation"
+                className="bg-input p-3 rounded-xl border border-border"
+                value={newRound.preMoney}
+                onChange={(e) => setNewRound({ ...newRound, preMoney: e.target.value })}
+              />
+              <input
+                type="number"
+                placeholder="Investment Amount"
+                className="bg-input p-3 rounded-xl border border-border"
+                value={newRound.investment}
+                onChange={(e) => setNewRound({ ...newRound, investment: e.target.value })}
+              />
+              <button
+                onClick={addRound}
+                disabled={!newRound.name || !newRound.preMoney || !newRound.investment}
+                className="bg-primary hover:bg-accent disabled:opacity-50 rounded-xl font-medium text-primary-foreground"
+              >
+                + Add Round
+              </button>
+            </div>
+          </div>
+
+          {/* Current Rounds Table */}
+          {rounds.length > 0 && (
+            <div className="rounded-2xl border border-border bg-card p-6">
+              <h3 className="text-xl font-semibold mb-4">Cap Table Evolution</h3>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border bg-background/50">
+                      <th className="text-left py-3 px-4">Round</th>
+                      <th className="text-right py-3 px-4">Pre-Money</th>
+                      <th className="text-right py-3 px-4">Investment</th>
+                      <th className="text-right py-3 px-4">Post-Money</th>
+                      <th className="text-right py-3 px-4">Price/Share</th>
+                      <th className="text-right py-3 px-4">New Shares</th>
+                      <th className="text-right py-3 px-4">Total Shares</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="border-b border-border/30">
+                      <td className="py-3 px-4 font-medium">Founders</td>
+                      <td className="text-right py-3 px-4">—</td>
+                      <td className="text-right py-3 px-4">—</td>
+                      <td className="text-right py-3 px-4">—</td>
+                      <td className="text-right py-3 px-4">—</td>
+                      <td className="text-right py-3 px-4">200,000</td>
+                      <td className="text-right py-3 px-4 font-mono">200,000</td>
+                    </tr>
+                    {rounds.map((r, i) => (
+                      <tr key={i} className="border-b border-border/30">
+                        <td className="py-3 px-4 font-medium">{r.roundName}</td>
+                        <td className="text-right py-3 px-4">{formatCurrency(r.preMoney)}</td>
+                        <td className="text-right py-3 px-4">{formatCurrency(r.investment)}</td>
+                        <td className="text-right py-3 px-4">{formatCurrency(r.postMoney)}</td>
+                        <td className="text-right py-3 px-4">₹{r.pricePerShare}</td>
+                        <td className="text-right py-3 px-4">{r.newShares.toLocaleString()}</td>
+                        <td className="text-right py-3 px-4 font-mono">{r.totalShares.toLocaleString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
 
-              {/* Payout table */}
-              <div className="rounded-2xl border border-border bg-card overflow-hidden">
-                <div className="px-4 py-3 border-b border-border bg-background/50">
-                  <h3 className="font-semibold text-sm">Exit Waterfall — Payouts</h3>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-border bg-background/50">
-                        <th className="text-left px-4 py-2.5 text-muted-foreground font-semibold">Shareholder</th>
-                        <th className="text-left px-4 py-2.5 text-muted-foreground font-semibold">Role</th>
-                        <th className="text-right px-4 py-2.5 text-muted-foreground font-semibold">Shares</th>
-                        <th className="text-right px-4 py-2.5 text-muted-foreground font-semibold">Ownership</th>
-                        <th className="text-right px-4 py-2.5 text-muted-foreground font-semibold">Investment</th>
-                        <th className="text-right px-4 py-2.5 text-muted-foreground font-semibold">Payout</th>
-                        <th className="text-right px-4 py-2.5 text-muted-foreground font-semibold">Multiple</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {results.exit.payouts.map((p, i) => (
-                        <tr key={i} className="border-b border-border/30">
-                          <td className="px-4 py-2.5 font-medium">{p.name}</td>
-                          <td className="px-4 py-2.5 text-muted-foreground">{p.role}</td>
-                          <td className="text-right px-4 py-2.5">{p.shares.toLocaleString()}</td>
-                          <td className="text-right px-4 py-2.5">{p.ownershipPct.toFixed(1)}%</td>
-                          <td className="text-right px-4 py-2.5">{formatCurrency(p.investment)}</td>
-                          <td className="text-right px-4 py-2.5 font-semibold text-success">{formatCurrency(p.payout)}</td>
-                          <td className="text-right px-4 py-2.5">
-                            <span className={`font-semibold ${p.multiple !== null && p.multiple >= 1 ? "text-success" : "text-muted-foreground"}`}>
-                              {p.multiple !== null ? p.multiple.toFixed(2) + "x" : "N/A"}
-                            </span>
-                          </td>
-                        </tr>
+              {/* Ownership Progression */}
+              <div className="mt-6">
+                <h4 className="font-medium mb-3 text-muted-foreground">Ownership After Each Round</h4>
+                <div className="space-y-2">
+                  <div className="flex justify-between bg-background/50 p-3 rounded-xl">
+                    <span>Founders</span>
+                    <div className="flex gap-4">
+                      <span className="text-muted-foreground">Start: 100%</span>
+                      {rounds.map((r, i) => (
+                        <span key={i} className="text-primary">
+                          After {r.roundName}: {(r.ownership.Founders * 100).toFixed(2)}%
+                        </span>
                       ))}
-                      <tr className="bg-background/50 font-semibold">
-                        <td className="px-4 py-2.5">Total</td>
-                        <td className="px-4 py-2.5" />
-                        <td className="text-right px-4 py-2.5">{results.exit.totalShares.toLocaleString()}</td>
-                        <td className="text-right px-4 py-2.5">100.0%</td>
-                        <td className="text-right px-4 py-2.5">{formatCurrency(results.exit.payouts.reduce((s, p) => s + p.investment, 0))}</td>
-                        <td className="text-right px-4 py-2.5 text-success">{formatCurrency(results.exit.exitValue)}</td>
-                        <td className="px-4 py-2.5" />
-                      </tr>
-                    </tbody>
-                  </table>
+                    </div>
+                  </div>
+                  {rounds.map((r) => (
+                    <div key={r.roundName} className="flex justify-between bg-primary/5 p-3 rounded-xl border border-primary/20">
+                      <span>{r.roundName} Investors</span>
+                      <span className="font-mono font-semibold">{(r.ownership[r.roundName] * 100).toFixed(2)}%</span>
+                    </div>
+                  ))}
                 </div>
               </div>
-            </>
-          )}
-
-          {!results?.exit && (
-            <div className="text-center py-16 text-muted-foreground text-sm">
-              Enter an exit value and click Run Exit Waterfall.
             </div>
           )}
+
+          {/* Exit Section */}
+          <div className="rounded-2xl border border-border bg-card p-6">
+            <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-primary" />
+              Exit Waterfall
+            </h3>
+            <div className="flex gap-4 items-end mb-6">
+              <div className="flex-1">
+                <label className="text-xs text-muted-foreground block mb-2">Exit Value</label>
+                <input
+                  type="number"
+                  value={exitValue}
+                  onChange={(e) => setExitValue(Number(e.target.value))}
+                  className="w-full bg-input p-4 rounded-xl border border-border text-2xl font-mono"
+                />
+              </div>
+              <button
+                onClick={runExit}
+                disabled={rounds.length === 0}
+                className="px-8 py-4 bg-primary hover:bg-accent disabled:opacity-50 rounded-xl font-semibold text-lg text-primary-foreground"
+              >
+                Run Exit Simulation
+              </button>
+            </div>
+
+            {/* Exit Results */}
+            {result && (
+              <>
+                {/* Export Button */}
+                <div className="flex justify-end mb-4">
+                  <button
+                    onClick={exportToPDF}
+                    className="inline-flex items-center gap-2 rounded-lg bg-primary/10 text-primary px-4 py-2 text-sm font-medium hover:bg-primary/20 transition-colors"
+                  >
+                    <Download className="h-4 w-4" />
+                    Export Report
+                  </button>
+                </div>
+
+                {/* Charts Row */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                  {/* Ownership Pie Chart */}
+                  <div className="rounded-xl bg-background/50 p-4">
+                    <h4 className="font-medium mb-3 text-muted-foreground flex items-center gap-2">
+                      <PieChart className="h-4 w-4" />
+                      Ownership Distribution
+                    </h4>
+                    <div className="h-64">
+                      <ReactECharts option={getOwnershipChartOption()} style={{ height: '100%' }} />
+                    </div>
+                  </div>
+
+                  {/* Payout Bar Chart */}
+                  <div className="rounded-xl bg-background/50 p-4">
+                    <h4 className="font-medium mb-3 text-muted-foreground flex items-center gap-2">
+                      <TrendingUp className="h-4 w-4" />
+                      Payout Distribution
+                    </h4>
+                    <div className="h-64">
+                      <ReactECharts option={getPayoutChartOption()} style={{ height: '100%' }} />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Data Tables Row */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Final Ownership Table */}
+                  <div className="rounded-xl bg-background/50 p-4">
+                    <h4 className="font-medium mb-3 text-muted-foreground">Final Ownership</h4>
+                    <div className="space-y-2">
+                      {Object.entries(result.ownership).map(([key, pct]) => (
+                        <div key={key} className="flex justify-between p-3 bg-card rounded-xl">
+                          <span>{key}</span>
+                          <span className="font-mono font-semibold">{(pct * 100).toFixed(2)}%</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Payout Waterfall Table */}
+                  <div className="rounded-xl bg-background/50 p-4">
+                    <h4 className="font-medium mb-3 text-muted-foreground">Payout Waterfall @ {formatCurrency(result.exitValue)}</h4>
+                    <div className="space-y-2">
+                      {Object.entries(result.waterfall).map(([key, data]) => (
+                        <div key={key} className="flex justify-between p-3 bg-card rounded-xl">
+                          <span>{key}</span>
+                          <div className="text-right">
+                            <div className="font-mono text-success font-semibold">{formatCurrency(data.payout)}</div>
+                            <div className="text-xs text-muted-foreground">{data.ownershipPct}%</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       )}
 
-      {/* ============ CHARTS ============ */}
-      {results && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-          {/* Ownership Pie */}
-          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
-            <h3 className="font-semibold text-sm mb-3">Ownership Distribution</h3>
-            <ReactECharts
-              style={{ height: 280 }}
-              option={{
-                tooltip: { trigger: "item", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
-                series: [{
-                  type: "pie", radius: ["35%", "65%"], center: ["50%", "50%"],
-                  label: { color: "#ccc", fontSize: 10, formatter: "{b}\n{d}%" },
-                  data: results.shareholders.map((s, i) => ({
-                    value: s.shares,
-                    name: s.name,
-                    itemStyle: { color: ["#60a5fa", "#34d399", "#f59e0b", "#a78bfa", "#ec4899", "#22d3ee", "#ef4444", "#84cc16"][i % 8] },
-                  })),
-                }],
-              }}
-            />
+      {/* ==================== TAB 2: ORIGINAL CAP TABLE ==================== */}
+      {activeTab === "original" && (
+        <div className="rounded-2xl border border-border bg-card p-6">
+          <h2 className="text-2xl font-bold mb-6">Original Cap Table</h2>
+          <p className="text-muted-foreground mb-6">
+            Static view of the initial cap table structure before any funding rounds.
+          </p>
+
+          {/* Founders Table */}
+          <div className="overflow-x-auto mb-8">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-background/50">
+                  <th className="text-left py-3 px-4">Shareholder</th>
+                  <th className="text-left py-3 px-4">Role</th>
+                  <th className="text-right py-3 px-4">Shares</th>
+                  <th className="text-right py-3 px-4">Ownership</th>
+                  <th className="text-right py-3 px-4">Investment</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="border-b border-border/30">
+                  <td className="py-3 px-4 font-medium">Founders</td>
+                  <td className="py-3 px-4">Promoter</td>
+                  <td className="text-right py-3 px-4 font-mono">200,000</td>
+                  <td className="text-right py-3 px-4 font-semibold">100.00%</td>
+                  <td className="text-right py-3 px-4">—</td>
+                </tr>
+                <tr className="bg-background/50 font-semibold">
+                  <td className="py-3 px-4">Total</td>
+                  <td className="py-3 px-4" />
+                  <td className="text-right py-3 px-4 font-mono">200,000</td>
+                  <td className="text-right py-3 px-4">100.00%</td>
+                  <td className="text-right py-3 px-4">—</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
 
-          {/* Investment Bar */}
-          <div className="rounded-2xl border border-border bg-card p-5 output-panel">
-            <h3 className="font-semibold text-sm mb-3">Investment by Shareholder</h3>
-            <ReactECharts
-              style={{ height: 280 }}
-              option={{
-                tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
-                grid: { top: 10, right: 15, bottom: 30, left: 100 },
-                xAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
-                yAxis: { type: "category", data: results.shareholders.map(s => s.name), axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
-                series: [{
-                  type: "bar", barWidth: 16,
-                  data: results.shareholders.map((s, i) => ({
-                    value: s.investment,
-                    itemStyle: { color: ["#60a5fa", "#34d399", "#f59e0b", "#a78bfa", "#ec4899", "#22d3ee", "#ef4444", "#84cc16"][i % 8], borderRadius: [0, 4, 4, 0] },
-                  })),
-                }],
-              }}
-            />
+          {/* Share Structure */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <div className="rounded-xl bg-background/50 p-4 text-center">
+              <div className="text-3xl font-bold text-primary">200,000</div>
+              <div className="text-sm text-muted-foreground mt-1">Founder Shares</div>
+            </div>
+            <div className="rounded-xl bg-background/50 p-4 text-center">
+              <div className="text-3xl font-bold text-primary">1</div>
+              <div className="text-sm text-muted-foreground mt-1">Share Classes</div>
+            </div>
+            <div className="rounded-xl bg-background/50 p-4 text-center">
+              <div className="text-3xl font-bold text-primary">100%</div>
+              <div className="text-sm text-muted-foreground mt-1">Founder Ownership</div>
+            </div>
           </div>
 
-          {/* Exit Payout Waterfall */}
-          {results.exit && (
-            <div className="rounded-2xl border border-border bg-card p-5 output-panel">
-              <h3 className="font-semibold text-sm mb-3">Exit Payouts</h3>
-              <ReactECharts
-                style={{ height: 260 }}
-                option={{
-                  tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
-                  grid: { top: 10, right: 15, bottom: 30, left: 100 },
-                  xAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
-                  yAxis: { type: "category", data: results.exit.payouts.map(p => p.name), axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
-                  series: [
-                    { name: "Payout", type: "bar", barWidth: 14, data: results.exit.payouts.map((p, i) => ({ value: p.payout, itemStyle: { color: ["#60a5fa", "#34d399", "#f59e0b", "#a78bfa", "#ec4899", "#22d3ee", "#ef4444", "#84cc16"][i % 8], borderRadius: [0, 4, 4, 0] } })) },
-                  ],
-                }}
-              />
-            </div>
-          )}
-
-          {/* ROI Multiple Bar */}
-          {results.exit && (
-            <div className="rounded-2xl border border-border bg-card p-5 output-panel">
-              <h3 className="font-semibold text-sm mb-3">ROI Multiple</h3>
-              <ReactECharts
-                style={{ height: 260 }}
-                option={{
-                  tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
-                  grid: { top: 10, right: 15, bottom: 30, left: 100 },
-                  xAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: "{value}x" }, splitLine: { lineStyle: { color: "#222" } } },
-                  yAxis: { type: "category", data: results.exit.payouts.filter(p => p.multiple !== null).map(p => p.name), axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
-                  series: [{
-                    type: "bar", barWidth: 14,
-                    data: results.exit.payouts.filter(p => p.multiple !== null).map((p, i) => ({
-                      value: Math.round((p.multiple || 0) * 100) / 100,
-                      itemStyle: { color: (p.multiple || 0) > 1 ? "#34d399" : "#ef4444", borderRadius: [0, 4, 4, 0] },
-                    })),
-                    markLine: { data: [{ xAxis: 1, lineStyle: { color: "#f59e0b", type: "dashed" } }], label: { formatter: "1x", color: "#f59e0b", fontSize: 9 }, symbol: "none" },
-                  }],
-                }}
-              />
-            </div>
-          )}
-        </div>
-      )}
-
-      {!user && results && (
-        <div className="mt-8 rounded-2xl bg-primary/5 border border-primary/20 p-6 text-center">
-          <p className="text-muted-foreground mb-3">Sign up to save your Cap Table</p>
-          <Link href="/signup" className="inline-block rounded-lg bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-accent transition-colors">
-            Create Free Account
-          </Link>
+          <div className="bg-muted/50 rounded-xl p-4 text-sm text-muted-foreground">
+            <p>
+              This represents the starting point. Use the "Round Simulation & Exit" tab to 
+              add funding rounds and see how dilution affects founder ownership.
+            </p>
+          </div>
         </div>
       )}
     </div>

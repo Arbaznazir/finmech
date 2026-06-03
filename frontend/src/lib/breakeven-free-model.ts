@@ -1,6 +1,6 @@
 // ========================================================
 // BREAK-EVEN MODEL (FREE) – FULL EXCEL MATCH
-// Receives data from Revenue + Costing models
+// Standalone break-even calculator
 // pricePerUnit, variableCostPerUnit, fixedCostMonthly
 // ========================================================
 
@@ -23,10 +23,10 @@ export interface BreakEvenFreeResults {
   profitAtUnits: number;
 }
 
-export const BREAKEVEN_FREE_FIELDS: { key: keyof BreakEvenFreeInputs; label: string; prefix: string; linked?: boolean }[] = [
-  { key: "pricePerUnit", label: "Price Per Unit", prefix: "$", linked: true },
-  { key: "variableCostPerUnit", label: "Variable Cost Per Unit", prefix: "$", linked: true },
-  { key: "fixedCostMonthly", label: "Fixed Cost (Monthly)", prefix: "$", linked: true },
+export const BREAKEVEN_FREE_FIELDS: { key: keyof BreakEvenFreeInputs; label: string; prefix: string }[] = [
+  { key: "pricePerUnit", label: "Price Per Unit", prefix: "$" },
+  { key: "variableCostPerUnit", label: "Variable Cost Per Unit", prefix: "$" },
+  { key: "fixedCostMonthly", label: "Fixed Cost (Monthly)", prefix: "$" },
   { key: "unitsSoldForProjection", label: "Units Sold (for projection)", prefix: "#" },
 ];
 

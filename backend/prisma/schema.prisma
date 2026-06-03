@@ -8,17 +8,27 @@ datasource db {
 }
 
 model User {
-  id            String   @id @default(uuid())
-  email         String   @unique
-  password      String
-  name          String
-  company       String?
-  plan          String   @default("free") // free, standalone, standard, investor
+  id                String   @id @default(uuid())
+  email             String   @unique
+  password          String
+  name              String
+  company           String?
+  plan              String   @default("free") // free, standalone, standard, investor
+  
+  // Subscription fields
+  subscriptionStatus String   @default("inactive") // active, inactive, cancelled, past_due
+  subscriptionId     String?  // Razorpay subscription ID
+  subscriptionPlan   String?  // standard, investor
+  subscriptionStart  DateTime?
+  subscriptionEnd    DateTime?
+  razorpayCustomerId String?  // Razorpay customer ID
+  
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
   calculations  Calculation[]
   savedModels   SavedModel[]
+  payments      Payment[]
 }
 
 model Calculation {
@@ -48,4 +58,30 @@ model SavedModel {
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, modelSlug])
+}
+
+model Payment {
+  id                String   @id @default(uuid())
+  userId            String
+  razorpayOrderId   String   @unique
+  razorpayPaymentId String?  // Filled after successful payment
+  razorpaySignature String?  // For verification
+  
+  amount            Int      // Amount in paise (₹1 = 100 paise)
+  currency          String   @default("INR")
+  status            String   @default("created") // created, paid, failed, refunded
+  
+  plan              String   // standard, investor
+  billingCycle      String   // monthly, yearly
+  
+  metadata          String?  // JSON string for additional data
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
 }
