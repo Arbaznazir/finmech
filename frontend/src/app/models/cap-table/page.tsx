@@ -479,8 +479,8 @@ FinMech - Cap Table Mechanics
                         <td className="text-right py-3 px-4">{formatCurrency(r.investment)}</td>
                         <td className="text-right py-3 px-4">{formatCurrency(r.postMoney)}</td>
                         <td className="text-right py-3 px-4">₹{r.pricePerShare}</td>
-                        <td className="text-right py-3 px-4">{r.newShares.toLocaleString()}</td>
-                        <td className="text-right py-3 px-4 font-mono">{r.totalShares.toLocaleString()}</td>
+                        <td className="text-right py-3 px-4">{(r.newShares || 0).toLocaleString()}</td>
+                        <td className="text-right py-3 px-4 font-mono">{(r.totalShares || 0).toLocaleString()}</td>
                       </tr>
                     ))}
                   </tbody>
