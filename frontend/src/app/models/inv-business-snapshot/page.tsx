@@ -12,6 +12,7 @@ import { formatCurrency } from "@/lib/utils";
 import api from "@/lib/api";
 import { loadModelResults, saveModelResults, clearModelResults } from "@/lib/model-link";
 import { useSavedModel } from "@/lib/use-saved-model";
+import { offerSmartResultsAfterCalculate } from "@/lib/smart-results";
 
 interface SnapshotInputs {
   monthlyRevenue: number;
@@ -179,6 +180,7 @@ export default function InvBusinessSnapshotPage() {
   const handleCalculate = () => {
     const r = calculateSnapshot(inputs);
     setResults(r);
+    offerSmartResultsAfterCalculate("inv-business-snapshot", inputs, r);
     saveModelResults("inv-business-snapshot", { ...inputs, ...r });
     persistState();
   };

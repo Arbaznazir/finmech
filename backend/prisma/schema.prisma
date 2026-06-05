@@ -13,7 +13,8 @@ model User {
   password          String
   name              String
   company           String?
-  plan              String   @default("free") // free, standalone, standard, investor
+  plan              String   @default("free") // free, standalone_all, standalone_standard, standard, investor (all_models)
+  purchasedModels   String   @default("[]") // JSON array of standalone model slugs bought individually
   
   // Subscription fields
   subscriptionStatus String   @default("inactive") // active, inactive, cancelled, past_due
@@ -71,8 +72,9 @@ model Payment {
   currency          String   @default("INR")
   status            String   @default("created") // created, paid, failed, refunded
   
-  plan              String   // standard, investor
-  billingCycle      String   // monthly, yearly
+  plan              String   // standalone_model, standalone_all, standalone_standard, standard, investor
+  billingCycle      String   // monthly, yearly, one_time
+  modelSlug         String?  // for standalone_model purchases
   
   metadata          String?  // JSON string for additional data
   
@@ -84,4 +86,33 @@ model Payment {
   @@index([userId])
   @@index([status])
   @@index([createdAt])
+}
+
+// Admin-configurable bundle / subscription pricing (amounts in paise)
+model PlanPrice {
+  id              String   @id @default(uuid())
+  planKey         String   @unique // standalone_all, standalone_standard, standard, investor
+  name            String
+  description     String?
+  priceMonthly    Int?     // null if not offered monthly
+  priceYearly     Int?
+  priceOneTime    Int?     // for one-time bundles
+  discountPercent Int      @default(0)
+  discountLabel   String?
+  isActive        Boolean  @default(true)
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// Per standalone model pricing (buy selected model only)
+model ModelPrice {
+  id              String   @id @default(uuid())
+  modelSlug       String   @unique
+  modelName       String
+  priceOneTime    Int      // paise
+  discountPercent Int      @default(0)
+  discountLabel   String?
+  isActive        Boolean  @default(true)
+  updatedAt       DateTime @updatedAt
 }

@@ -18,7 +18,9 @@ import {
   CheckCircle,
   XCircle,
   Clock,
+  Tag,
 } from "lucide-react";
+import { AdminPricingPanel } from "@/components/admin-pricing-panel";
 import { useAuth } from "@/lib/store";
 import api from "@/lib/api";
 
@@ -66,7 +68,7 @@ interface Stats {
   revenueByPlan: Record<string, number>;
 }
 
-type TabView = "users" | "invoices" | "stats";
+type TabView = "users" | "invoices" | "stats" | "pricing";
 
 export default function AdminDashboard() {
   const { user, hydrate } = useAuth();
@@ -270,6 +272,17 @@ export default function AdminDashboard() {
           <CreditCard className="h-4 w-4" />
           Invoices ({invoices.length})
         </button>
+        <button
+          onClick={() => setActiveTab("pricing")}
+          className={`flex items-center gap-2 px-6 py-3 font-medium rounded-xl border-2 transition-all ${
+            activeTab === "pricing"
+              ? "bg-primary text-primary-foreground border-primary"
+              : "border-border text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <Tag className="h-4 w-4" />
+          Pricing
+        </button>
       </div>
 
       {/* Stats Tab */}
@@ -409,9 +422,9 @@ export default function AdminDashboard() {
                           className="text-sm bg-input border border-border rounded-lg px-2 py-1"
                         >
                           <option value="free">Free</option>
-                          <option value="standalone">Standalone</option>
-                          <option value="standard">Standard</option>
-                          <option value="investor">Investor</option>
+                          <option value="standalone_all">All Standalone Models</option>
+                          <option value="standalone_standard">Standalone All + Standard</option>
+                          <option value="investor">All Models PRO +</option>
                         </select>
                       </td>
                       <td className="py-3 px-4">
@@ -454,6 +467,8 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
+
+      {activeTab === "pricing" && <AdminPricingPanel />}
 
       {/* Invoices Tab */}
       {activeTab === "invoices" && (

@@ -8,12 +8,14 @@ import {
   AlertTriangle, XCircle, Info,
 } from "lucide-react";
 import { FieldHint } from "@/components/FieldHint";
-import { FIELD_HINTS } from "@/lib/field-hints";
+import { HintLabel } from "@/components/HintLabel";
+import { standaloneHint } from "@/lib/standalone-model-hints";
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
 import api from "@/lib/api";
 import { useSavedModel } from "@/lib/use-saved-model";
+import { offerSmartResultsAfterCalculate } from "@/lib/smart-results";
 import {
   MONTHS_ORDER,
   INPUT_FIELDS,
@@ -89,6 +91,7 @@ export default function UnitEconomicsPage() {
     if (Object.keys(monthsData).length === 0) return;
     const result = calculateUnitEconomics(monthsData);
     setResults(result);
+    offerSmartResultsAfterCalculate("unit-economics", { monthsData }, result);
     setActiveTab("monthly");
     persistState();
   }, [monthsData]);
@@ -249,7 +252,7 @@ export default function UnitEconomicsPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 px-1">
                   {fields.map((field) => (
                     <div key={field.key}>
-                      <label className="flex items-center text-xs text-muted-foreground mb-1">{field.label}{FIELD_HINTS[field.key] && <FieldHint hint={FIELD_HINTS[field.key]} />}</label>
+                      <label className="flex items-center text-xs text-muted-foreground mb-1">{field.label}{standaloneHint(field.key) && <FieldHint hint={standaloneHint(field.key)!} />}</label>
                       <div className="relative">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">{field.prefix}</span>
                         <input
@@ -315,7 +318,7 @@ export default function UnitEconomicsPage() {
                   return (
                     <tr key={field.key} className={`border-b border-border/30 ${isBold ? "bg-background/30" : ""}`}>
                       <td className={`px-4 py-2.5 sticky left-0 bg-card ${isBold ? "font-semibold bg-background/30" : "text-muted-foreground"}`}>
-                        {field.label}
+                        <HintLabel hint={standaloneHint(field.key)} className={isBold ? "font-semibold" : ""}>{field.label}</HintLabel>
                       </td>
                       {results.monthsAdded.map((m) => {
                         const val = results.monthlyData[m]?.[field.key];
@@ -346,11 +349,15 @@ export default function UnitEconomicsPage() {
             return (
               <div className="grid grid-cols-3 gap-4">
                 <div className="rounded-xl bg-card border border-border p-4 text-center">
-                  <p className="text-xs text-muted-foreground mb-1">Latest LTV/CAC</p>
+                  <p className="text-xs text-muted-foreground mb-1 flex items-center justify-center">
+                    <HintLabel hint={standaloneHint("ltvCacRatio")}>Latest LTV/CAC</HintLabel>
+                  </p>
                   <p className="text-2xl font-bold">{last.ltvCacRatio.toFixed(1)}x</p>
                 </div>
                 <div className="rounded-xl bg-card border border-border p-4 text-center">
-                  <p className="text-xs text-muted-foreground mb-1">Latest Churn</p>
+                  <p className="text-xs text-muted-foreground mb-1 flex items-center justify-center">
+                    <HintLabel hint={standaloneHint("Churn Rate %")}>Latest Churn</HintLabel>
+                  </p>
                   <p className="text-2xl font-bold">{last.churnRate.toFixed(1)}%</p>
                 </div>
                 <div className="rounded-xl bg-card border border-border p-4 text-center">

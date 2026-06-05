@@ -10,6 +10,7 @@ const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
 import api from "@/lib/api";
+import { offerSmartResultsAfterCalculate } from "@/lib/smart-results";
 import { saveModelResults, clearModelResults } from "@/lib/model-link";
 import { useSavedModel } from "@/lib/use-saved-model";
 import {
@@ -125,12 +126,14 @@ export default function InvIncomeStatementPage() {
   const handleSave = async () => {
     if (!user) return;
     persistResults();
+    const outputs = { monthlyData: isResult.monthlyData, annual: isResult.annual };
     try {
       await api.post("/calculations", {
         modelSlug: "inv-common-utility",
         inputs: monthData,
-        outputs: { monthlyData: isResult.monthlyData, annual: isResult.annual },
+        outputs,
       });
+      offerSmartResultsAfterCalculate("inv-common-utility", monthData, outputs);
       await persistState();
     } catch (err) { console.error("Failed to save:", err); }
   };

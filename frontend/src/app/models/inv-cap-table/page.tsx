@@ -12,6 +12,7 @@ import { formatCurrency } from "@/lib/utils";
 import api from "@/lib/api";
 import { loadModelResults, saveModelResults, clearModelResults } from "@/lib/model-link";
 import { useSavedModel } from "@/lib/use-saved-model";
+import { offerSmartResultsAfterCalculate } from "@/lib/smart-results";
 import {
   buildCapTable,
   type InitialShareholder,
@@ -63,6 +64,7 @@ export default function InvCapTablePage() {
     if (validSH.length === 0) return;
     const result = buildCapTable(validSH, rounds, exitValue > 0 ? exitValue : undefined);
     setResults(result);
+    offerSmartResultsAfterCalculate("inv-cap-table", { shareholders: validSH, rounds, exitValue }, result);
     saveModelResults("inv-cap-table", {
       totalShares: result.totalShares,
       shareholderCount: result.shareholders.length,

@@ -8,6 +8,10 @@ const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
 import api from "@/lib/api";
 import { useSavedModel } from "@/lib/use-saved-model";
+import { offerSmartResultsAfterCalculate } from "@/lib/smart-results";
+import { FieldHint } from "@/components/FieldHint";
+import { HintLabel } from "@/components/HintLabel";
+import { freeHint } from "@/lib/free-model-hints";
 import {
   QUESTIONS,
   SECTIONS,
@@ -42,7 +46,9 @@ export default function KnowYourNumbersPage() {
   };
 
   const handleCalculate = () => {
-    setResults(calculateChecklist(answers));
+    const r = calculateChecklist(answers);
+    setResults(r);
+    offerSmartResultsAfterCalculate("know-your-numbers", answers, r);
     persistState();
   };
 
@@ -103,7 +109,10 @@ export default function KnowYourNumbersPage() {
                 <div className="space-y-4">
                   {sectionQs.map((q) => (
                     <div key={q.id} className="rounded-lg bg-background/50 border border-border/50 p-4">
-                      <p className="text-sm mb-3">{q.text}</p>
+                      <p className="text-sm mb-3 flex items-start gap-1">
+                        <span className="flex-1">{q.text}</span>
+                        {freeHint(q.id) && <FieldHint hint={freeHint(q.id)!} />}
+                      </p>
                       <div className="flex gap-2">
                         {RESPONSE_OPTIONS.map((opt) => (
                           <button
@@ -153,6 +162,9 @@ export default function KnowYourNumbersPage() {
             {results.statusColor === "green" && <CheckCircle className="h-12 w-12 text-success mx-auto mb-3" />}
             {results.statusColor === "amber" && <AlertTriangle className="h-12 w-12 text-amber-400 mx-auto mb-3" />}
             {results.statusColor === "red" && <XCircle className="h-12 w-12 text-danger mx-auto mb-3" />}
+            <p className="text-xs text-muted-foreground mb-1 flex items-center justify-center">
+              <HintLabel hint={freeHint("readinessPercentage")}>Readiness Score</HintLabel>
+            </p>
             <p className={`text-3xl font-bold mb-1 ${
               results.statusColor === "green" ? "text-success" :
               results.statusColor === "amber" ? "text-amber-400" :
@@ -160,12 +172,12 @@ export default function KnowYourNumbersPage() {
             }`}>
               {results.readinessPercentage.toFixed(0)}%
             </p>
-            <p className={`text-lg font-semibold ${
+            <p className={`text-lg font-semibold flex items-center justify-center gap-1 ${
               results.statusColor === "green" ? "text-success" :
               results.statusColor === "amber" ? "text-amber-400" :
               "text-danger"
             }`}>
-              {results.readinessStatus}
+              <HintLabel hint={freeHint("readinessStatus")}>{results.readinessStatus}</HintLabel>
             </p>
             <p className="text-sm text-muted-foreground mt-2 max-w-md mx-auto">
               {results.advisorySummary}
@@ -243,11 +255,15 @@ export default function KnowYourNumbersPage() {
           {/* Summary */}
           <div className="grid grid-cols-2 gap-4">
             <div className="rounded-xl bg-background/50 border border-border/50 p-4 text-center">
-              <p className="text-xs text-muted-foreground mb-1">Total Score</p>
+              <p className="text-xs text-muted-foreground mb-1 flex items-center justify-center">
+                <HintLabel hint={freeHint("totalScore")}>Total Score</HintLabel>
+              </p>
               <p className="text-2xl font-bold">{results.totalScore}</p>
             </div>
             <div className="rounded-xl bg-background/50 border border-border/50 p-4 text-center">
-              <p className="text-xs text-muted-foreground mb-1">Max Possible</p>
+              <p className="text-xs text-muted-foreground mb-1 flex items-center justify-center">
+                <HintLabel hint={freeHint("maxPossible")}>Max Possible</HintLabel>
+              </p>
               <p className="text-2xl font-bold">{results.maxPossible}</p>
             </div>
           </div>

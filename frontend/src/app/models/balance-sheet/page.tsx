@@ -8,12 +8,14 @@ import {
   CheckCircle, XCircle, Info,
 } from "lucide-react";
 import { FieldHint } from "@/components/FieldHint";
-import { FIELD_HINTS } from "@/lib/field-hints";
+import { HintLabel } from "@/components/HintLabel";
+import { standaloneHint } from "@/lib/standalone-model-hints";
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
 import api from "@/lib/api";
 import { useSavedModel } from "@/lib/use-saved-model";
+import { offerSmartResultsAfterCalculate } from "@/lib/smart-results";
 import {
   MONTHS_ORDER,
   INPUT_FIELDS,
@@ -69,6 +71,7 @@ export default function BalanceSheetPage() {
     if (Object.keys(monthsData).length === 0) return;
     const result = calculateBalanceSheet(monthsData);
     setResults(result);
+    offerSmartResultsAfterCalculate("balance-sheet", { monthsData }, result);
     setActiveTab("monthly");
     persistState();
   }, [monthsData]);
@@ -229,7 +232,7 @@ export default function BalanceSheetPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 px-1">
                     {fields.map((field) => (
                       <div key={field.key}>
-                        <label className="flex items-center text-xs text-muted-foreground mb-1">{field.label}{FIELD_HINTS[field.key] && <FieldHint hint={FIELD_HINTS[field.key]} />}</label>
+                        <label className="flex items-center text-xs text-muted-foreground mb-1">{field.label}{standaloneHint(field.key) && <FieldHint hint={standaloneHint(field.key)!} />}</label>
                         <div className="relative">
                           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">$</span>
                           <input
@@ -297,7 +300,7 @@ export default function BalanceSheetPage() {
                   return (
                     <tr key={field.key} className={`border-b border-border/30 ${isBold ? "bg-background/30" : ""}`}>
                       <td className={`px-4 py-2.5 sticky left-0 bg-card ${isBold ? "font-semibold bg-background/30" : isSection ? "font-medium" : "text-muted-foreground"}`}>
-                        {field.label}
+                        <HintLabel hint={standaloneHint(field.key)} className={isBold ? "font-semibold" : ""}>{field.label}</HintLabel>
                       </td>
                       {results.monthsAdded.map((m) => {
                         const val = results.monthlyData[m]?.[field.key];
@@ -338,7 +341,7 @@ export default function BalanceSheetPage() {
                   return (
                     <tr key={field.key} className={`border-b border-border/30 ${isBold ? "bg-background/30" : ""}`}>
                       <td className={`px-4 py-2.5 sticky left-0 bg-card ${isBold ? "font-semibold bg-background/30" : "text-muted-foreground"}`}>
-                        {field.label}
+                        <HintLabel hint={standaloneHint(field.key)} className={isBold ? "font-semibold" : ""}>{field.label}</HintLabel>
                       </td>
                       {Object.entries(results.quarters).map(([q, data]) => {
                         const val = data[field.key];
@@ -372,7 +375,9 @@ export default function BalanceSheetPage() {
                 const isBalanced = isCheck && val === 0;
                 return (
                   <div key={field.key} className={`flex items-center justify-between rounded-lg px-4 py-2.5 ${isBold ? "bg-background/50 border border-border/50" : ""}`}>
-                    <span className={`text-sm ${isBold ? "font-semibold" : "text-muted-foreground"}`}>{field.label}</span>
+                    <span className={`text-sm inline-flex items-center ${isBold ? "font-semibold" : "text-muted-foreground"}`}>
+                      <HintLabel hint={standaloneHint(field.key)}>{field.label}</HintLabel>
+                    </span>
                     <span className={`text-sm font-semibold ${isCheck ? (isBalanced ? "text-success" : "text-danger") : (typeof val === "number" && val < 0) ? "text-danger" : ""}`}>
                       {fmtVal(field.key, val)}
                     </span>

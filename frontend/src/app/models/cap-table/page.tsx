@@ -4,11 +4,16 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import {
-  ArrowLeft, PieChart, RotateCcw, Plus, TrendingUp, Calculator, FileText, Download,
+  ArrowLeft, PieChart, RotateCcw, Plus, TrendingUp, Calculator, FileText, Download, Save,
 } from "lucide-react";
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
+import api from "@/lib/api";
 import { useSavedModel } from "@/lib/use-saved-model";
+import { offerSmartResultsAfterCalculate } from "@/lib/smart-results";
+import { FieldHint } from "@/components/FieldHint";
+import { HintLabel } from "@/components/HintLabel";
+import { standaloneHint } from "@/lib/standalone-model-hints";
 import { CapTableMechanicsModel, type Round, type ExitResult } from "@/lib/cap-table-mechanics-model";
 
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
@@ -41,7 +46,7 @@ export default function CapTablePage() {
     exitVal: 100000000,
   });
 
-  const { save: persistState, reset: clearPersisted } = useSavedModel({
+  const { save: persistState, reset: clearPersisted, saving, saved } = useSavedModel({
     modelSlug: "cap-table",
     onLoad: (data: Record<string, unknown>) => {
       if (data.rounds) {
@@ -75,6 +80,7 @@ export default function CapTablePage() {
   const runExit = () => {
     const res = model.runExit(exitValue);
     setResult(res);
+    offerSmartResultsAfterCalculate("cap-table", { rounds, exitValue }, res);
     persistState();
   };
 
@@ -87,6 +93,7 @@ export default function CapTablePage() {
     setExitValue(quickInputs.exitVal);
     const res = model.runExit(quickInputs.exitVal);
     setResult(res);
+    offerSmartResultsAfterCalculate("cap-table", { quickInputs, rounds: model.rounds }, res);
     persistState();
   };
 
@@ -107,6 +114,25 @@ export default function CapTablePage() {
     setExitValue(30000000);
     setNewRound({ name: "", preMoney: "", investment: "" });
     clearPersisted();
+  };
+
+  const handleSave = async () => {
+    if (!user || !result) return;
+    try {
+      await api.post("/calculations", {
+        modelSlug: "cap-table",
+        inputs: { rounds, exitValue },
+        outputs: {
+          exitValue: result.exitValue,
+          totalShares: result.totalShares,
+          ownership: result.ownership,
+          waterfall: result.waterfall,
+        },
+      });
+      await persistState();
+    } catch (err) {
+      console.error("Failed to save:", err);
+    }
   };
 
   // PDF Export function
@@ -286,9 +312,21 @@ FinMech - Cap Table Mechanics
             </p>
           </div>
         </div>
-        <button onClick={resetAll} className="rounded-lg border border-border px-4 py-2 text-sm hover:bg-muted transition-colors inline-flex items-center gap-2">
-          <RotateCcw className="h-4 w-4" /> Reset
-        </button>
+        <div className="flex items-center gap-2">
+          {user && result && (
+            <button
+              onClick={handleSave}
+              disabled={saving || saved}
+              className={`inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${saved ? "bg-success/10 text-success" : "bg-cyan-400/10 text-cyan-400 hover:bg-cyan-400/20"}`}
+            >
+              <Save className="h-4 w-4" />
+              {saved ? "Saved!" : saving ? "Saving..." : "Save"}
+            </button>
+          )}
+          <button onClick={resetAll} className="rounded-lg border border-border px-4 py-2 text-sm hover:bg-muted transition-colors inline-flex items-center gap-2">
+            <RotateCcw className="h-4 w-4" /> Reset
+          </button>
+        </div>
       </div>
 
       {/* Tabs - Two clean tabs as requested */}
@@ -327,69 +365,28 @@ FinMech - Cap Table Mechanics
               Quick Calculator (7 Inputs)
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-              <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Seed Pre-Money</label>
-                <input
-                  type="number"
-                  value={quickInputs.preSeed}
-                  onChange={(e) => setQuickInputs({ ...quickInputs, preSeed: Number(e.target.value) })}
-                  className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Seed Investment</label>
-                <input
-                  type="number"
-                  value={quickInputs.invSeed}
-                  onChange={(e) => setQuickInputs({ ...quickInputs, invSeed: Number(e.target.value) })}
-                  className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Series A Pre-Money</label>
-                <input
-                  type="number"
-                  value={quickInputs.preA}
-                  onChange={(e) => setQuickInputs({ ...quickInputs, preA: Number(e.target.value) })}
-                  className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Series A Investment</label>
-                <input
-                  type="number"
-                  value={quickInputs.invA}
-                  onChange={(e) => setQuickInputs({ ...quickInputs, invA: Number(e.target.value) })}
-                  className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Series B Pre-Money</label>
-                <input
-                  type="number"
-                  value={quickInputs.preB}
-                  onChange={(e) => setQuickInputs({ ...quickInputs, preB: Number(e.target.value) })}
-                  className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Series B Investment</label>
-                <input
-                  type="number"
-                  value={quickInputs.invB}
-                  onChange={(e) => setQuickInputs({ ...quickInputs, invB: Number(e.target.value) })}
-                  className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Exit Value</label>
-                <input
-                  type="number"
-                  value={quickInputs.exitVal}
-                  onChange={(e) => setQuickInputs({ ...quickInputs, exitVal: Number(e.target.value) })}
-                  className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm"
-                />
-              </div>
+              {([
+                { label: "Seed Pre-Money", key: "preSeed", field: "preSeed" as const },
+                { label: "Seed Investment", key: "invSeed", field: "invSeed" as const },
+                { label: "Series A Pre-Money", key: "preA", field: "preA" as const },
+                { label: "Series A Investment", key: "invA", field: "invA" as const },
+                { label: "Series B Pre-Money", key: "preB", field: "preB" as const },
+                { label: "Series B Investment", key: "invB", field: "invB" as const },
+                { label: "Exit Value", key: "exitVal", field: "exitVal" as const },
+              ]).map((item) => (
+                <div key={item.key}>
+                  <label className="flex items-center text-xs text-muted-foreground mb-1">
+                    {item.label}
+                    {standaloneHint(item.key) && <FieldHint hint={standaloneHint(item.key)!} />}
+                  </label>
+                  <input
+                    type="number"
+                    value={quickInputs[item.field]}
+                    onChange={(e) => setQuickInputs({ ...quickInputs, [item.field]: Number(e.target.value) })}
+                    className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm"
+                  />
+                </div>
+              ))}
               <div className="flex items-end">
                 <button
                   onClick={runQuickCalculate}
@@ -521,7 +518,10 @@ FinMech - Cap Table Mechanics
             </h3>
             <div className="flex gap-4 items-end mb-6">
               <div className="flex-1">
-                <label className="text-xs text-muted-foreground block mb-2">Exit Value</label>
+                <label className="flex items-center text-xs text-muted-foreground mb-2">
+                  Exit Value
+                  {standaloneHint("exitValue") && <FieldHint hint={standaloneHint("exitValue")!} />}
+                </label>
                 <input
                   type="number"
                   value={exitValue}

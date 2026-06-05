@@ -10,6 +10,7 @@ import {
   ArrowLeft, ChevronRight,
 } from "lucide-react";
 import { MODELS, TIER_INFO } from "@/lib/models-data";
+import { canAccessTier, canAccessModel } from "@/lib/access";
 import { useAuth } from "@/lib/store";
 
 const ICONS: Record<string, any> = {
@@ -92,10 +93,7 @@ function ModelsPageInner() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
-  const userPlan = user?.plan || "free";
-  const tierHierarchy = ["free", "standalone", "standard", "investor"];
-  const userTierIndex = tierHierarchy.indexOf(userPlan);
-  const canAccess = (tier: string) => tierHierarchy.indexOf(tier) <= userTierIndex;
+  const canAccess = (tier: string) => canAccessTier(user, tier);
 
   const allModels = Object.values(MODELS);
 
@@ -262,7 +260,7 @@ function ModelsPageInner() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {filteredModels.map((model) => {
               const IconComp = ICONS[model.icon] || BarChart3;
-              const accessible = canAccess(model.tier);
+              const accessible = canAccessModel(user, model);
 
               return (
                 <Link

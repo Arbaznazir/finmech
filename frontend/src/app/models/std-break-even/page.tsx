@@ -5,11 +5,13 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ArrowLeft, TrendingUp, Save, RotateCcw, CheckCircle, XCircle } from "lucide-react";
 import { FieldHint } from "@/components/FieldHint";
-import { FIELD_HINTS } from "@/lib/field-hints";
+import { HintLabel } from "@/components/HintLabel";
+import { standardHint } from "@/lib/standard-model-hints";
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
 import api from "@/lib/api";
+import { offerSmartResultsAfterCalculate } from "@/lib/smart-results";
 import { saveModelResults, clearModelResults } from "@/lib/model-link";
 import { useSavedModel } from "@/lib/use-saved-model";
 import {
@@ -85,6 +87,7 @@ export default function StdBreakEvenPage() {
     if (!user) return;
     try {
       await api.post("/calculations", { modelSlug: "std-break-even", inputs: monthData, outputs: results });
+      offerSmartResultsAfterCalculate("std-break-even", monthData, results);
       await persistState();
     } catch (err) { console.error("Failed to save:", err); }
   };
@@ -147,7 +150,7 @@ export default function StdBreakEvenPage() {
               <div key={field.key}>
                 <label className="flex items-center text-xs text-muted-foreground mb-1">
                   {field.label}
-                  {FIELD_HINTS[field.key] && <FieldHint hint={FIELD_HINTS[field.key]} />}
+                  {standardHint(field.key) && <FieldHint hint={standardHint(field.key)!} />}
                 </label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">{field.prefix}</span>
@@ -175,11 +178,15 @@ export default function StdBreakEvenPage() {
             <>
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-2xl border-2 border-primary/30 bg-primary/5 p-4 text-center">
-                  <p className="text-xs text-muted-foreground mb-1">Break-Even Units</p>
+                  <p className="text-xs text-muted-foreground mb-1 flex items-center justify-center">
+                    <HintLabel hint={standardHint("breakEvenUnits")}>Break-Even Units</HintLabel>
+                  </p>
                   <p className="text-xl font-bold text-primary">{cur.breakEvenUnits.toLocaleString()}</p>
                 </div>
                 <div className="rounded-2xl border-2 border-success/30 bg-success/5 p-4 text-center">
-                  <p className="text-xs text-muted-foreground mb-1">Break-Even Revenue</p>
+                  <p className="text-xs text-muted-foreground mb-1 flex items-center justify-center">
+                    <HintLabel hint={standardHint("breakEvenRevenue")}>Break-Even Revenue</HintLabel>
+                  </p>
                   <p className="text-xl font-bold text-success">{formatCurrency(cur.breakEvenRevenue)}</p>
                 </div>
               </div>
@@ -195,13 +202,15 @@ export default function StdBreakEvenPage() {
                 <h3 className="font-semibold text-sm mb-3">{activeMonth} Metrics</h3>
                 <div className="space-y-2 text-xs">
                   {([
-                    { label: "Contribution / Unit", value: formatCurrency(cur.contributionPerUnit) },
-                    { label: "Revenue at Projection", value: formatCurrency(cur.revenueAtUnits) },
-                    { label: "Total Cost", value: formatCurrency(cur.totalCostAtUnits) },
-                    { label: "Profit / Loss", value: formatCurrency(cur.profitAtUnits) },
+                    { label: "Contribution / Unit", key: "contributionPerUnit", value: formatCurrency(cur.contributionPerUnit) },
+                    { label: "Revenue at Projection", key: "revenueAtUnits", value: formatCurrency(cur.revenueAtUnits) },
+                    { label: "Total Cost", key: "totalCostAtUnits", value: formatCurrency(cur.totalCostAtUnits) },
+                    { label: "Profit / Loss", key: "profitAtUnits", value: formatCurrency(cur.profitAtUnits) },
                   ]).map((row) => (
                     <div key={row.label} className="flex justify-between rounded-lg px-3 py-1.5 bg-background/50 border border-border/50">
-                      <span className="text-muted-foreground">{row.label}</span>
+                      <span className="text-muted-foreground inline-flex items-center">
+                        <HintLabel hint={standardHint(row.key)}>{row.label}</HintLabel>
+                      </span>
                       <span className="font-semibold">{row.value}</span>
                     </div>
                   ))}

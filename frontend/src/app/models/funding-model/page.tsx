@@ -12,6 +12,10 @@ import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
 import api from "@/lib/api";
 import { useSavedModel } from "@/lib/use-saved-model";
+import { offerSmartResultsAfterCalculate } from "@/lib/smart-results";
+import { FieldHint } from "@/components/FieldHint";
+import { HintLabel } from "@/components/HintLabel";
+import { standaloneHint } from "@/lib/standalone-model-hints";
 import {
   MONTHS_ORDER,
   INPUT_FIELDS,
@@ -61,6 +65,7 @@ export default function FundingModelPage() {
     if (Object.keys(monthsData).length === 0) return;
     const result = calculateFunding(monthsData, openingCash, contingencyPct);
     setResults(result);
+    offerSmartResultsAfterCalculate("funding-model", { monthsData, openingCash, contingencyPct }, result);
     setActiveTab("monthly");
     persistState();
   }, [monthsData, openingCash, contingencyPct]);
@@ -193,7 +198,10 @@ export default function FundingModelPage() {
             {/* Global settings */}
             <div className="mt-4 pt-4 border-t border-border space-y-3">
               <div>
-                <label className="block text-xs text-muted-foreground mb-1">Opening Cash</label>
+                <label className="flex items-center text-xs text-muted-foreground mb-1">
+                  Opening Cash
+                  {standaloneHint("Opening Cash") && <FieldHint hint={standaloneHint("Opening Cash")!} />}
+                </label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">$</span>
                   <input
@@ -206,7 +214,10 @@ export default function FundingModelPage() {
                 </div>
               </div>
               <div>
-                <label className="block text-xs text-muted-foreground mb-1">Contingency %</label>
+                <label className="flex items-center text-xs text-muted-foreground mb-1">
+                  Contingency %
+                  {standaloneHint("contingencyPct") && <FieldHint hint={standaloneHint("contingencyPct")!} />}
+                </label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
                   <input
@@ -240,7 +251,10 @@ export default function FundingModelPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 px-1">
                   {fields.map((field) => (
                     <div key={field.key}>
-                      <label className="block text-xs text-muted-foreground mb-1">{field.label}</label>
+                      <label className="flex items-center text-xs text-muted-foreground mb-1">
+                        {field.label}
+                        {standaloneHint(field.key) && <FieldHint hint={standaloneHint(field.key)!} />}
+                      </label>
                       <div className="relative">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">{field.prefix}</span>
                         <input
@@ -304,7 +318,7 @@ export default function FundingModelPage() {
                 {OUTPUT_FIELDS.map((field) => (
                   <tr key={field.key} className={`border-b border-border/30 ${field.bold ? "bg-background/30" : ""}`}>
                     <td className={`px-4 py-2.5 sticky left-0 bg-card ${field.bold ? "font-semibold bg-background/30" : "text-muted-foreground"}`}>
-                      {field.label}
+                      <HintLabel hint={standaloneHint(field.key)} className={field.bold ? "font-semibold" : ""}>{field.label}</HintLabel>
                     </td>
                     {results.monthsAdded.map((m) => {
                       const val = results.monthlyData[m]?.[field.key] ?? 0;
@@ -328,13 +342,17 @@ export default function FundingModelPage() {
           {/* Big numbers */}
           <div className="grid grid-cols-2 gap-4">
             <div className={`rounded-2xl border-2 p-6 text-center ${results.summary.maxCashDeficit < 0 ? "border-danger/30 bg-danger/5" : "border-success/30 bg-success/5"}`}>
-              <p className="text-sm text-muted-foreground mb-2">Max Cash Deficit</p>
+              <p className="text-sm text-muted-foreground mb-2 flex items-center justify-center">
+                <HintLabel hint={standaloneHint("maxCashDeficit")}>Max Cash Deficit</HintLabel>
+              </p>
               <p className={`text-3xl font-bold ${results.summary.maxCashDeficit < 0 ? "text-danger" : "text-success"}`}>
                 {formatCurrency(results.summary.maxCashDeficit)}
               </p>
             </div>
             <div className="rounded-2xl border-2 border-primary/30 bg-primary/5 p-6 text-center output-panel-primary">
-              <p className="text-sm text-muted-foreground mb-2">Total Funding Required</p>
+              <p className="text-sm text-muted-foreground mb-2 flex items-center justify-center">
+                <HintLabel hint={standaloneHint("totalFundingRequired")}>Total Funding Required</HintLabel>
+              </p>
               <p className="text-3xl font-bold text-primary">
                 {formatCurrency(results.summary.totalFunding)}
               </p>
@@ -346,16 +364,18 @@ export default function FundingModelPage() {
             <h2 className="font-semibold mb-5">Funding Breakdown</h2>
             <div className="space-y-3">
               {([
-                { label: "Opening Cash", value: results.summary.openingCash },
-                { label: "Max Cash Deficit", value: results.summary.maxCashDeficit, color: results.summary.maxCashDeficit < 0 ? "text-danger" : "" },
-                { label: "Funding Required (to cover deficit)", value: results.summary.fundingRequired, bold: true },
-                { label: `Contingency (${results.summary.contingencyPct}%)`, value: results.summary.contingency },
-                { label: "Total Funding Required", value: results.summary.totalFunding, bold: true, primary: true },
+                { label: "Opening Cash", key: "Opening Cash", value: results.summary.openingCash },
+                { label: "Max Cash Deficit", key: "maxCashDeficit", value: results.summary.maxCashDeficit, color: results.summary.maxCashDeficit < 0 ? "text-danger" : "" },
+                { label: "Funding Required (to cover deficit)", key: "fundingRequired", value: results.summary.fundingRequired, bold: true },
+                { label: `Contingency (${results.summary.contingencyPct}%)`, key: "contingency", value: results.summary.contingency },
+                { label: "Total Funding Required", key: "totalFundingRequired", value: results.summary.totalFunding, bold: true, primary: true },
               ]).map((row) => (
                 <div key={row.label} className={`flex items-center justify-between rounded-lg px-4 py-3 ${
                   row.primary ? "bg-primary/5 border border-primary/20" : row.bold ? "bg-background/80 border border-border" : "bg-background/50 border border-border/50"
                 }`}>
-                  <span className={`text-sm ${row.bold ? "font-semibold" : "text-muted-foreground"}`}>{row.label}</span>
+                  <span className={`text-sm inline-flex items-center ${row.bold ? "font-semibold" : "text-muted-foreground"}`}>
+                    <HintLabel hint={standaloneHint(row.key)}>{row.label}</HintLabel>
+                  </span>
                   <span className={`text-sm font-semibold ${row.color || ""} ${row.primary ? "text-primary" : ""}`}>
                     {formatCurrency(row.value)}
                   </span>

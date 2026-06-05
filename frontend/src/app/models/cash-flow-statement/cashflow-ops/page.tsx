@@ -11,6 +11,7 @@ import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
 import api from "@/lib/api";
 import { useSavedModel } from "@/lib/use-saved-model";
+import { offerSmartResultsAfterCalculate } from "@/lib/smart-results";
 import { FieldHint } from "@/components/FieldHint";
 import { FIELD_HINTS } from "@/lib/field-hints";
 import {
@@ -80,8 +81,12 @@ export default function CashflowOpsPage() {
     if (Object.keys(monthsData).length === 0) return;
     const result = calculateCFOps(monthsData, openingCash);
     setResults(result);
+    offerSmartResultsAfterCalculate("cashflow-ops", { monthsData, openingCash }, result, {
+      modelName: "Cash Flow Statement — Operations",
+      tier: "standalone",
+    });
     setActiveTab("monthly");
-    
+
     // Also save to localStorage for Consolidated CFO to access
     localStorage.setItem('cashflowOps', JSON.stringify(result));
     persistState();

@@ -5,11 +5,13 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ArrowLeft, Settings, Save, RotateCcw, ArrowRight } from "lucide-react";
 import { FieldHint } from "@/components/FieldHint";
-import { FIELD_HINTS } from "@/lib/field-hints";
+import { HintLabel } from "@/components/HintLabel";
+import { standardHint } from "@/lib/standard-model-hints";
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
 import api from "@/lib/api";
+import { offerSmartResultsAfterCalculate } from "@/lib/smart-results";
 import { saveModelResults, clearModelResults } from "@/lib/model-link";
 import { useSavedModel } from "@/lib/use-saved-model";
 import {
@@ -123,12 +125,14 @@ export default function StdCommonUtilityIncomePage() {
   const handleSave = async () => {
     if (!user) return;
     persistResults();
+    const outputs = { monthlyData: isResult.monthlyData, annual: isResult.annual };
     try {
       await api.post("/calculations", {
         modelSlug: "std-common-utility",
         inputs: monthData,
-        outputs: { monthlyData: isResult.monthlyData, annual: isResult.annual },
+        outputs,
       });
+      offerSmartResultsAfterCalculate("std-common-utility", monthData, outputs);
       await persistState();
     } catch (err) { console.error("Failed to save:", err); }
   };
@@ -188,7 +192,7 @@ export default function StdCommonUtilityIncomePage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {INPUT_FIELDS.filter((f) => f.category === cat).map((field) => (
                   <div key={field.key}>
-                    <label className="flex items-center text-xs text-muted-foreground mb-1">{field.label}{FIELD_HINTS[field.key] && <FieldHint hint={FIELD_HINTS[field.key]} />}</label>
+                    <label className="flex items-center text-xs text-muted-foreground mb-1">{field.label}{standardHint(field.key) && <FieldHint hint={standardHint(field.key)!} />}</label>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">$</span>
                       <input type="number" data-field={field.key}
@@ -234,7 +238,9 @@ export default function StdCommonUtilityIncomePage() {
                   { label: "Net Margin", key: "Net Margin %", pct: true },
                 ] as { label: string; key: string; pct?: boolean }[]).map((row) => (
                   <div key={row.label} className="flex justify-between rounded-lg px-3 py-1.5 bg-background/50 border border-border/50">
-                    <span className="text-muted-foreground">{row.label}</span>
+                    <span className="text-muted-foreground inline-flex items-center">
+                      <HintLabel hint={standardHint(row.key)}>{row.label}</HintLabel>
+                    </span>
                     <span className="font-semibold">
                       {row.pct
                         ? `${(Number(cur[row.key]) || 0).toFixed(1)}%`
@@ -256,7 +262,9 @@ export default function StdCommonUtilityIncomePage() {
                 { label: "Net Profit", key: "Net Profit" },
               ] as { label: string; key: string }[]).map((row) => (
                 <div key={row.label} className="flex justify-between rounded-lg px-3 py-1.5 bg-background/50 border border-border/50">
-                  <span className="text-muted-foreground">{row.label}</span>
+                  <span className="text-muted-foreground inline-flex items-center">
+                    <HintLabel hint={standardHint(row.key)}>{row.label}</HintLabel>
+                  </span>
                   <span className="font-semibold">{formatCurrency(Number(isResult.annual[row.key]) || 0)}</span>
                 </div>
               ))}

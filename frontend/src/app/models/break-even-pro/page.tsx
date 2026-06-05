@@ -12,6 +12,7 @@ import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
 import api from "@/lib/api";
 import { useSavedModel } from "@/lib/use-saved-model";
+import { offerSmartResultsAfterCalculate } from "@/lib/smart-results";
 import {
   calculateBreakEven,
   createEmptyMonthInputs,
@@ -43,7 +44,9 @@ export default function BreakEvenPage() {
     // Wrap single month in monthly structure for calculation
     const monthlyData = { "Apr": inputs };
     const fullResults = calculateBreakEven(monthlyData);
-    setResults(fullResults.monthlyData["Apr"] || null);
+    const monthResult = fullResults.monthlyData["Apr"] || null;
+    setResults(monthResult);
+    if (monthResult) offerSmartResultsAfterCalculate("break-even-pro", inputs, monthResult);
     persistState();
   };
 

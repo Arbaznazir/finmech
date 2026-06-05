@@ -5,11 +5,13 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ArrowLeft, TrendingUp, Save, RotateCcw, Users } from "lucide-react";
 import { FieldHint } from "@/components/FieldHint";
-import { FIELD_HINTS } from "@/lib/field-hints";
+import { HintLabel } from "@/components/HintLabel";
+import { investorHint } from "@/lib/investor-model-hints";
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
 import api from "@/lib/api";
+import { offerSmartResultsAfterCalculate } from "@/lib/smart-results";
 import { loadModelResults, saveModelResults, clearModelResults } from "@/lib/model-link";
 import { useSavedModel } from "@/lib/use-saved-model";
 import {
@@ -123,6 +125,7 @@ export default function InvUnitEconomicsPage() {
     if (!user) return;
     try {
       await api.post("/calculations", { modelSlug: "inv-unit-economics", inputs: monthData, outputs: results });
+      offerSmartResultsAfterCalculate("inv-unit-economics", monthData, results);
       await persistState();
     } catch (err) { console.error("Failed to save:", err); }
   };
@@ -216,7 +219,7 @@ export default function InvUnitEconomicsPage() {
                     <div key={field.key}>
                       <label className="flex items-center text-xs text-muted-foreground mb-1">
                         {field.label}
-                        {FIELD_HINTS[field.key] && <FieldHint hint={FIELD_HINTS[field.key]} />}
+                        {investorHint(field.key) && <FieldHint hint={investorHint(field.key)!} />}
                         {isLocked && <span className="ml-1 text-[10px] text-amber-400/70">(auto-filled)</span>}
                       </label>
                       <div className="relative">
@@ -262,7 +265,9 @@ export default function InvUnitEconomicsPage() {
                   }
                   return (
                     <div key={f.key} className="flex justify-between text-xs rounded-lg px-3 py-1.5 bg-background/50 border border-border/50">
-                      <span className="text-muted-foreground">{f.label}</span>
+                      <span className="text-muted-foreground inline-flex items-center">
+                        <HintLabel hint={investorHint(f.key)}>{f.label}</HintLabel>
+                      </span>
                       <span className="font-semibold">{fmtOutput(f.key, f.format)}</span>
                     </div>
                   );
@@ -278,61 +283,48 @@ export default function InvUnitEconomicsPage() {
             <div className="rounded-2xl border border-border bg-card p-5 output-panel">
               <h3 className="font-semibold text-sm mb-3">Annual Summary</h3>
               <div className="space-y-1.5 text-xs">
-                <div className="flex justify-between px-3 py-1">
-                  <span className="text-muted-foreground">Total Revenue</span>
-                  <span className="font-semibold">{formatCurrency(results.summary.totalRevenue)}</span>
-                </div>
-                <div className="flex justify-between px-3 py-1">
-                  <span className="text-muted-foreground">Total Contribution Margin</span>
-                  <span className="font-semibold">{formatCurrency(results.summary.totalContributionMargin)}</span>
-                </div>
-                <div className="flex justify-between px-3 py-1">
-                  <span className="text-muted-foreground">Ending Customers</span>
-                  <span className="font-semibold">{results.summary.endingCustomers.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between px-3 py-1">
-                  <span className="text-muted-foreground">Ending MRR</span>
-                  <span className="font-semibold">{formatCurrency(results.summary.endingMRR)}</span>
+                {([
+                  { label: "Total Revenue", key: "totalRevenue", value: formatCurrency(results.summary.totalRevenue) },
+                  { label: "Total Contribution Margin", key: "totalContributionMargin", value: formatCurrency(results.summary.totalContributionMargin) },
+                  { label: "Ending Customers", key: "endingCustomers", value: results.summary.endingCustomers.toLocaleString() },
+                  { label: "Ending MRR", key: "endingMRR", value: formatCurrency(results.summary.endingMRR) },
+                ]).map((row) => (
+                  <div key={row.label} className="flex justify-between px-3 py-1">
+                    <span className="text-muted-foreground inline-flex items-center">
+                      <HintLabel hint={investorHint(row.key)}>{row.label}</HintLabel>
+                    </span>
+                    <span className="font-semibold">{row.value}</span>
+                  </div>
+                ))}
+                <div className="border-t border-border pt-1.5 mt-1.5">
+                  {([
+                    { label: "Avg CAC", key: "avgCAC", value: formatCurrency(results.summary.avgCAC) },
+                    { label: "Avg LTV", key: "avgLTV", value: formatCurrency(results.summary.avgLTV) },
+                    { label: "Avg LTV/CAC", key: "avgLTVCAC", value: `${results.summary.avgLTVCAC.toFixed(2)}x` },
+                    { label: "Avg Churn Rate", key: "avgChurnRate", value: `${(results.summary.avgChurnRate * 100).toFixed(1)}%` },
+                  ]).map((row) => (
+                    <div key={row.label} className="flex justify-between px-3 py-1">
+                      <span className="text-muted-foreground inline-flex items-center">
+                        <HintLabel hint={investorHint(row.key)}>{row.label}</HintLabel>
+                      </span>
+                      <span className="font-semibold">{row.value}</span>
+                    </div>
+                  ))}
                 </div>
                 <div className="border-t border-border pt-1.5 mt-1.5">
-                  <div className="flex justify-between px-3 py-1">
-                    <span className="text-muted-foreground">Avg CAC</span>
-                    <span className="font-semibold">{formatCurrency(results.summary.avgCAC)}</span>
-                  </div>
-                  <div className="flex justify-between px-3 py-1">
-                    <span className="text-muted-foreground">Avg LTV</span>
-                    <span className="font-semibold">{formatCurrency(results.summary.avgLTV)}</span>
-                  </div>
-                  <div className="flex justify-between px-3 py-1">
-                    <span className="text-muted-foreground">Avg LTV/CAC</span>
-                    <span className="font-semibold">{results.summary.avgLTVCAC.toFixed(2)}x</span>
-                  </div>
-                  <div className="flex justify-between px-3 py-1">
-                    <span className="text-muted-foreground">Avg Churn Rate</span>
-                    <span className="font-semibold">{(results.summary.avgChurnRate * 100).toFixed(1)}%</span>
-                  </div>
-                </div>
-                <div className="border-t border-border pt-1.5 mt-1.5">
-                  <div className="flex justify-between px-3 py-1">
-                    <span className="text-muted-foreground">Avg GRR</span>
-                    <span className="font-semibold">{(results.summary.avgGRR * 100).toFixed(1)}%</span>
-                  </div>
-                  <div className="flex justify-between px-3 py-1">
-                    <span className="text-muted-foreground">Avg NRR</span>
-                    <span className={`font-semibold ${results.summary.avgNRR < 1 ? "text-danger" : "text-success"}`}>
-                      {(results.summary.avgNRR * 100).toFixed(1)}%
-                    </span>
-                  </div>
-                  <div className="flex justify-between px-3 py-1">
-                    <span className="text-muted-foreground">Avg Contribution Margin</span>
-                    <span className="font-semibold">{(results.summary.avgContributionMargin * 100).toFixed(1)}%</span>
-                  </div>
-                  <div className="flex justify-between px-3 py-1">
-                    <span className="text-muted-foreground">Avg Rule of 40</span>
-                    <span className={`font-semibold ${results.summary.avgRuleOf40 >= 0.40 ? "text-success" : results.summary.avgRuleOf40 >= 0.20 ? "text-amber-400" : "text-danger"}`}>
-                      {(results.summary.avgRuleOf40 * 100).toFixed(1)}%
-                    </span>
-                  </div>
+                  {([
+                    { label: "Avg GRR", key: "avgGRR", value: `${(results.summary.avgGRR * 100).toFixed(1)}%` },
+                    { label: "Avg NRR", key: "avgNRR", value: `${(results.summary.avgNRR * 100).toFixed(1)}%`, color: results.summary.avgNRR < 1 ? "text-danger" : "text-success" },
+                    { label: "Avg Contribution Margin", key: "avgContributionMargin", value: `${(results.summary.avgContributionMargin * 100).toFixed(1)}%` },
+                    { label: "Avg Rule of 40", key: "avgRuleOf40", value: `${(results.summary.avgRuleOf40 * 100).toFixed(1)}%`, color: results.summary.avgRuleOf40 >= 0.40 ? "text-success" : results.summary.avgRuleOf40 >= 0.20 ? "text-amber-400" : "text-danger" },
+                  ]).map((row) => (
+                    <div key={row.label} className="flex justify-between px-3 py-1">
+                      <span className="text-muted-foreground inline-flex items-center">
+                        <HintLabel hint={investorHint(row.key)}>{row.label}</HintLabel>
+                      </span>
+                      <span className={`font-semibold ${row.color || ""}`}>{row.value}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>

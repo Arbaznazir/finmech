@@ -12,6 +12,10 @@ import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
 import api from "@/lib/api";
 import { useSavedModel } from "@/lib/use-saved-model";
+import { offerSmartResultsAfterCalculate } from "@/lib/smart-results";
+import { FieldHint } from "@/components/FieldHint";
+import { HintLabel } from "@/components/HintLabel";
+import { standaloneHint } from "@/lib/standalone-model-hints";
 import {
   calculateViability,
   type ViabilityInputs,
@@ -69,7 +73,9 @@ export default function ViabilityDashboardPage() {
 
   const handleCalculate = () => {
     if (inputs.averagePricePerUnit <= 0) return;
-    setResults(calculateViability(inputs));
+    const r = calculateViability(inputs);
+    setResults(r);
+    offerSmartResultsAfterCalculate("viability-dashboard", inputs, r);
     persistState();
   };
 
@@ -151,7 +157,10 @@ export default function ViabilityDashboardPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {fields.map((field) => (
             <div key={field.key}>
-              <label className="block text-sm text-muted-foreground mb-1.5">{field.label}</label>
+              <label className="flex items-center text-sm text-muted-foreground mb-1.5">
+                {field.label}
+                {standaloneHint(field.key) && <FieldHint hint={standaloneHint(field.key)!} />}
+              </label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">{field.prefix}</span>
                 <input
@@ -201,14 +210,16 @@ export default function ViabilityDashboardPage() {
           {/* Key Metrics Row */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
             {[
-              { label: "Contribution / Unit", value: formatCurrency(results.contributionPerUnit) },
-              { label: "Contribution Margin", value: results.contributionMarginPct.toFixed(1) + "%" },
-              { label: "Total Revenue", value: formatCurrency(results.totalRevenue) },
-              { label: "Net Profit / Loss", value: formatCurrency(results.netProfitLoss), color: results.netProfitLoss >= 0 ? "text-success" : "text-danger" },
-              { label: "Net Profit Margin", value: results.netProfitMarginPct.toFixed(1) + "%", color: results.netProfitMarginPct >= 0 ? "text-success" : "text-danger" },
+              { label: "Contribution / Unit", key: "contributionPerUnit", value: formatCurrency(results.contributionPerUnit) },
+              { label: "Contribution Margin", key: "contributionMarginPct", value: results.contributionMarginPct.toFixed(1) + "%" },
+              { label: "Total Revenue", key: "totalRevenue", value: formatCurrency(results.totalRevenue) },
+              { label: "Net Profit / Loss", key: "netProfitLoss", value: formatCurrency(results.netProfitLoss), color: results.netProfitLoss >= 0 ? "text-success" : "text-danger" },
+              { label: "Net Profit Margin", key: "netProfitMarginPct", value: results.netProfitMarginPct.toFixed(1) + "%", color: results.netProfitMarginPct >= 0 ? "text-success" : "text-danger" },
             ].map((m) => (
               <div key={m.label} className="rounded-xl bg-card border border-border p-4">
-                <p className="text-xs text-muted-foreground mb-1">{m.label}</p>
+                <p className="text-xs text-muted-foreground mb-1 flex items-center">
+                  <HintLabel hint={standaloneHint(m.key)}>{m.label}</HintLabel>
+                </p>
                 <p className={`text-xl font-bold ${m.color || ""}`}>{m.value}</p>
               </div>
             ))}
@@ -217,25 +228,33 @@ export default function ViabilityDashboardPage() {
           {/* Break-Even & Safety Row */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="rounded-xl bg-card border border-border p-4">
-              <p className="text-xs text-muted-foreground mb-1">Break-Even Units</p>
+              <p className="text-xs text-muted-foreground mb-1 flex items-center">
+                <HintLabel hint={standaloneHint("breakEvenUnits")}>Break-Even Units</HintLabel>
+              </p>
               <p className="text-xl font-bold">
                 {results.breakEvenUnits === Infinity ? "∞" : results.breakEvenUnits.toLocaleString()}
               </p>
             </div>
             <div className="rounded-xl bg-card border border-border p-4">
-              <p className="text-xs text-muted-foreground mb-1">Break-Even Revenue</p>
+              <p className="text-xs text-muted-foreground mb-1 flex items-center">
+                <HintLabel hint={standaloneHint("breakEvenRevenue")}>Break-Even Revenue</HintLabel>
+              </p>
               <p className="text-xl font-bold">
                 {results.breakEvenRevenue === Infinity ? "∞" : formatCurrency(results.breakEvenRevenue)}
               </p>
             </div>
             <div className="rounded-xl bg-card border border-border p-4">
-              <p className="text-xs text-muted-foreground mb-1">BE Utilisation</p>
+              <p className="text-xs text-muted-foreground mb-1 flex items-center">
+                <HintLabel hint={standaloneHint("breakEvenUtilisationPct")}>BE Utilisation</HintLabel>
+              </p>
               <p className={`text-xl font-bold ${results.breakEvenUtilisationPct > 100 ? "text-danger" : results.breakEvenUtilisationPct > 80 ? "text-amber-400" : "text-success"}`}>
                 {results.breakEvenUtilisationPct.toFixed(1)}%
               </p>
             </div>
             <div className="rounded-xl bg-card border border-border p-4">
-              <p className="text-xs text-muted-foreground mb-1">Margin of Safety</p>
+              <p className="text-xs text-muted-foreground mb-1 flex items-center">
+                <HintLabel hint={standaloneHint("marginOfSafetyPct")}>Margin of Safety</HintLabel>
+              </p>
               <p className={`text-xl font-bold ${results.marginOfSafetyPct > 20 ? "text-success" : results.marginOfSafetyPct > 0 ? "text-amber-400" : "text-danger"}`}>
                 {results.marginOfSafetyPct.toFixed(1)}%
               </p>

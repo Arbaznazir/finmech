@@ -12,6 +12,7 @@ import { formatCurrency } from "@/lib/utils";
 import api from "@/lib/api";
 import { loadModelResults, saveModelResults, clearModelResults } from "@/lib/model-link";
 import { useSavedModel } from "@/lib/use-saved-model";
+import { offerSmartResultsAfterCalculate } from "@/lib/smart-results";
 import {
   calculateBreakEven,
   createEmptyMonthInputs,
@@ -66,6 +67,7 @@ export default function InvBreakEvenPage() {
     const monthResult = r.monthlyData["Apr"];
     if (!monthResult) return;
     setResults(monthResult);
+    offerSmartResultsAfterCalculate("inv-break-even", inputs, monthResult);
     saveModelResults("inv-break-even", {
       breakEvenUnits: monthResult.breakEvenUnits,
       breakEvenRevenue: monthResult.breakEvenRevenue,

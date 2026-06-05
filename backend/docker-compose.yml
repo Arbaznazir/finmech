@@ -12,6 +12,10 @@ services:
       - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:postgres@localhost:5432/finmech?schema=public}
       - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
       - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
+      - RAZORPAY_KEY_ID=${RAZORPAY_KEY_ID:-}
+      - RAZORPAY_KEY_SECRET=${RAZORPAY_KEY_SECRET:-}
+      - RAZORPAY_WEBHOOK_SECRET=${RAZORPAY_WEBHOOK_SECRET:-}
+      - RAZORPAY_COMPANY_NAME=${RAZORPAY_COMPANY_NAME:-FinMech}
     volumes:
       - backend-data:/app/data
     restart: unless-stopped

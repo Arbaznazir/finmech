@@ -5,12 +5,14 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ArrowLeft, TrendingUp, Save, RotateCcw, ArrowRight } from "lucide-react";
 import { FieldHint } from "@/components/FieldHint";
-import { FIELD_HINTS } from "@/lib/field-hints";
+import { HintLabel } from "@/components/HintLabel";
+import { freeHint } from "@/lib/free-model-hints";
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
 import api from "@/lib/api";
 import { useSavedModel } from "@/lib/use-saved-model";
+import { offerSmartResultsAfterCalculate } from "@/lib/smart-results";
 import {
   BREAKEVEN_FREE_FIELDS,
   calculateBreakEvenFree,
@@ -42,7 +44,9 @@ export default function BreakEvenBasicPage() {
   };
 
   const handleCalculate = () => {
-    setResults(calculateBreakEvenFree(inputs));
+    const r = calculateBreakEvenFree(inputs);
+    setResults(r);
+    offerSmartResultsAfterCalculate("break-even-basic", inputs, r);
     persistState();
   };
 
@@ -93,7 +97,7 @@ export default function BreakEvenBasicPage() {
           <div className="space-y-4">
             {BREAKEVEN_FREE_FIELDS.map((field) => (
               <div key={field.key}>
-                <label className="flex items-center text-xs text-muted-foreground mb-1">{field.label}{FIELD_HINTS[field.key] && <FieldHint hint={FIELD_HINTS[field.key]} />}</label>
+                <label className="flex items-center text-xs text-muted-foreground mb-1">{field.label}{freeHint(field.key) && <FieldHint hint={freeHint(field.key)!} />}</label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">{field.prefix}</span>
                   <input
@@ -134,13 +138,17 @@ export default function BreakEvenBasicPage() {
             {/* Big numbers */}
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-2xl border-2 border-primary/30 bg-primary/5 p-5 text-center">
-                <p className="text-xs text-muted-foreground mb-1">Break-Even Units</p>
+                <p className="text-xs text-muted-foreground mb-1 flex items-center justify-center">
+                  <HintLabel hint={freeHint("breakEvenUnits")}>Break-Even Units</HintLabel>
+                </p>
                 <p className="text-2xl font-bold text-primary">
                   {results.breakEvenUnits === 0 && inputs.pricePerUnit <= inputs.variableCostPerUnit ? "∞" : results.breakEvenUnits.toLocaleString()}
                 </p>
               </div>
               <div className="rounded-2xl border-2 border-success/30 bg-success/5 p-5 text-center">
-                <p className="text-xs text-muted-foreground mb-1">Break-Even Revenue</p>
+                <p className="text-xs text-muted-foreground mb-1 flex items-center justify-center">
+                  <HintLabel hint={freeHint("breakEvenRevenue")}>Break-Even Revenue</HintLabel>
+                </p>
                 <p className="text-2xl font-bold text-success">{formatCurrency(results.breakEvenRevenue)}</p>
               </div>
             </div>
@@ -150,13 +158,15 @@ export default function BreakEvenBasicPage() {
               <h3 className="font-semibold text-sm mb-3">Key Metrics</h3>
               <div className="space-y-2">
                 {([
-                  { label: "Price Per Unit", value: formatCurrency(results.pricePerUnit) },
-                  { label: "Variable Cost Per Unit", value: formatCurrency(results.variableCostPerUnit) },
-                  { label: "Contribution Per Unit", value: formatCurrency(results.contributionPerUnit), bold: true },
-                  { label: "Fixed Cost (Monthly)", value: formatCurrency(results.fixedCostMonthly) },
+                  { label: "Price Per Unit", key: "pricePerUnit", value: formatCurrency(results.pricePerUnit) },
+                  { label: "Variable Cost Per Unit", key: "variableCostPerUnit", value: formatCurrency(results.variableCostPerUnit) },
+                  { label: "Contribution Per Unit", key: "contributionPerUnit", value: formatCurrency(results.contributionPerUnit), bold: true },
+                  { label: "Fixed Cost (Monthly)", key: "fixedCostMonthly", value: formatCurrency(results.fixedCostMonthly) },
                 ]).map((row) => (
                   <div key={row.label} className="flex items-center justify-between rounded-lg px-3 py-2 bg-background/50 border border-border/50">
-                    <span className="text-xs text-muted-foreground">{row.label}</span>
+                    <span className="text-xs text-muted-foreground inline-flex items-center">
+                      <HintLabel hint={freeHint(row.key)}>{row.label}</HintLabel>
+                    </span>
                     <span className={`text-sm ${row.bold ? "font-bold text-primary" : "font-semibold"}`}>{row.value}</span>
                   </div>
                 ))}
@@ -227,7 +237,9 @@ export default function BreakEvenBasicPage() {
                     <span className="text-sm font-semibold">{formatCurrency(results.totalCostAtUnits)}</span>
                   </div>
                   <div className={`flex items-center justify-between rounded-lg px-3 py-2 border ${results.profitAtUnits >= 0 ? "bg-success/5 border-success/20" : "bg-danger/5 border-danger/20"}`}>
-                    <span className="text-xs text-muted-foreground">Profit / Loss</span>
+                    <span className="text-xs text-muted-foreground inline-flex items-center">
+                      <HintLabel hint={freeHint("profitAtUnits")}>Profit / Loss</HintLabel>
+                    </span>
                     <span className={`text-sm font-bold ${results.profitAtUnits >= 0 ? "text-success" : "text-danger"}`}>
                       {formatCurrency(results.profitAtUnits)}
                     </span>

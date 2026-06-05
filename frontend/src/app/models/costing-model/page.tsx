@@ -5,13 +5,15 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ArrowLeft, Calculator, Save, RotateCcw, ArrowRight, ArrowLeftRight } from "lucide-react";
 import { FieldHint } from "@/components/FieldHint";
-import { FIELD_HINTS } from "@/lib/field-hints";
+import { HintLabel } from "@/components/HintLabel";
+import { freeHint } from "@/lib/free-model-hints";
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
 import api from "@/lib/api";
 import { clearModelResults } from "@/lib/model-link";
 import { useSavedModel } from "@/lib/use-saved-model";
+import { offerSmartResultsAfterCalculate } from "@/lib/smart-results";
 import {
   FIXED_COST_FIELDS,
   VARIABLE_COST_FIELDS,
@@ -46,6 +48,7 @@ export default function CostingModelPage() {
   const handleCalculate = () => {
     const r = calculateCosting(inputs);
     setResults(r);
+    offerSmartResultsAfterCalculate("costing-model", inputs, r);
     persistState();
   };
 
@@ -94,7 +97,10 @@ export default function CostingModelPage() {
         <div className="space-y-6" data-inputs>
           {/* Units Sold */}
           <div className="rounded-2xl border border-border bg-card p-6 output-panel">
-            <h2 className="font-semibold text-sm mb-3">Units Sold (Monthly)</h2>
+            <h2 className="font-semibold text-sm mb-3 flex items-center">
+              Units Sold (Monthly)
+              {freeHint("unitsSold") && <FieldHint hint={freeHint("unitsSold")!} />}
+            </h2>
             <div className="relative max-w-xs">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">#</span>
               <input
@@ -122,7 +128,7 @@ export default function CostingModelPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {FIXED_COST_FIELDS.map((field) => (
                 <div key={field.key}>
-                  <label className="flex items-center text-xs text-muted-foreground mb-1">{field.label}{FIELD_HINTS[field.key] && <FieldHint hint={FIELD_HINTS[field.key]} />}</label>
+                  <label className="flex items-center text-xs text-muted-foreground mb-1">{field.label}{freeHint(field.key) && <FieldHint hint={freeHint(field.key)!} />}</label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">$</span>
                     <input
@@ -153,7 +159,7 @@ export default function CostingModelPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {VARIABLE_COST_FIELDS.map((field) => (
                 <div key={field.key}>
-                  <label className="flex items-center text-xs text-muted-foreground mb-1">{field.label}{FIELD_HINTS[field.key] && <FieldHint hint={FIELD_HINTS[field.key]} />}</label>
+                  <label className="flex items-center text-xs text-muted-foreground mb-1">{field.label}{freeHint(field.key) && <FieldHint hint={freeHint(field.key)!} />}</label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">$</span>
                     <input
@@ -193,26 +199,25 @@ export default function CostingModelPage() {
         {results ? (
           <div className="space-y-4 h-fit sticky top-8">
             <div className="rounded-2xl border-2 border-danger/30 bg-danger/5 p-5 text-center">
-              <p className="text-xs text-muted-foreground mb-1">Total Monthly Cost</p>
+              <p className="text-xs text-muted-foreground mb-1 flex items-center justify-center">
+                <HintLabel hint={freeHint("totalMonthlyCost")}>Total Monthly Cost</HintLabel>
+              </p>
               <p className="text-2xl font-bold text-danger">{formatCurrency(results.totalMonthlyCost)}</p>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-xl bg-muted border border-border p-3 output-panel text-center">
-                <p className="text-xs text-muted-foreground mb-1">Total Fixed Costs</p>
-                <p className="text-lg font-bold">{formatCurrency(results.totalFixedCosts)}</p>
-              </div>
-              <div className="rounded-xl bg-muted border border-border p-3 output-panel text-center">
-                <p className="text-xs text-muted-foreground mb-1">Total Variable Cost</p>
-                <p className="text-lg font-bold">{formatCurrency(results.totalVariableCost)}</p>
-              </div>
-              <div className="rounded-xl bg-muted border border-border p-3 output-panel text-center">
-                <p className="text-xs text-muted-foreground mb-1">Variable Cost / Unit</p>
-                <p className="text-lg font-bold">{formatCurrency(results.totalVariableCostPerUnit)}</p>
-              </div>
-              <div className="rounded-xl bg-muted border border-border p-3 output-panel text-center">
-                <p className="text-xs text-muted-foreground mb-1">Units Sold</p>
-                <p className="text-lg font-bold">{results.unitsSold.toLocaleString()}</p>
-              </div>
+              {([
+                { label: "Total Fixed Costs", key: "totalFixedCosts", value: formatCurrency(results.totalFixedCosts) },
+                { label: "Total Variable Cost", key: "totalVariableCost", value: formatCurrency(results.totalVariableCost) },
+                { label: "Variable Cost / Unit", key: "totalVariableCostPerUnit", value: formatCurrency(results.totalVariableCostPerUnit) },
+                { label: "Units Sold", key: "unitsSold", value: results.unitsSold.toLocaleString() },
+              ]).map((row) => (
+                <div key={row.key} className="rounded-xl bg-muted border border-border p-3 output-panel text-center">
+                  <p className="text-xs text-muted-foreground mb-1 flex items-center justify-center">
+                    <HintLabel hint={freeHint(row.key)}>{row.label}</HintLabel>
+                  </p>
+                  <p className="text-lg font-bold">{row.value}</p>
+                </div>
+              ))}
             </div>
 
             {/* Fixed vs Variable Donut */}

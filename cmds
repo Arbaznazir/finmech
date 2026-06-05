@@ -1,10 +1,16 @@
 /opt/homebrew/opt/postgresql@16/bin/pg_ctl -D ~/.postgres_data -l /tmp/postgres.log start
 
+# 1. Copy env templates and paste Razorpay creds:
+#    cp backend/.env.example backend/.env
+#    cp frontend/.env.example frontend/.env.local
+#    Fill RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, RAZORPAY_WEBHOOK_SECRET in backend/.env
+
 cd /Users/the_ghost/Freelancing/finmech/backend
 export DATABASE_URL="postgresql://postgres:postgres@localhost:5432/finmech?schema=public"
 export PORT=5001
 export JWT_SECRET="finmech-super-secret-key-change-in-production"
 export FRONTEND_URL="http://localhost:3000"
+# Or: set -a && source .env && set +a
 node --experimental-strip-types src/index.js
 
 cd /Users/the_ghost/Freelancing/finmech/frontend

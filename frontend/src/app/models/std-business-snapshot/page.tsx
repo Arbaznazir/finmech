@@ -5,13 +5,15 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ArrowLeft, LayoutDashboard, Save, RotateCcw, RefreshCw } from "lucide-react";
 import { FieldHint } from "@/components/FieldHint";
-import { FIELD_HINTS } from "@/lib/field-hints";
+import { HintLabel } from "@/components/HintLabel";
+import { standardHint } from "@/lib/standard-model-hints";
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
 import api from "@/lib/api";
 import { loadModelResults, saveModelResults, clearModelResults } from "@/lib/model-link";
 import { useSavedModel } from "@/lib/use-saved-model";
+import { offerSmartResultsAfterCalculate } from "@/lib/smart-results";
 
 interface SnapshotInputs {
   monthlyRevenue: number;
@@ -169,6 +171,7 @@ export default function StdBusinessSnapshotPage() {
   const handleCalculate = () => {
     const r = calculateSnapshot(inputs);
     setResults(r);
+    offerSmartResultsAfterCalculate("std-business-snapshot", inputs, r);
     saveModelResults("std-business-snapshot", { ...inputs, ...r });
     persistState();
   };
@@ -261,7 +264,7 @@ export default function StdBusinessSnapshotPage() {
               <div key={field.key}>
                 <label className="flex items-center text-xs text-muted-foreground mb-1">
                   {field.label}
-                  {FIELD_HINTS[field.key] && <FieldHint hint={FIELD_HINTS[field.key]} />}
+                  {standardHint(field.key) && <FieldHint hint={standardHint(field.key)!} />}
                   {isLocked && <span className="ml-1 text-[10px] text-primary/70">(auto-filled)</span>}
                 </label>
                 <div className="relative">
@@ -302,7 +305,9 @@ export default function StdBusinessSnapshotPage() {
           <div className="space-y-4 h-fit sticky top-8">
             {/* Health Score */}
             <div className={`rounded-2xl p-6 text-center border-2 ${results.healthLabel === "HEALTHY" ? "border-success/30 bg-success/5" : results.healthLabel === "CAUTION" ? "border-amber-400/30 bg-amber-400/5" : "border-danger/30 bg-danger/5"}`}>
-              <p className="text-xs text-muted-foreground mb-1">Business Health Index</p>
+              <p className="text-xs text-muted-foreground mb-1 flex items-center justify-center">
+                <HintLabel hint={standardHint("healthScore")}>Business Health Index</HintLabel>
+              </p>
               <p className={`text-4xl font-bold ${results.healthLabel === "HEALTHY" ? "text-success" : results.healthLabel === "CAUTION" ? "text-amber-400" : "text-danger"}`}>{results.healthScore}%</p>
               <p className={`text-sm font-semibold mt-1 ${results.healthLabel === "HEALTHY" ? "text-success" : results.healthLabel === "CAUTION" ? "text-amber-400" : "text-danger"}`}>{results.healthLabel}</p>
             </div>
@@ -310,13 +315,15 @@ export default function StdBusinessSnapshotPage() {
             {/* RAG Cards */}
             <div className="grid grid-cols-2 gap-3">
               {([
-                { label: "Revenue", status: results.revenueStatus, value: formatCurrency(inputs.monthlyRevenue) + "/mo" },
-                { label: "Gross Margin", status: results.marginStatus, value: `${inputs.grossMargin.toFixed(1)}%` },
-                { label: "Runway", status: results.runwayStatus, value: results.runway === Infinity ? "∞" : `${results.runway.toFixed(1)} mo` },
-                { label: "LTV/CAC", status: results.ltcCacStatus, value: `${results.ltcCacRatio.toFixed(2)}x` },
+                { label: "Revenue", key: "revenueStatus", status: results.revenueStatus, value: formatCurrency(inputs.monthlyRevenue) + "/mo" },
+                { label: "Gross Margin", key: "marginStatus", status: results.marginStatus, value: `${inputs.grossMargin.toFixed(1)}%` },
+                { label: "Runway", key: "runwayStatus", status: results.runwayStatus, value: results.runway === Infinity ? "∞" : `${results.runway.toFixed(1)} mo` },
+                { label: "LTV/CAC", key: "ltcCacStatus", status: results.ltcCacStatus, value: `${results.ltcCacRatio.toFixed(2)}x` },
               ]).map((card) => (
                 <div key={card.label} className={`rounded-xl border p-4 ${ragColor(card.status)}`}>
-                  <p className="text-[10px] uppercase font-semibold mb-1">{card.label}</p>
+                  <p className="text-[10px] uppercase font-semibold mb-1 flex items-center">
+                    <HintLabel hint={standardHint(card.key)}>{card.label}</HintLabel>
+                  </p>
                   <p className="text-lg font-bold">{card.value}</p>
                   <p className="text-[10px] font-semibold mt-1">{card.status}</p>
                 </div>
@@ -325,7 +332,9 @@ export default function StdBusinessSnapshotPage() {
 
             {/* Insights */}
             <div className="rounded-2xl border border-border bg-card p-5 output-panel">
-              <h3 className="font-semibold text-sm mb-3">Insights</h3>
+              <h3 className="font-semibold text-sm mb-3 flex items-center">
+                <HintLabel hint={standardHint("insights")}>Insights</HintLabel>
+              </h3>
               <div className="space-y-2">
                 {results.insights.map((insight, i) => (
                   <div key={i} className="text-xs text-muted-foreground rounded-lg bg-background/50 border border-border/50 px-3 py-2">

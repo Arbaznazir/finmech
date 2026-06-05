@@ -8,12 +8,14 @@ import {
   CheckCircle, AlertTriangle, XCircle, Info,
 } from "lucide-react";
 import { FieldHint } from "@/components/FieldHint";
-import { FIELD_HINTS } from "@/lib/field-hints";
+import { HintLabel } from "@/components/HintLabel";
+import { standaloneHint } from "@/lib/standalone-model-hints";
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
 import api from "@/lib/api";
 import { useSavedModel } from "@/lib/use-saved-model";
+import { offerSmartResultsAfterCalculate } from "@/lib/smart-results";
 import {
   MONTHS_ORDER,
   INPUT_FIELDS,
@@ -91,6 +93,7 @@ export default function BurnRunwayPage() {
     if (Object.keys(monthsData).length === 0) return;
     const result = calculateBurnRunway(monthsData, openingCash);
     setResults(result);
+    offerSmartResultsAfterCalculate("burn-runway", { monthsData, openingCash }, result);
     setActiveTab("monthly");
     persistState();
   }, [monthsData, openingCash]);
@@ -236,7 +239,10 @@ export default function BurnRunwayPage() {
 
             {/* Opening Cash (global) */}
             <div className="mb-5 rounded-lg bg-background/50 p-4 border border-border/50">
-              <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Opening Cash Balance</label>
+              <label className="flex items-center text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                Opening Cash Balance
+                {standaloneHint("Opening Cash Balance") && <FieldHint hint={standaloneHint("Opening Cash Balance")!} />}
+              </label>
               <div className="relative max-w-xs">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">$</span>
                 <input
@@ -257,7 +263,7 @@ export default function BurnRunwayPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 px-1">
                   {fields.map((field) => (
                     <div key={field.key}>
-                      <label className="flex items-center text-xs text-muted-foreground mb-1">{field.label}{FIELD_HINTS[field.key] && <FieldHint hint={FIELD_HINTS[field.key]} />}</label>
+                      <label className="flex items-center text-xs text-muted-foreground mb-1">{field.label}{standaloneHint(field.key) && <FieldHint hint={standaloneHint(field.key)!} />}</label>
                       <div className="relative">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">$</span>
                         <input
@@ -328,7 +334,7 @@ export default function BurnRunwayPage() {
                   return (
                     <tr key={field.key} className={`border-b border-border/30 ${isBold ? "bg-background/30" : ""}`}>
                       <td className={`px-4 py-2.5 sticky left-0 bg-card ${isBold ? "font-semibold bg-background/30" : "text-muted-foreground"}`}>
-                        {field.label}
+                        <HintLabel hint={standaloneHint(field.key)} className={isBold ? "font-semibold" : ""}>{field.label}</HintLabel>
                       </td>
                       {results.monthsAdded.map((m) => {
                         const val = results.monthlyData[m]?.[field.key];
@@ -360,7 +366,9 @@ export default function BurnRunwayPage() {
           {results.status.length > 0 && (
             <div className="grid grid-cols-3 gap-4">
               <div className="rounded-xl bg-card border border-border p-4 text-center">
-                <p className="text-xs text-muted-foreground mb-1">Latest Runway</p>
+                <p className="text-xs text-muted-foreground mb-1 flex items-center justify-center">
+                  <HintLabel hint={standaloneHint("Runway (months)")}>Latest Runway</HintLabel>
+                </p>
                 <p className="text-2xl font-bold">
                   {(() => {
                     const last = results.status[results.status.length - 1];
@@ -369,13 +377,17 @@ export default function BurnRunwayPage() {
                 </p>
               </div>
               <div className="rounded-xl bg-card border border-border p-4 text-center">
-                <p className="text-xs text-muted-foreground mb-1">Latest Cash</p>
+                <p className="text-xs text-muted-foreground mb-1 flex items-center justify-center">
+                  <HintLabel hint={standaloneHint("Cumulative Cash")}>Latest Cash</HintLabel>
+                </p>
                 <p className="text-2xl font-bold">
                   {formatCurrency(results.status[results.status.length - 1].cumulativeCash)}
                 </p>
               </div>
               <div className="rounded-xl bg-card border border-border p-4 text-center">
-                <p className="text-xs text-muted-foreground mb-1">Latest Status</p>
+                <p className="text-xs text-muted-foreground mb-1 flex items-center justify-center">
+                  <HintLabel hint={standaloneHint("CLASSIFICATION")}>Latest Status</HintLabel>
+                </p>
                 <p className={`text-2xl font-bold ${classColor(results.status[results.status.length - 1].classification)}`}>
                   {results.status[results.status.length - 1].classification}
                 </p>

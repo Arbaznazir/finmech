@@ -10,6 +10,7 @@ import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
 import api from "@/lib/api";
 import { useSavedModel } from "@/lib/use-saved-model";
+import { offerSmartResultsAfterCalculate } from "@/lib/smart-results";
 import { loadSavedState } from "@/lib/saved-state";
 import {
   CONSOLIDATED_MONTHS,
@@ -86,16 +87,21 @@ export default function ConsolidatedCFOPage() {
 
   const handleSave = async () => {
     if (!user || !results) return;
+    const outputs = {
+      monthlyData: results.monthlyData,
+      monthsAdded: results.monthsAdded,
+      summary: results.summary,
+      openingCash: results.openingCash,
+    };
     try {
       await api.post("/calculations", {
         modelSlug: "consolidated-cfo",
         inputs: { source: "cashflow-ops" },
-        outputs: {
-          monthlyData: results.monthlyData,
-          monthsAdded: results.monthsAdded,
-          summary: results.summary,
-          openingCash: results.openingCash,
-        },
+        outputs,
+      });
+      offerSmartResultsAfterCalculate("consolidated-cfo", { source: "cashflow-ops" }, outputs, {
+        modelName: "Consolidated CFO",
+        tier: "standalone",
       });
       await persistState();
     } catch (err) {

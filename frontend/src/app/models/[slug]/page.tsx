@@ -13,6 +13,7 @@ import { useAuth } from "@/lib/store";
 import { formatCurrency, formatNumber, formatPercent } from "@/lib/utils";
 import api from "@/lib/api";
 import { useSavedModel } from "@/lib/use-saved-model";
+import { offerSmartResultsAfterCalculate } from "@/lib/smart-results";
 
 const ICONS: Record<string, any> = {
   TrendingUp, Calculator, DollarSign, BarChart3, FileText, Scale,
@@ -162,6 +163,7 @@ export default function ModelCalculatorPage({ params }: { params: Promise<{ slug
     });
     const result = calculateModel(slug, numericInputs);
     setOutputs(result);
+    offerSmartResultsAfterCalculate(slug, inputs, result);
     markDirty();
   };
 

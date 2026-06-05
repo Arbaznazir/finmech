@@ -5,11 +5,13 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ArrowLeft, Users, Save, RotateCcw } from "lucide-react";
 import { FieldHint } from "@/components/FieldHint";
-import { FIELD_HINTS } from "@/lib/field-hints";
+import { HintLabel } from "@/components/HintLabel";
+import { standardHint } from "@/lib/standard-model-hints";
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
 import api from "@/lib/api";
+import { offerSmartResultsAfterCalculate } from "@/lib/smart-results";
 import { loadModelResults, saveModelResults, clearModelResults } from "@/lib/model-link";
 import { useSavedModel } from "@/lib/use-saved-model";
 import {
@@ -121,6 +123,7 @@ export default function StdUnitEconomicsPage() {
     if (!user) return;
     try {
       await api.post("/calculations", { modelSlug: "std-unit-economics", inputs: monthData, outputs: results });
+      offerSmartResultsAfterCalculate("std-unit-economics", monthData, results);
       await persistState();
     } catch (err) { console.error("Failed to save:", err); }
   };
@@ -197,7 +200,7 @@ export default function StdUnitEconomicsPage() {
               <div key={field.key}>
                 <label className="flex items-center text-xs text-muted-foreground mb-1">
                   {field.label}
-                  {FIELD_HINTS[field.key] && <FieldHint hint={FIELD_HINTS[field.key]} />}
+                  {standardHint(field.key) && <FieldHint hint={standardHint(field.key)!} />}
                   {isLocked && <span className="ml-1 text-[10px] text-primary/70">(auto-filled)</span>}
                 </label>
                 <div className="relative">
@@ -230,7 +233,9 @@ export default function StdUnitEconomicsPage() {
               <div className="space-y-2 text-xs">
                 {OUTPUT_FIELDS.map((f) => (
                   <div key={f.key} className="flex justify-between rounded-lg px-3 py-1.5 bg-background/50 border border-border/50">
-                    <span className="text-muted-foreground">{f.label}</span>
+                    <span className="text-muted-foreground inline-flex items-center">
+                      <HintLabel hint={standardHint(f.key)}>{f.label}</HintLabel>
+                    </span>
                     <span className="font-semibold">{fmt(f.key, f.format)}</span>
                   </div>
                 ))}

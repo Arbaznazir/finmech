@@ -5,11 +5,13 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ArrowLeft, Flame, Save, RotateCcw } from "lucide-react";
 import { FieldHint } from "@/components/FieldHint";
-import { FIELD_HINTS } from "@/lib/field-hints";
+import { HintLabel } from "@/components/HintLabel";
+import { investorHint } from "@/lib/investor-model-hints";
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
 import api from "@/lib/api";
+import { offerSmartResultsAfterCalculate } from "@/lib/smart-results";
 import { loadModelResults, saveModelResults, clearModelResults } from "@/lib/model-link";
 import { useSavedModel } from "@/lib/use-saved-model";
 import {
@@ -114,6 +116,7 @@ export default function InvBurnRunwayPage() {
     if (!user) return;
     try {
       await api.post("/calculations", { modelSlug: "inv-burn-runway", inputs: { openingCash, monthData }, outputs: results });
+      offerSmartResultsAfterCalculate("inv-burn-runway", { openingCash, monthData }, results);
       await persistState();
     } catch (err) { console.error("Failed to save:", err); }
   };
@@ -169,7 +172,10 @@ export default function InvBurnRunwayPage() {
 
       {/* Opening Cash */}
       <div className="rounded-2xl border border-border bg-card p-4 mb-4">
-        <label className="flex items-center text-xs text-muted-foreground mb-1">Opening Cash Balance<FieldHint hint={FIELD_HINTS["Opening Cash Balance"] ?? { what: "Cash in your bank at the start of this period.", why: "Runway = Cash ÷ Monthly Net Burn. Your starting cash determines how long you can operate.", how: "From your bank statement on the first day of the period." }} /></label>
+        <label className="flex items-center text-xs text-muted-foreground mb-1">
+          Opening Cash Balance
+          {investorHint("Opening Cash Balance") && <FieldHint hint={investorHint("Opening Cash Balance")!} />}
+        </label>
         <div className="relative max-w-xs">
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">$</span>
           <input type="number" value={openingCash || ""} onChange={(e) => { setOpeningCash(parseFloat(e.target.value) || 0); markDirty(); }}
@@ -197,7 +203,7 @@ export default function InvBurnRunwayPage() {
               <div key={field.key}>
                 <label className="flex items-center text-xs text-muted-foreground mb-1">
                   {field.label}
-                  {FIELD_HINTS[field.key] && <FieldHint hint={FIELD_HINTS[field.key]} />}
+                  {investorHint(field.key) && <FieldHint hint={investorHint(field.key)!} />}
                   {isLocked && <span className="ml-1 text-[10px] text-amber-400/70">(auto-filled)</span>}
                 </label>
                 <div className="relative">
@@ -230,7 +236,9 @@ export default function InvBurnRunwayPage() {
               <div className="space-y-2 text-xs">
                 {summaryRows.map((row) => (
                   <div key={row.label} className="flex justify-between rounded-lg px-3 py-1.5 bg-background/50 border border-border/50">
-                    <span className="text-muted-foreground">{row.label}</span>
+                    <span className="text-muted-foreground inline-flex items-center">
+                      <HintLabel hint={investorHint(row.key)}>{row.label}</HintLabel>
+                    </span>
                     <span className={`font-semibold ${
                       row.key === "Net Profit/Loss" ? (Number(cur[row.key]) >= 0 ? "text-success" : "text-danger") :
                       row.key === "Net Burn" ? (Number(cur[row.key]) > 0 ? "text-danger" : "text-success") : ""
@@ -247,8 +255,12 @@ export default function InvBurnRunwayPage() {
                     cur["CLASSIFICATION"] === "AMBER" ? "bg-amber-400/10 text-amber-400" :
                     "bg-danger/10 text-danger"
                   }`}>
-                    {cur["CLASSIFICATION"] === "GREEN" ? "GREEN — Healthy" :
-                     cur["CLASSIFICATION"] === "AMBER" ? "AMBER — Monitor" : "RED — Critical"}
+                    <span className="inline-flex items-center justify-center gap-1">
+                      <HintLabel hint={investorHint("CLASSIFICATION")}>
+                        {cur["CLASSIFICATION"] === "GREEN" ? "GREEN — Healthy" :
+                         cur["CLASSIFICATION"] === "AMBER" ? "AMBER — Monitor" : "RED — Critical"}
+                      </HintLabel>
+                    </span>
                   </div>
                 )}
               </div>

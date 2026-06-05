@@ -5,11 +5,13 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ArrowLeft, ArrowRightLeft, Save, RotateCcw } from "lucide-react";
 import { FieldHint } from "@/components/FieldHint";
-import { FIELD_HINTS } from "@/lib/field-hints";
+import { HintLabel } from "@/components/HintLabel";
+import { standardHint } from "@/lib/standard-model-hints";
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
 import api from "@/lib/api";
+import { offerSmartResultsAfterCalculate } from "@/lib/smart-results";
 import { loadModelResults, saveModelResults, clearModelResults } from "@/lib/model-link";
 import { useSavedModel } from "@/lib/use-saved-model";
 import {
@@ -111,11 +113,9 @@ export default function StdMovementsPage() {
       annual: results.annual,
     });
     try {
-      await api.post("/calculations", {
-        modelSlug: "std-movements",
-        inputs: monthData,
-        outputs: { monthlyData: results.monthlyData, annual: results.annual },
-      });
+      const outputs = { monthlyData: results.monthlyData, annual: results.annual };
+      await api.post("/calculations", { modelSlug: "std-movements", inputs: monthData, outputs });
+      offerSmartResultsAfterCalculate("std-movements", monthData, outputs);
       await persistState();
     } catch (err) { console.error("Failed to save:", err); }
   };
@@ -184,7 +184,7 @@ export default function StdMovementsPage() {
                     <div key={field.key}>
                       <label className="flex items-center text-xs text-muted-foreground mb-1">
                         {field.label}
-                        {FIELD_HINTS[field.key] && <FieldHint hint={FIELD_HINTS[field.key]} />}
+                        {standardHint(field.key) && <FieldHint hint={standardHint(field.key)!} />}
                         {isLocked && <span className="ml-1 text-[10px] text-primary/70">(auto-filled)</span>}
                       </label>
                       <div className="relative">
@@ -222,7 +222,9 @@ export default function StdMovementsPage() {
                   const val = cur[f.key] ?? 0;
                   return (
                     <div key={f.key} className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">{f.label}</span>
+                      <span className="text-muted-foreground inline-flex items-center">
+                        <HintLabel hint={standardHint(f.key)}>{f.label}</HintLabel>
+                      </span>
                       <span className={`font-medium ${f.format === "currency" && val < 0 ? "text-danger" : ""}`}>
                         {f.format === "currency" ? formatCurrency(val) : f.format === "days" ? `${val.toFixed(1)}d` : val.toFixed(2)}
                       </span>
@@ -240,15 +242,21 @@ export default function StdMovementsPage() {
             <h3 className="font-semibold text-sm mb-3">Annual Summary</h3>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Total Revenue</span>
+                <span className="text-muted-foreground inline-flex items-center">
+                  <HintLabel hint={standardHint("grossRevenue")}>Total Revenue</HintLabel>
+                </span>
                 <span className="font-medium">{formatCurrency(results.annual.totalRevenue)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Total Gross Profit</span>
+                <span className="text-muted-foreground inline-flex items-center">
+                  <HintLabel hint={standardHint("Gross Profit")}>Total Gross Profit</HintLabel>
+                </span>
                 <span className="font-medium">{formatCurrency(results.annual.totalGrossProfit)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Total Δ Working Capital</span>
+                <span className="text-muted-foreground inline-flex items-center">
+                  <HintLabel hint={standardHint("Change in Working Capital")}>Total Δ Working Capital</HintLabel>
+                </span>
                 <span className={`font-medium ${results.annual.totalChangeInWC > 0 ? "text-danger" : "text-success"}`}>
                   {formatCurrency(results.annual.totalChangeInWC)}
                 </span>

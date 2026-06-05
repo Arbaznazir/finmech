@@ -8,12 +8,14 @@ import {
   ChevronDown, ChevronUp, Info, Gem,
 } from "lucide-react";
 import { FieldHint } from "@/components/FieldHint";
-import { FIELD_HINTS } from "@/lib/field-hints";
+import { HintLabel } from "@/components/HintLabel";
+import { standaloneHint } from "@/lib/standalone-model-hints";
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
 import api from "@/lib/api";
 import { useSavedModel } from "@/lib/use-saved-model";
+import { offerSmartResultsAfterCalculate } from "@/lib/smart-results";
 import {
   INPUT_FIELDS,
   calculateDCF,
@@ -44,7 +46,9 @@ export default function DCFValuationPage() {
   };
 
   const handleCalculate = () => {
-    setResults(calculateDCF(inputs));
+    const r = calculateDCF(inputs);
+    setResults(r);
+    offerSmartResultsAfterCalculate("dcf-valuation", inputs, r);
     persistState();
   };
 
@@ -140,7 +144,7 @@ export default function DCFValuationPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 px-1">
                   {fields.map((field) => (
                     <div key={field.key} className={field.type === "currency" ? "sm:col-span-2" : ""}>
-                      <label className="flex items-center text-xs text-muted-foreground mb-1">{field.label}{FIELD_HINTS[field.key] && <FieldHint hint={FIELD_HINTS[field.key]} />}</label>
+                      <label className="flex items-center text-xs text-muted-foreground mb-1">{field.label}{standaloneHint(field.key) && <FieldHint hint={standaloneHint(field.key)!} />}</label>
                       <div className="relative">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
                           {field.type === "currency" ? "$" : field.type === "percent" ? "%" : "#"}
@@ -197,11 +201,15 @@ export default function DCFValuationPage() {
               <h2 className="font-semibold mb-4">WACC Calculation</h2>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 <div className="rounded-xl bg-muted border border-border p-3 output-panel text-center">
-                  <p className="text-xs text-muted-foreground mb-1">Cost of Equity</p>
+                  <p className="text-xs text-muted-foreground mb-1 flex items-center justify-center">
+                    <HintLabel hint={standaloneHint("costOfEquity")}>Cost of Equity</HintLabel>
+                  </p>
                   <p className="text-lg font-bold">{fmtPct(results.costOfEquity)}</p>
                 </div>
                 <div className="rounded-xl bg-muted border border-border p-3 output-panel text-center">
-                  <p className="text-xs text-muted-foreground mb-1">After-Tax Cost of Debt</p>
+                  <p className="text-xs text-muted-foreground mb-1 flex items-center justify-center">
+                    <HintLabel hint={standaloneHint("afterTaxCostOfDebt")}>After-Tax Cost of Debt</HintLabel>
+                  </p>
                   <p className="text-lg font-bold">{fmtPct(results.afterTaxCostOfDebt)}</p>
                 </div>
                 <div className="rounded-xl bg-muted border border-border p-3 output-panel text-center">
@@ -209,7 +217,9 @@ export default function DCFValuationPage() {
                   <p className="text-lg font-bold">{fmtPct(results.equityWeight)}</p>
                 </div>
                 <div className="rounded-xl bg-primary/10 border border-primary/30 p-3 text-center">
-                  <p className="text-xs text-primary mb-1">WACC</p>
+                  <p className="text-xs text-primary mb-1 flex items-center justify-center">
+                    <HintLabel hint={standaloneHint("wacc")} className="text-primary">WACC</HintLabel>
+                  </p>
                   <p className="text-xl font-bold text-primary">{fmtPct(results.wacc)}</p>
                 </div>
               </div>
@@ -244,7 +254,7 @@ export default function DCFValuationPage() {
                     ] as const).map((field) => (
                       <tr key={field.key} className={`border-b border-border/30 ${field.bold ? "bg-background/30" : ""}`}>
                         <td className={`px-4 py-2.5 sticky left-0 bg-card ${field.bold ? "font-semibold bg-background/30" : "text-muted-foreground"}`}>
-                          {field.label}
+                          <HintLabel hint={standaloneHint(field.key === "pvOfFCFF" ? "pvOfFCFF" : field.key)}>{field.label}</HintLabel>
                         </td>
                         {results.projection.map((row) => {
                           const val = row[field.key];
@@ -266,15 +276,17 @@ export default function DCFValuationPage() {
               <h2 className="font-semibold mb-5">Valuation Summary</h2>
               <div className="space-y-3">
                 {([
-                  { label: "Sum of PV of FCFF", value: results.totalPVOfFCFF, bold: false },
-                  { label: "Terminal Value", value: results.terminalValue, bold: false },
-                  { label: "PV of Terminal Value", value: results.pvOfTerminalValue, bold: false },
-                  { label: "Enterprise Value", value: results.enterpriseValue, bold: true },
-                  { label: "Less: Market Value of Debt", value: -inputs.marketValueOfDebt, bold: false },
-                  { label: "Equity Value", value: results.equityValue, bold: true },
+                  { label: "Sum of PV of FCFF", key: "totalPVOfFCFF", value: results.totalPVOfFCFF, bold: false },
+                  { label: "Terminal Value", key: "terminalValue", value: results.terminalValue, bold: false },
+                  { label: "PV of Terminal Value", key: "pvOfTerminalValue", value: results.pvOfTerminalValue, bold: false },
+                  { label: "Enterprise Value", key: "enterpriseValue", value: results.enterpriseValue, bold: true },
+                  { label: "Less: Market Value of Debt", key: "marketValueOfDebt", value: -inputs.marketValueOfDebt, bold: false },
+                  { label: "Equity Value", key: "equityValue", value: results.equityValue, bold: true },
                 ]).map((row) => (
                   <div key={row.label} className={`flex items-center justify-between rounded-lg px-4 py-3 ${row.bold ? "bg-primary/5 border border-primary/20" : "bg-background/50 border border-border/50"}`}>
-                    <span className={`text-sm ${row.bold ? "font-semibold" : "text-muted-foreground"}`}>{row.label}</span>
+                    <span className={`text-sm inline-flex items-center ${row.bold ? "font-semibold" : "text-muted-foreground"}`}>
+                      <HintLabel hint={standaloneHint(row.key)}>{row.label}</HintLabel>
+                    </span>
                     <span className={`text-sm font-semibold ${row.value < 0 ? "text-danger" : row.bold ? "text-primary" : ""}`}>
                       {formatCurrency(row.value)}
                     </span>
@@ -286,11 +298,15 @@ export default function DCFValuationPage() {
             {/* Big Number */}
             <div className="grid grid-cols-2 gap-4">
               <div className="rounded-2xl border-2 border-primary/30 bg-primary/5 p-6 text-center output-panel-primary">
-                <p className="text-sm text-muted-foreground mb-2">Enterprise Value</p>
+                <p className="text-sm text-muted-foreground mb-2 flex items-center justify-center">
+                  <HintLabel hint={standaloneHint("enterpriseValue")}>Enterprise Value</HintLabel>
+                </p>
                 <p className="text-3xl font-bold text-primary">{formatCurrency(results.enterpriseValue)}</p>
               </div>
               <div className={`rounded-2xl border-2 p-6 text-center ${results.equityValue >= 0 ? "border-success/30 bg-success/5" : "border-danger/30 bg-danger/5"}`}>
-                <p className="text-sm text-muted-foreground mb-2">Equity Value</p>
+                <p className="text-sm text-muted-foreground mb-2 flex items-center justify-center">
+                  <HintLabel hint={standaloneHint("equityValue")}>Equity Value</HintLabel>
+                </p>
                 <p className={`text-3xl font-bold ${results.equityValue >= 0 ? "text-success" : "text-danger"}`}>
                   {formatCurrency(results.equityValue)}
                 </p>

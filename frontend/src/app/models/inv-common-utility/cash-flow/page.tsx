@@ -10,6 +10,7 @@ const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
 import api from "@/lib/api";
+import { offerSmartResultsAfterCalculate } from "@/lib/smart-results";
 import { loadModelResults, saveModelResults, clearModelResults } from "@/lib/model-link";
 import { useSavedModel } from "@/lib/use-saved-model";
 import {
@@ -127,11 +128,16 @@ export default function InvCashFlowPage() {
 
   const handleSave = async () => {
     if (!user) return;
+    const outputs = { monthlyData: results.monthlyData, annual: results.annual };
     try {
       await api.post("/calculations", {
         modelSlug: "inv-cash-flow",
         inputs: { monthData, openingCash },
-        outputs: { monthlyData: results.monthlyData, annual: results.annual },
+        outputs,
+      });
+      offerSmartResultsAfterCalculate("inv-cash-flow", { monthData, openingCash }, outputs, {
+        modelName: "Cash Flow Statement (Investor Hub)",
+        tier: "investor",
       });
       await persistState();
     } catch (err) { console.error("Failed to save:", err); }

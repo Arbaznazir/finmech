@@ -5,13 +5,15 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ArrowLeft, DollarSign, Save, RotateCcw, ArrowRight } from "lucide-react";
 import { FieldHint } from "@/components/FieldHint";
-import { FIELD_HINTS } from "@/lib/field-hints";
+import { HintLabel } from "@/components/HintLabel";
+import { freeHint } from "@/lib/free-model-hints";
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
 import api from "@/lib/api";
 import { clearModelResults } from "@/lib/model-link";
 import { useSavedModel } from "@/lib/use-saved-model";
+import { offerSmartResultsAfterCalculate } from "@/lib/smart-results";
 import {
   REVENUE_FIELDS,
   calculateRevenue,
@@ -42,6 +44,7 @@ export default function RevenueModelPage() {
   const handleCalculate = () => {
     const r = calculateRevenue(inputs);
     setResults(r);
+    offerSmartResultsAfterCalculate("revenue-model", inputs, r);
     persistState();
   };
 
@@ -92,7 +95,7 @@ export default function RevenueModelPage() {
           <div className="space-y-4">
             {REVENUE_FIELDS.map((field) => (
               <div key={field.key}>
-                <label className="flex items-center text-xs text-muted-foreground mb-1">{field.label}{FIELD_HINTS[field.key] && <FieldHint hint={FIELD_HINTS[field.key]} />}</label>
+                <label className="flex items-center text-xs text-muted-foreground mb-1">{field.label}{freeHint(field.key) && <FieldHint hint={freeHint(field.key)!} />}</label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">{field.prefix}</span>
                   <input
@@ -131,22 +134,28 @@ export default function RevenueModelPage() {
         {results ? (
           <div className="space-y-4">
             <div className="rounded-2xl border-2 border-primary/30 bg-primary/5 p-6 text-center output-panel-primary">
-              <p className="text-sm text-muted-foreground mb-2">Monthly Revenue</p>
+              <p className="text-sm text-muted-foreground mb-2 flex items-center justify-center">
+                <HintLabel hint={freeHint("monthlyRevenue")}>Monthly Revenue</HintLabel>
+              </p>
               <p className="text-3xl font-bold text-primary">{formatCurrency(results.monthlyRevenue)}</p>
             </div>
             <div className="rounded-2xl border-2 border-success/30 bg-success/5 p-6 text-center output-panel-success">
-              <p className="text-sm text-muted-foreground mb-2">Annual Revenue</p>
+              <p className="text-sm text-muted-foreground mb-2 flex items-center justify-center">
+                <HintLabel hint={freeHint("annualRevenue")}>Annual Revenue</HintLabel>
+              </p>
               <p className="text-3xl font-bold text-success">{formatCurrency(results.annualRevenue)}</p>
             </div>
             <div className="grid grid-cols-2 gap-3">
               {([
-                { label: "Monthly Units Sold", value: results.monthlyUnitsSold.toLocaleString() },
-                { label: "Price Per Unit", value: formatCurrency(results.pricePerUnit) },
-                { label: "Monthly Purchase Rate", value: results.monthlyPurchaseRate.toString() },
-                { label: "Customer Lifetime", value: results.customerLifetimeMonths + " months" },
+                { label: "Monthly Units Sold", key: "monthlyUnitsSold", value: results.monthlyUnitsSold.toLocaleString() },
+                { label: "Price Per Unit", key: "pricePerUnit", value: formatCurrency(results.pricePerUnit) },
+                { label: "Monthly Purchase Rate", key: "monthlyPurchaseRate", value: results.monthlyPurchaseRate.toString() },
+                { label: "Customer Lifetime", key: "customerLifetimeMonths", value: results.customerLifetimeMonths + " months" },
               ]).map((m) => (
                 <div key={m.label} className="rounded-xl bg-muted border border-border p-3 output-panel text-center">
-                  <p className="text-xs text-muted-foreground mb-1">{m.label}</p>
+                  <p className="text-xs text-muted-foreground mb-1 flex items-center justify-center">
+                    <HintLabel hint={freeHint(m.key)}>{m.label}</HintLabel>
+                  </p>
                   <p className="text-lg font-bold">{m.value}</p>
                 </div>
               ))}

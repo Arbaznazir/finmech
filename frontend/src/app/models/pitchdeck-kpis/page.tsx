@@ -9,12 +9,14 @@ import {
   ChevronDown, ChevronUp,
 } from "lucide-react";
 import { FieldHint } from "@/components/FieldHint";
-import { FIELD_HINTS } from "@/lib/field-hints";
+import { HintLabel } from "@/components/HintLabel";
+import { standaloneHint } from "@/lib/standalone-model-hints";
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
 import api from "@/lib/api";
 import { useSavedModel } from "@/lib/use-saved-model";
+import { offerSmartResultsAfterCalculate } from "@/lib/smart-results";
 import {
   INPUT_FIELDS,
   calculatePitchDeck,
@@ -70,7 +72,9 @@ export default function PitchDeckKPIsPage() {
   };
 
   const handleCalculate = () => {
-    setResults(calculatePitchDeck(inputs));
+    const r = calculatePitchDeck(inputs);
+    setResults(r);
+    offerSmartResultsAfterCalculate("pitchdeck-kpis", inputs, r);
     persistState();
   };
 
@@ -165,7 +169,7 @@ export default function PitchDeckKPIsPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 px-1">
                 {fields.map((field) => (
                   <div key={field.key}>
-                    <label className="flex items-center text-xs text-muted-foreground mb-1">{field.label}{FIELD_HINTS[field.key] && <FieldHint hint={FIELD_HINTS[field.key]} />}</label>
+                    <label className="flex items-center text-xs text-muted-foreground mb-1">{field.label}{standaloneHint(field.key) && <FieldHint hint={standaloneHint(field.key)!} />}</label>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">{field.prefix}</span>
                       <input
@@ -217,19 +221,21 @@ export default function PitchDeckKPIsPage() {
           {/* Key Metrics */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
             {[
-              { label: "Gross Margin", value: results.grossMargin.toFixed(1) + "%", color: results.grossMargin > 40 ? "text-success" : results.grossMargin > 20 ? "text-amber-400" : "text-danger" },
-              { label: "Contribution Margin", value: results.contributionMarginAfterCAC.toFixed(1) + "%" },
-              { label: "CAC", value: formatCurrency(results.cac) },
-              { label: "LTV", value: formatCurrency(results.ltv) },
-              { label: "LTV / CAC", value: results.ltvCacRatio.toFixed(2) + "x", color: results.ltvCacRatio > 3 ? "text-success" : results.ltvCacRatio > 1 ? "text-amber-400" : "text-danger" },
-              { label: "Recurring Rev %", value: results.recurringRevenueRatio.toFixed(1) + "%" },
-              { label: "Net Burn", value: formatCurrency(results.netBurn), color: results.netBurn < 0 ? "text-success" : "text-danger" },
-              { label: "Runway", value: results.runwayMonths === Infinity ? "∞" : results.runwayMonths.toFixed(1) + " mo", color: results.runwayMonths === Infinity || results.runwayMonths > 12 ? "text-success" : results.runwayMonths > 6 ? "text-amber-400" : "text-danger" },
-              { label: "Burn Multiple", value: results.burnMultiple.toFixed(2) + "x" },
-              { label: "Cash Efficiency", value: results.cashEfficiencyRatio.toFixed(2) + "x" },
+              { label: "Gross Margin", key: "grossMargin", value: results.grossMargin.toFixed(1) + "%", color: results.grossMargin > 40 ? "text-success" : results.grossMargin > 20 ? "text-amber-400" : "text-danger" },
+              { label: "Contribution Margin", key: "contributionMarginAfterCAC", value: results.contributionMarginAfterCAC.toFixed(1) + "%" },
+              { label: "CAC", key: "cac", value: formatCurrency(results.cac) },
+              { label: "LTV", key: "ltv", value: formatCurrency(results.ltv) },
+              { label: "LTV / CAC", key: "ltvCacRatio", value: results.ltvCacRatio.toFixed(2) + "x", color: results.ltvCacRatio > 3 ? "text-success" : results.ltvCacRatio > 1 ? "text-amber-400" : "text-danger" },
+              { label: "Recurring Rev %", key: "recurringRevenueRatio", value: results.recurringRevenueRatio.toFixed(1) + "%" },
+              { label: "Net Burn", key: "netBurn", value: formatCurrency(results.netBurn), color: results.netBurn < 0 ? "text-success" : "text-danger" },
+              { label: "Runway", key: "runwayMonths", value: results.runwayMonths === Infinity ? "∞" : results.runwayMonths.toFixed(1) + " mo", color: results.runwayMonths === Infinity || results.runwayMonths > 12 ? "text-success" : results.runwayMonths > 6 ? "text-amber-400" : "text-danger" },
+              { label: "Burn Multiple", key: "burnMultiple", value: results.burnMultiple.toFixed(2) + "x" },
+              { label: "Cash Efficiency", key: "cashEfficiencyRatio", value: results.cashEfficiencyRatio.toFixed(2) + "x" },
             ].map((m) => (
               <div key={m.label} className="rounded-xl bg-card border border-border p-4">
-                <p className="text-xs text-muted-foreground mb-1">{m.label}</p>
+                <p className="text-xs text-muted-foreground mb-1 flex items-center">
+                  <HintLabel hint={standaloneHint(m.key)}>{m.label}</HintLabel>
+                </p>
                 <p className={`text-xl font-bold ${m.color || ""}`}>{m.value}</p>
               </div>
             ))}

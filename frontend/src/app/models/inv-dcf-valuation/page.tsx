@@ -9,6 +9,7 @@ import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
 import api from "@/lib/api";
 import { useSavedModel } from "@/lib/use-saved-model";
+import { offerSmartResultsAfterCalculate } from "@/lib/smart-results";
 import {
   calculateDCF,
   createDefaultInputs,
@@ -81,6 +82,7 @@ export default function InvDCFValuationPage() {
   const handleCalculate = () => {
     const r = calculateDCF(inputs);
     setResults(r);
+    offerSmartResultsAfterCalculate("inv-dcf-valuation", inputs, r);
     persistState();
   };
 

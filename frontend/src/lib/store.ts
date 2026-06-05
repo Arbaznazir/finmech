@@ -8,6 +8,7 @@ export interface User {
   name: string;
   plan: string;
   company?: string;
+  purchasedModels?: string;
 }
 
 interface AuthState {

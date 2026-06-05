@@ -1,6 +1,8 @@
 import express from 'express';
 import prisma from '../lib/prisma.js';
 import { authenticate } from '../middleware/auth.js';
+import { ensurePricingSeeded, BUNDLE_PLAN_KEYS } from '../lib/pricing.js';
+import { MODELS } from '../data/models.js';
 
 const router = express.Router();
 
@@ -260,6 +262,110 @@ router.delete('/users/:id', authenticate, requireAdmin, async (req, res) => {
   } catch (err) {
     console.error('Admin delete user error:', err);
     res.status(500).json({ error: 'Failed to delete user' });
+  }
+});
+
+/**
+ * Get all pricing config (admin)
+ * GET /api/admin/pricing
+ */
+router.get('/pricing', authenticate, requireAdmin, async (req, res) => {
+  try {
+    await ensurePricingSeeded();
+    const [plans, modelPrices] = await Promise.all([
+      prisma.planPrice.findMany({
+        where: { planKey: { in: BUNDLE_PLAN_KEYS } },
+        orderBy: { sortOrder: 'asc' },
+      }),
+      prisma.modelPrice.findMany({ orderBy: { modelName: 'asc' } }),
+    ]);
+    res.json({ success: true, plans, modelPrices });
+  } catch (err) {
+    console.error('Admin get pricing error:', err);
+    res.status(500).json({ error: 'Failed to fetch pricing' });
+  }
+});
+
+/**
+ * Update bundle plan pricing
+ * PUT /api/admin/pricing/plans/:planKey
+ */
+router.put('/pricing/plans/:planKey', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { planKey } = req.params;
+    const {
+      name,
+      description,
+      priceMonthly,
+      priceYearly,
+      priceOneTime,
+      discountPercent,
+      discountLabel,
+      isActive,
+      sortOrder,
+    } = req.body;
+
+    const plan = await prisma.planPrice.update({
+      where: { planKey },
+      data: {
+        ...(name !== undefined && { name }),
+        ...(description !== undefined && { description }),
+        ...(priceMonthly !== undefined && { priceMonthly: priceMonthly === null ? null : Number(priceMonthly) }),
+        ...(priceYearly !== undefined && { priceYearly: priceYearly === null ? null : Number(priceYearly) }),
+        ...(priceOneTime !== undefined && { priceOneTime: priceOneTime === null ? null : Number(priceOneTime) }),
+        ...(discountPercent !== undefined && { discountPercent: Number(discountPercent) }),
+        ...(discountLabel !== undefined && { discountLabel }),
+        ...(isActive !== undefined && { isActive: Boolean(isActive) }),
+        ...(sortOrder !== undefined && { sortOrder: Number(sortOrder) }),
+      },
+    });
+
+    res.json({ success: true, plan });
+  } catch (err) {
+    console.error('Admin update plan price error:', err);
+    res.status(500).json({ error: 'Failed to update plan pricing' });
+  }
+});
+
+/**
+ * Update single model pricing
+ * PUT /api/admin/pricing/models/:modelSlug
+ */
+router.put('/pricing/models/:modelSlug', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { modelSlug } = req.params;
+    const { priceOneTime, discountPercent, discountLabel, isActive, modelName } = req.body;
+
+    const model = await prisma.modelPrice.update({
+      where: { modelSlug },
+      data: {
+        ...(priceOneTime !== undefined && { priceOneTime: Number(priceOneTime) }),
+        ...(discountPercent !== undefined && { discountPercent: Number(discountPercent) }),
+        ...(discountLabel !== undefined && { discountLabel }),
+        ...(isActive !== undefined && { isActive: Boolean(isActive) }),
+        ...(modelName !== undefined && { modelName }),
+      },
+    });
+
+    res.json({ success: true, model });
+  } catch (err) {
+    console.error('Admin update model price error:', err);
+    res.status(500).json({ error: 'Failed to update model pricing' });
+  }
+});
+
+/**
+ * Sync model price rows for all standalone models
+ * POST /api/admin/pricing/sync-models
+ */
+router.post('/pricing/sync-models', authenticate, requireAdmin, async (req, res) => {
+  try {
+    await ensurePricingSeeded();
+    const modelPrices = await prisma.modelPrice.findMany();
+    res.json({ success: true, count: modelPrices.length, modelPrices });
+  } catch (err) {
+    console.error('Admin sync model prices error:', err);
+    res.status(500).json({ error: 'Failed to sync model prices' });
   }
 });
 

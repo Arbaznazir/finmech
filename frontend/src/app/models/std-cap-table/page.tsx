@@ -5,13 +5,15 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ArrowLeft, PieChart, Save, RotateCcw, Plus, Trash2, Play } from "lucide-react";
 import { FieldHint } from "@/components/FieldHint";
-import { FIELD_HINTS } from "@/lib/field-hints";
+import { HintLabel } from "@/components/HintLabel";
+import { standardHint } from "@/lib/standard-model-hints";
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
 import api from "@/lib/api";
 import { loadModelResults, saveModelResults, clearModelResults } from "@/lib/model-link";
 import { useSavedModel } from "@/lib/use-saved-model";
+import { offerSmartResultsAfterCalculate } from "@/lib/smart-results";
 import {
   buildCapTable,
   type InitialShareholder,
@@ -57,6 +59,7 @@ export default function StdCapTablePage() {
     if (validSH.length === 0) return;
     const result = buildCapTable(validSH, rounds, exitValue > 0 ? exitValue : undefined);
     setResults(result);
+    offerSmartResultsAfterCalculate("std-cap-table", { shareholders: validSH, rounds, exitValue }, result);
     saveModelResults("std-cap-table", {
       totalShares: result.totalShares,
       shareholderCount: result.shareholders.length,
@@ -155,9 +158,9 @@ export default function StdCapTablePage() {
                 <div key={i} className="grid grid-cols-1 sm:grid-cols-[1fr_100px_120px_100px_120px_36px] gap-2 items-end rounded-lg bg-background/50 border border-border/50 p-3">
                   <div><label className="flex items-center text-xs text-muted-foreground mb-1">Name<FieldHint hint={{ what: "Full name of the shareholder — founder, co-founder, employee, or advisor.", why: "Identifies each person's stake for legal records and ROC filings.", how: "Use legal name matching PAN card. Listed in Form DIR-12 with ROC." }} /></label><input type="text" value={sh.name} onChange={(e) => updateShareholder(i, "name", e.target.value)} placeholder="Promoter 1" className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50" /></div>
                   <div><label className="block text-xs text-muted-foreground mb-1">Role</label><select value={sh.role} onChange={(e) => updateShareholder(i, "role", e.target.value)} className="w-full rounded-lg border border-border bg-input px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"><option value="Founder">Founder</option><option value="Co-Founder">Co-Founder</option><option value="Advisor">Advisor</option><option value="Employee">Employee</option></select></div>
-                  <div><label className="flex items-center text-xs text-muted-foreground mb-1">Shares{FIELD_HINTS["shares"] && <FieldHint hint={FIELD_HINTS["shares"]} />}</label><input type="number" value={sh.shares || ""} onChange={(e) => updateShareholder(i, "shares", parseFloat(e.target.value) || 0)} placeholder="250000" className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50" /></div>
+                  <div><label className="flex items-center text-xs text-muted-foreground mb-1">Shares{standardHint("shares") && <FieldHint hint={standardHint("shares")!} />}</label><input type="number" value={sh.shares || ""} onChange={(e) => updateShareholder(i, "shares", parseFloat(e.target.value) || 0)} placeholder="250000" className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50" /></div>
                   <div><label className="block text-xs text-muted-foreground mb-1">Class</label><select value={sh.shareClass} onChange={(e) => updateShareholder(i, "shareClass", e.target.value)} className="w-full rounded-lg border border-border bg-input px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"><option value="Common">Common</option><option value="Preferred">Preferred</option></select></div>
-                  <div><label className="flex items-center text-xs text-muted-foreground mb-1">Investment{FIELD_HINTS["investment"] && <FieldHint hint={FIELD_HINTS["investment"]} />}</label><input type="number" value={sh.investment || ""} onChange={(e) => updateShareholder(i, "investment", parseFloat(e.target.value) || 0)} placeholder="500000" className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50" /></div>
+                  <div><label className="flex items-center text-xs text-muted-foreground mb-1">Investment{standardHint("investment") && <FieldHint hint={standardHint("investment")!} />}</label><input type="number" value={sh.investment || ""} onChange={(e) => updateShareholder(i, "investment", parseFloat(e.target.value) || 0)} placeholder="500000" className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50" /></div>
                   <button onClick={() => removeShareholder(i)} disabled={shareholders.length <= 1} className="rounded-lg border border-border p-2 hover:bg-danger/10 hover:text-danger transition-colors disabled:opacity-30"><Trash2 className="h-4 w-4" /></button>
                 </div>
               ))}
@@ -182,9 +185,9 @@ export default function StdCapTablePage() {
             <div className="space-y-3">
               {rounds.map((round, i) => (
                 <div key={i} className="grid grid-cols-1 sm:grid-cols-[1fr_140px_140px_100px_36px] gap-2 items-end rounded-lg bg-background/50 border border-border/50 p-3">
-                  <div><label className="flex items-center text-xs text-muted-foreground mb-1">Round Name{FIELD_HINTS["roundName"] && <FieldHint hint={FIELD_HINTS["roundName"]} />}</label><input type="text" value={round.roundName} onChange={(e) => updateRound(i, "roundName", e.target.value)} placeholder="Angel Investor" className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50" /></div>
-                  <div><label className="flex items-center text-xs text-muted-foreground mb-1">Investment ($){FIELD_HINTS["investmentAmount"] && <FieldHint hint={FIELD_HINTS["investmentAmount"]} />}</label><input type="number" value={round.investmentAmount || ""} onChange={(e) => updateRound(i, "investmentAmount", parseFloat(e.target.value) || 0)} placeholder="1000000" className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50" /></div>
-                  <div><label className="flex items-center text-xs text-muted-foreground mb-1">Price/Share ($){FIELD_HINTS["pricePerShare"] && <FieldHint hint={FIELD_HINTS["pricePerShare"]} />}</label><input type="number" step="0.01" value={round.pricePerShare || ""} onChange={(e) => updateRound(i, "pricePerShare", parseFloat(e.target.value) || 0)} placeholder="2.00" className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50" /></div>
+                  <div><label className="flex items-center text-xs text-muted-foreground mb-1">Round Name{standardHint("roundName") && <FieldHint hint={standardHint("roundName")!} />}</label><input type="text" value={round.roundName} onChange={(e) => updateRound(i, "roundName", e.target.value)} placeholder="Angel Investor" className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50" /></div>
+                  <div><label className="flex items-center text-xs text-muted-foreground mb-1">Investment ($){standardHint("investmentAmount") && <FieldHint hint={standardHint("investmentAmount")!} />}</label><input type="number" value={round.investmentAmount || ""} onChange={(e) => updateRound(i, "investmentAmount", parseFloat(e.target.value) || 0)} placeholder="1000000" className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50" /></div>
+                  <div><label className="flex items-center text-xs text-muted-foreground mb-1">Price/Share ($){standardHint("pricePerShare") && <FieldHint hint={standardHint("pricePerShare")!} />}</label><input type="number" step="0.01" value={round.pricePerShare || ""} onChange={(e) => updateRound(i, "pricePerShare", parseFloat(e.target.value) || 0)} placeholder="2.00" className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50" /></div>
                   <div><label className="block text-xs text-muted-foreground mb-1">Class</label><select value={round.shareClass} onChange={(e) => updateRound(i, "shareClass", e.target.value)} className="w-full rounded-lg border border-border bg-input px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"><option value="Preferred">Preferred</option><option value="Common">Common</option></select></div>
                   <button onClick={() => removeRound(i)} className="rounded-lg border border-border p-2 hover:bg-danger/10 hover:text-danger transition-colors"><Trash2 className="h-4 w-4" /></button>
                 </div>
@@ -222,7 +225,7 @@ export default function StdCapTablePage() {
           <div className="rounded-2xl border border-border bg-card p-6 output-panel">
             <h2 className="font-semibold mb-4">Exit Scenario</h2>
             <div className="max-w-sm">
-              <label className="flex items-center text-xs text-muted-foreground mb-1">Exit Value ($){FIELD_HINTS["exitValue"] && <FieldHint hint={FIELD_HINTS["exitValue"]} />}</label>
+              <label className="flex items-center text-xs text-muted-foreground mb-1">Exit Value ($){standardHint("exitValue") && <FieldHint hint={standardHint("exitValue")!} />}</label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">$</span>
                 <input type="number" value={exitValue || ""} onChange={(e) => { setExitValue(parseFloat(e.target.value) || 0); markDirty(); }} placeholder="30000000" className="w-full rounded-lg border border-border bg-input pl-7 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50" />

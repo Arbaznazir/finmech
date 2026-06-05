@@ -5,13 +5,15 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ArrowLeft, Rocket, Save, RotateCcw } from "lucide-react";
 import { FieldHint } from "@/components/FieldHint";
-import { FIELD_HINTS } from "@/lib/field-hints";
+import { HintLabel } from "@/components/HintLabel";
+import { investorHint } from "@/lib/investor-model-hints";
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
 import api from "@/lib/api";
 import { loadModelResults, saveModelResults, clearModelResults } from "@/lib/model-link";
 import { useSavedModel } from "@/lib/use-saved-model";
+import { offerSmartResultsAfterCalculate } from "@/lib/smart-results";
 import {
   MONTHS_ORDER,
   INPUT_FIELDS,
@@ -117,6 +119,7 @@ export default function InvFundingModelPage() {
   const handleCalculate = () => {
     const r = calculateFunding(monthsData, openingCash, contingencyPct);
     setResults(r);
+    offerSmartResultsAfterCalculate("inv-funding-model", { monthsData, openingCash, contingencyPct }, r);
     saveModelResults("inv-funding-model", {
       maxCashDeficit: r.summary.maxCashDeficit,
       fundingRequired: r.summary.fundingRequired,
@@ -200,7 +203,10 @@ export default function InvFundingModelPage() {
           {/* Opening Cash & Contingency */}
           <div className="rounded-2xl border border-border bg-card p-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <label className="flex items-center text-xs text-muted-foreground mb-1">Opening Cash<FieldHint hint={FIELD_HINTS["Opening Cash"] ?? { what: "Cash and bank balance at the start of the funding analysis period.", why: "Determines your current runway before the new funding arrives.", how: "From your bank statement on the first day of this period." }} /></label>
+              <label className="flex items-center text-xs text-muted-foreground mb-1">
+                Opening Cash
+                {investorHint("Opening Cash") && <FieldHint hint={investorHint("Opening Cash")!} />}
+              </label>
               <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">$</span>
               <input type="number" value={openingCash || ""} onChange={(e) => { setOpeningCash(parseFloat(e.target.value) || 0); markDirty(); }}
                 placeholder="100000" className="w-full rounded-lg border border-border bg-input pl-7 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/50" /></div>
@@ -236,7 +242,7 @@ export default function InvFundingModelPage() {
                       <div key={field.key}>
                         <label className="flex items-center text-xs text-muted-foreground mb-1">
                           {field.label}
-                          {FIELD_HINTS[field.key] && <FieldHint hint={FIELD_HINTS[field.key]} />}
+                          {investorHint(field.key) && <FieldHint hint={investorHint(field.key)!} />}
                           {isLocked && <span className="ml-1 text-[10px] text-amber-400/70">(auto-filled)</span>}
                         </label>
                         <div className="relative">
@@ -286,7 +292,9 @@ export default function InvFundingModelPage() {
               <tbody>
                 {OUTPUT_FIELDS.map((field) => (
                   <tr key={field.key} className={`border-b border-border/30 ${field.bold ? "font-semibold" : ""}`}>
-                    <td className="px-3 py-2 sticky left-0 bg-card">{field.label}</td>
+                    <td className="px-3 py-2 sticky left-0 bg-card">
+                      <HintLabel hint={investorHint(field.key)}>{field.label}</HintLabel>
+                    </td>
                     {results.monthsAdded.map((m) => (
                       <td key={m} className={`text-right px-3 py-2 whitespace-nowrap ${
                         (Number(results.monthlyData[m]?.[field.key]) || 0) < 0 ? "text-danger" : ""
@@ -309,18 +317,22 @@ export default function InvFundingModelPage() {
       {activeTab === "summary" && results && (
         <div className="space-y-6">
           <div className="rounded-2xl border-2 border-amber-400/30 bg-amber-400/5 p-6 text-center output-panel-amber">
-            <p className="text-sm text-muted-foreground mb-2">Total Funding Required (incl. {results.summary.contingencyPct}% contingency)</p>
+            <p className="text-sm text-muted-foreground mb-2 flex items-center justify-center">
+              <HintLabel hint={investorHint("totalFundingRequired")}>Total Funding Required (incl. {results.summary.contingencyPct}% contingency)</HintLabel>
+            </p>
             <p className="text-3xl font-bold text-amber-400">{formatCurrency(results.summary.totalFunding)}</p>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {([
-              { label: "Opening Cash", value: formatCurrency(results.summary.openingCash) },
-              { label: "Max Cash Deficit", value: formatCurrency(results.summary.maxCashDeficit) },
-              { label: "Funding Required", value: formatCurrency(results.summary.fundingRequired) },
-              { label: "Contingency", value: formatCurrency(results.summary.contingency) },
+              { label: "Opening Cash", key: "Opening Cash", value: formatCurrency(results.summary.openingCash) },
+              { label: "Max Cash Deficit", key: "maxCashDeficit", value: formatCurrency(results.summary.maxCashDeficit) },
+              { label: "Funding Required", key: "fundingRequired", value: formatCurrency(results.summary.fundingRequired) },
+              { label: "Contingency", key: "contingency", value: formatCurrency(results.summary.contingency) },
             ]).map((card) => (
               <div key={card.label} className="rounded-xl border border-border bg-card p-4">
-                <p className="text-[10px] text-muted-foreground uppercase font-semibold mb-1">{card.label}</p>
+                <p className="text-[10px] text-muted-foreground uppercase font-semibold mb-1 flex items-center">
+                  <HintLabel hint={investorHint(card.key)}>{card.label}</HintLabel>
+                </p>
                 <p className="text-lg font-bold">{card.value}</p>
               </div>
             ))}
