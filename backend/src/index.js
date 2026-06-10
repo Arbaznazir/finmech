@@ -18,12 +18,18 @@ import { getRazorpayStatus } from './lib/razorpay.js';
 
 const app = express();
 
-app.use(helmet());
-app.use(morgan('dev'));
 app.use(cors({
-  origin: [process.env.FRONTEND_URL || 'http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002'],
+  origin: [
+    process.env.FRONTEND_URL || 'http://localhost:3000',
+    'http://localhost:3001',
+    'http://localhost:3002',
+    'https://finmech.co',
+    'https://www.finmech.co',
+  ],
   credentials: true,
 }));
+app.use(helmet());
+app.use(morgan('dev'));
 
 // Razorpay webhook requires raw body for HMAC signature verification
 app.post(

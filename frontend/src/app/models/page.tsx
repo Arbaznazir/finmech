@@ -7,7 +7,7 @@ import {
   TrendingUp, Calculator, DollarSign, BarChart3, FileText, Scale,
   Flame, ArrowRightLeft, Activity, Users, Gem, Rocket, PieChart,
   Settings, LayoutDashboard, Lock, Link2, Search, Sparkles, Zap, Star,
-  ArrowLeft, ChevronRight,
+  ArrowLeft, ChevronRight, Clock,
 } from "lucide-react";
 import { MODELS, TIER_INFO } from "@/lib/models-data";
 import { canAccessTier, canAccessModel } from "@/lib/access";
@@ -151,8 +151,14 @@ function ModelsPageInner() {
                   {/* Glow blob */}
                   <div className={`absolute -top-10 -right-10 w-48 h-48 rounded-full opacity-20 blur-2xl pointer-events-none ${meta.sectionColor.replace("text-", "bg-")}`} />
 
-                  {/* Lock */}
-                  {!accessible && (
+                  {/* Lock / Coming Soon */}
+                  {tier === "investor" ? (
+                    <div className="absolute top-5 right-5 z-10">
+                      <div className="flex items-center gap-1 rounded-full bg-amber-400/10 border border-amber-400/30 px-2.5 py-1 text-[10px] text-amber-400 font-semibold backdrop-blur">
+                        <Clock className="h-3 w-3" /> Coming Soon
+                      </div>
+                    </div>
+                  ) : !accessible && (
                     <div className="absolute top-5 right-5 z-10">
                       <div className="flex items-center gap-1 rounded-full bg-background/80 border border-border px-2.5 py-1 text-[10px] text-muted-foreground backdrop-blur">
                         <Lock className="h-3 w-3" /> Upgrade
@@ -261,18 +267,17 @@ function ModelsPageInner() {
             {filteredModels.map((model) => {
               const IconComp = ICONS[model.icon] || BarChart3;
               const accessible = canAccessModel(user, model);
+              const isComingSoon = model.tier === "investor";
 
-              return (
-                <Link
-                  key={model.slug}
-                  href={accessible ? `/models/${model.slug}` : "/pricing"}
-                  className={`group relative rounded-2xl border bg-card p-6 transition-all duration-200 hover:shadow-xl ${
-                    accessible
-                      ? `border-border ${meta.hoverBorder}`
-                      : "border-border/40 opacity-55 hover:opacity-75"
-                  }`}
-                >
-                  {!accessible && (
+              const cardContent = (
+                <>
+                  {isComingSoon ? (
+                    <div className="absolute top-4 right-4 z-10">
+                      <div className="flex items-center gap-1 rounded-full bg-amber-400/10 border border-amber-400/30 px-2 py-0.5 text-[10px] text-amber-400 font-semibold">
+                        <Clock className="h-2.5 w-2.5" /> Coming Soon
+                      </div>
+                    </div>
+                  ) : !accessible && (
                     <div className="absolute top-4 right-4">
                       <div className="flex items-center gap-1 rounded-full bg-background border border-border px-2 py-0.5 text-[10px] text-muted-foreground">
                         <Lock className="h-2.5 w-2.5" /> Locked
@@ -306,10 +311,39 @@ function ModelsPageInner() {
                         </span>
                       </>
                     )}
-                    <span className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity">
-                      <ChevronRight className={`h-3.5 w-3.5 ${meta.sectionColor}`} />
-                    </span>
+                    {isComingSoon ? (
+                      <span className="ml-auto text-[10px] text-amber-400/60 font-medium">Under Development</span>
+                    ) : (
+                      <span className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity">
+                        <ChevronRight className={`h-3.5 w-3.5 ${meta.sectionColor}`} />
+                      </span>
+                    )}
                   </div>
+                </>
+              );
+
+              if (isComingSoon) {
+                return (
+                  <div
+                    key={model.slug}
+                    className="group relative rounded-2xl border border-border/40 bg-card p-6 opacity-60 cursor-not-allowed"
+                  >
+                    {cardContent}
+                  </div>
+                );
+              }
+
+              return (
+                <Link
+                  key={model.slug}
+                  href={accessible ? `/models/${model.slug}` : "/pricing"}
+                  className={`group relative rounded-2xl border bg-card p-6 transition-all duration-200 hover:shadow-xl ${
+                    accessible
+                      ? `border-border ${meta.hoverBorder}`
+                      : "border-border/40 opacity-55 hover:opacity-75"
+                  }`}
+                >
+                  {cardContent}
                 </Link>
               );
             })}
