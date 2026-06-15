@@ -90,6 +90,16 @@ export const MODELS: Record<string, FinModel> = {
     customPage: true,
     fields: [],
   },
+  "break-even": {
+    slug: "break-even",
+    name: "Break-Even Analysis",
+    description: "Calculate contribution margin, break-even point in units and revenue, with simulation tables showing profitability at different sales volumes.",
+    tier: "standalone",
+    category: "Profitability",
+    icon: "TrendingUp",
+    customPage: true,
+    fields: [],
+  },
   "cash-flow-statement": {
     slug: "cash-flow-statement",
     name: "Cash Flow Statement",

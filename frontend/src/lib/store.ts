@@ -39,6 +39,19 @@ export const useAuth = create<AuthState>((set) => ({
       try {
         const user = JSON.parse(userStr);
         set({ user, token });
+
+        // Refresh user data from backend to pick up plan changes
+        fetch(
+          `${process.env.NEXT_PUBLIC_API_URL || "https://api.finmech.co/api"}/auth/me`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        )
+          .then((r) => (r.ok ? r.json() : Promise.reject()))
+          .then((data) => {
+            const freshUser = data.user || data;
+            localStorage.setItem("finmech_user", JSON.stringify(freshUser));
+            set({ user: freshUser });
+          })
+          .catch(() => {});
       } catch {
         localStorage.removeItem("finmech_token");
         localStorage.removeItem("finmech_user");

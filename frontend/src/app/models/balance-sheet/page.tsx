@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import {
   ArrowLeft, Scale, Save, RotateCcw, ChevronDown, ChevronUp,
-  CheckCircle, XCircle, Info,
+  CheckCircle, XCircle, Info, AlertTriangle,
 } from "lucide-react";
 import { FieldHint } from "@/components/FieldHint";
 import { HintLabel } from "@/components/HintLabel";
@@ -26,7 +26,7 @@ import {
   type BalanceSheetResults,
 } from "@/lib/balance-sheet-model";
 
-type TabView = "input" | "monthly" | "quarterly" | "annual" | "status";
+type TabView = "input" | "monthly" | "quarterly" | "annual" | "historical" | "insights" | "status";
 
 function fmtVal(key: string, value: number | undefined): string {
   if (value === undefined || value === null) return "—";
@@ -166,7 +166,7 @@ export default function BalanceSheetPage() {
 
       {/* Tabs */}
       <div className="flex gap-1 mb-6 rounded-xl bg-card border border-border p-1 overflow-x-auto">
-        {(["input", "monthly", "quarterly", "annual", "status"] as TabView[]).map((tab) => (
+        {(["input", "monthly", "quarterly", "annual", "historical", "insights", "status"] as TabView[]).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -174,7 +174,7 @@ export default function BalanceSheetPage() {
               activeTab === tab ? "bg-primary text-primary-foreground" : "hover:bg-muted text-muted-foreground"
             }`}
           >
-            {tab === "input" ? "Enter Data" : tab === "monthly" ? "Monthly View" : tab === "status" ? "Balance Check" : tab}
+            {tab === "input" ? "Enter Data" : tab === "monthly" ? "Monthly View" : tab === "insights" ? "Health Insights" : tab === "status" ? "Balance Check" : tab}
           </button>
         ))}
       </div>
@@ -524,6 +524,233 @@ export default function BalanceSheetPage() {
                   );
                 })}
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============ HISTORICAL TAB ============ */}
+      {activeTab === "historical" && results && (
+        <div className="space-y-6">
+          {/* Key Ratios Historical Trend */}
+          <div className="rounded-2xl border border-border bg-card p-6">
+            <h2 className="font-semibold mb-5">Key Ratios — Monthly Trend</h2>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border bg-background/50">
+                    <th className="text-left px-4 py-3 font-semibold text-muted-foreground sticky left-0 bg-background/50">Ratio</th>
+                    {results.monthsAdded.map((m) => (
+                      <th key={m} className="text-right px-4 py-3 font-semibold text-muted-foreground min-w-[100px]">{m}</th>
+                    ))}
+                    <th className="text-right px-4 py-3 font-semibold text-primary bg-primary/5 min-w-[100px]">Annual Avg</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-b border-border/30">
+                    <td className="px-4 py-2.5 font-semibold text-blue-400 sticky left-0 bg-card">Current Ratio</td>
+                    {results.monthsAdded.map((m) => (
+                      <td key={m} className={`text-right px-4 py-2.5 ${(results.monthlyData[m]?.["Current Ratio"] || 0) < 1 ? "text-danger" : ""}`}>
+                        {(results.monthlyData[m]?.["Current Ratio"] || 0).toFixed(2)}
+                      </td>
+                    ))}
+                    <td className="text-right px-4 py-2.5 font-semibold bg-primary/5">{(results.annual["Current Ratio"] || 0).toFixed(2)}</td>
+                  </tr>
+                  <tr className="border-b border-border/30">
+                    <td className="px-4 py-2.5 font-semibold text-purple-400 sticky left-0 bg-card">Quick Ratio</td>
+                    {results.monthsAdded.map((m) => (
+                      <td key={m} className={`text-right px-4 py-2.5 ${(results.monthlyData[m]?.["Quick Ratio"] || 0) < 0.8 ? "text-amber-400" : ""}`}>
+                        {(results.monthlyData[m]?.["Quick Ratio"] || 0).toFixed(2)}
+                      </td>
+                    ))}
+                    <td className="text-right px-4 py-2.5 font-semibold bg-primary/5">{(results.annual["Quick Ratio"] || 0).toFixed(2)}</td>
+                  </tr>
+                  <tr className="border-b border-border/30">
+                    <td className="px-4 py-2.5 font-semibold text-amber-400 sticky left-0 bg-card">Debt/Equity</td>
+                    {results.monthsAdded.map((m) => (
+                      <td key={m} className={`text-right px-4 py-2.5 ${(results.monthlyData[m]?.["Debt/Equity Ratio"] || 0) > 1.5 ? "text-amber-400" : ""}`}>
+                        {(results.monthlyData[m]?.["Debt/Equity Ratio"] || 0).toFixed(2)}
+                      </td>
+                    ))}
+                    <td className="text-right px-4 py-2.5 font-semibold bg-primary/5">{(results.annual["Debt/Equity Ratio"] || 0).toFixed(2)}</td>
+                  </tr>
+                  <tr className="border-b border-border/30">
+                    <td className="px-4 py-2.5 font-semibold text-green-400 sticky left-0 bg-card">Proprietary Ratio</td>
+                    {results.monthsAdded.map((m) => (
+                      <td key={m} className="text-right px-4 py-2.5">
+                        {(results.monthlyData[m]?.["Proprietary Ratio"] || 0).toFixed(2)}
+                      </td>
+                    ))}
+                    <td className="text-right px-4 py-2.5 font-semibold bg-primary/5">{(results.annual["Proprietary Ratio"] || 0).toFixed(2)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Working Capital & Balance Check History */}
+          <div className="rounded-2xl border border-border bg-card p-6">
+            <h3 className="font-semibold mb-4">Working Capital & Balance Check History</h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border bg-background/50">
+                    <th className="text-left px-4 py-3 font-semibold text-muted-foreground sticky left-0 bg-background/50">Month</th>
+                    <th className="text-right px-4 py-3 font-semibold text-muted-foreground">Working Capital</th>
+                    <th className="text-right px-4 py-3 font-semibold text-muted-foreground">Current Assets</th>
+                    <th className="text-right px-4 py-3 font-semibold text-muted-foreground">Current Liabilities</th>
+                    <th className="text-center px-4 py-3 font-semibold text-muted-foreground">Balance Status</th>
+                    <th className="text-right px-4 py-3 font-semibold text-muted-foreground">Variance</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {results.status.map((s) => (
+                    <tr key={s.month} className="border-b border-border/30">
+                      <td className="px-4 py-2.5 font-semibold sticky left-0 bg-card">{s.month}</td>
+                      <td className={`text-right px-4 py-2.5 ${s.workingCapital < 0 ? "text-danger" : "text-success"}`}>{formatCurrency(s.workingCapital)}</td>
+                      <td className="text-right px-4 py-2.5">{formatCurrency(results.monthlyData[s.month]?.["Total Current Assets"] || 0)}</td>
+                      <td className="text-right px-4 py-2.5">{formatCurrency(results.monthlyData[s.month]?.["Total Current Liability"] || 0)}</td>
+                      <td className="text-center px-4 py-2.5">
+                        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${s.status === "GREEN" ? "bg-success/10 text-success" : "bg-danger/10 text-danger"}`}>
+                          {s.status === "GREEN" ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
+                          {s.status === "GREEN" ? "Balanced" : "Error"}
+                        </span>
+                      </td>
+                      <td className={`text-right px-4 py-2.5 ${Math.abs(s.balanceCheck) >= 1 ? "text-danger font-semibold" : ""}`}>
+                        {Math.abs(s.balanceCheck) < 1 ? "—" : formatCurrency(s.balanceCheck)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Asset & Liability Composition Over Time */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="rounded-2xl border border-border bg-card p-5">
+              <h3 className="font-semibold text-sm mb-3">Current Ratio Trend</h3>
+              <ReactECharts
+                style={{ height: 260 }}
+                option={{
+                  tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+                  legend: { data: ["Current Ratio", "Threshold (1.5)", "Threshold (1.0)"], textStyle: { color: "#aaa", fontSize: 10 }, top: 0 },
+                  grid: { top: 30, right: 15, bottom: 30, left: 55 },
+                  xAxis: { type: "category", data: results.monthsAdded, axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
+                  yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: "{value}x" }, splitLine: { lineStyle: { color: "#222" } } },
+                  series: [
+                    { name: "Current Ratio", type: "line", data: results.monthsAdded.map(m => results.monthlyData[m]?.["Current Ratio"] || 0), smooth: true, lineStyle: { color: "#60a5fa", width: 3 }, itemStyle: { color: "#60a5fa" }, symbol: "circle", symbolSize: 6 },
+                    { name: "Threshold (1.5)", type: "line", data: results.monthsAdded.map(() => 1.5), lineStyle: { color: "#f59e0b", type: "dashed", width: 2 }, symbol: "none" },
+                    { name: "Threshold (1.0)", type: "line", data: results.monthsAdded.map(() => 1.0), lineStyle: { color: "#ef4444", type: "dashed", width: 2 }, symbol: "none" },
+                  ],
+                }}
+              />
+            </div>
+
+            <div className="rounded-2xl border border-border bg-card p-5">
+              <h3 className="font-semibold text-sm mb-3">Working Capital Trend</h3>
+              <ReactECharts
+                style={{ height: 260 }}
+                option={{
+                  tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+                  grid: { top: 15, right: 15, bottom: 30, left: 55 },
+                  xAxis: { type: "category", data: results.monthsAdded, axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
+                  yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => `₹${(v/1000).toFixed(0)}k` }, splitLine: { lineStyle: { color: "#222" } } },
+                  series: [{
+                    type: "bar",
+                    data: results.monthsAdded.map(m => {
+                      const v = results.monthlyData[m]?.["Working Capital"] || 0;
+                      return { value: v, itemStyle: { color: v >= 0 ? "#34d399" : "#ef4444", borderRadius: [4, 4, 0, 0] } };
+                    }),
+                  }],
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Debt/Equity Trend */}
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <h3 className="font-semibold text-sm mb-3">Debt/Equity Ratio Trend</h3>
+            <ReactECharts
+              style={{ height: 240 }}
+              option={{
+                tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+                legend: { data: ["Debt/Equity", "Conservative (1.0)", "High Risk (3.0)"], textStyle: { color: "#aaa", fontSize: 10 }, top: 0 },
+                grid: { top: 30, right: 15, bottom: 30, left: 55 },
+                xAxis: { type: "category", data: results.monthsAdded, axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
+                yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: "{value}x" }, splitLine: { lineStyle: { color: "#222" } } },
+                series: [
+                  { name: "Debt/Equity", type: "line", data: results.monthsAdded.map(m => results.monthlyData[m]?.["Debt/Equity Ratio"] || 0), smooth: true, lineStyle: { color: "#a78bfa", width: 3 }, itemStyle: { color: "#a78bfa" }, symbol: "circle", symbolSize: 6 },
+                  { name: "Conservative (1.0)", type: "line", data: results.monthsAdded.map(() => 1.0), lineStyle: { color: "#34d399", type: "dashed", width: 2 }, symbol: "none" },
+                  { name: "High Risk (3.0)", type: "line", data: results.monthsAdded.map(() => 3.0), lineStyle: { color: "#ef4444", type: "dashed", width: 2 }, symbol: "none" },
+                ],
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* ============ INSIGHTS TAB ============ */}
+      {activeTab === "insights" && results && (
+        <div className="max-w-3xl mx-auto space-y-6">
+          {/* Overall Health Score */}
+          <div className={`rounded-2xl border bg-card p-8 text-center ${
+            results.insights.healthScore >= 80 ? "border-success/30" :
+            results.insights.healthScore >= 60 ? "border-amber-400/30" :
+            results.insights.healthScore >= 40 ? "border-orange-400/30" : "border-danger/30"
+          }`}>
+            <div className="flex justify-center mb-4">
+              {results.insights.healthScore >= 80 ? <CheckCircle className="h-8 w-8 text-success" /> :
+               results.insights.healthScore >= 60 ? <Info className="h-8 w-8 text-amber-400" /> :
+               results.insights.healthScore >= 40 ? <AlertTriangle className="h-8 w-8 text-orange-400" /> :
+               <XCircle className="h-8 w-8 text-danger" />}
+            </div>
+            <div className="text-5xl font-bold mb-2">
+              <span className={results.insights.overallColor}>{results.insights.healthScore}/100</span>
+            </div>
+            <h2 className={`text-xl font-bold mb-2 ${results.insights.overallColor}`}>
+              {results.insights.overall}
+            </h2>
+          </div>
+
+          {/* Detailed Guidance */}
+          <div className="rounded-2xl border border-border bg-card p-6 output-panel">
+            <h3 className="font-semibold mb-4">Financial Health Analysis</h3>
+            <div className="space-y-3">
+              {results.insights.guidance.map((item, idx) => (
+                <div key={idx} className={`flex items-start gap-3 rounded-xl px-4 py-3 ${
+                  item.startsWith("✓") ? "bg-success/5 border border-success/20" :
+                  item.startsWith("🚨") ? "bg-danger/10 border border-danger/30" :
+                  item.startsWith("⚠️") ? "bg-amber-400/5 border border-amber-400/20" :
+                  item.startsWith("📊") ? "bg-blue-400/5 border border-blue-400/20" :
+                  item.startsWith("💡") ? "bg-purple-400/5 border border-purple-400/20" :
+                  "bg-muted/30 border border-border/50"
+                }`}>
+                  <span className="text-sm leading-relaxed">{item}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Quick Stats */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="rounded-xl bg-background/50 border border-border/50 p-4 text-center">
+              <p className="text-xs text-muted-foreground mb-1">Avg Current Ratio</p>
+              <p className="text-2xl font-bold">{(results.annual["Current Ratio"] || 0).toFixed(2)}</p>
+            </div>
+            <div className="rounded-xl bg-background/50 border border-border/50 p-4 text-center">
+              <p className="text-xs text-muted-foreground mb-1">Debt/Equity</p>
+              <p className="text-2xl font-bold">{(results.annual["Debt/Equity Ratio"] || 0).toFixed(2)}</p>
+            </div>
+            <div className="rounded-xl bg-background/50 border border-border/50 p-4 text-center">
+              <p className="text-xs text-muted-foreground mb-1">Working Capital</p>
+              <p className={`text-2xl font-bold ${(results.annual["Working Capital"] || 0) < 0 ? "text-danger" : ""}`}>
+                {formatCurrency(results.annual["Working Capital"] || 0)}
+              </p>
+            </div>
+            <div className="rounded-xl bg-background/50 border border-border/50 p-4 text-center">
+              <p className="text-xs text-muted-foreground mb-1">Total Assets</p>
+              <p className="text-2xl font-bold">{formatCurrency(results.annual["TOTAL ASSETS"] || 0)}</p>
             </div>
           </div>
         </div>

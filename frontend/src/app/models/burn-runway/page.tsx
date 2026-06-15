@@ -27,7 +27,7 @@ import {
   type Classification,
 } from "@/lib/burn-runway-model";
 
-type TabView = "input" | "monthly" | "status";
+type TabView = "input" | "monthly" | "insights" | "status";
 
 function fmtVal(key: string, value: number | string | undefined): string {
   if (value === undefined || value === null) return "—";
@@ -184,7 +184,7 @@ export default function BurnRunwayPage() {
 
       {/* Tabs */}
       <div className="flex gap-1 mb-6 rounded-xl bg-card border border-border p-1 overflow-x-auto">
-        {(["input", "monthly", "status"] as TabView[]).map((tab) => (
+        {(["input", "monthly", "insights", "status"] as TabView[]).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -192,7 +192,7 @@ export default function BurnRunwayPage() {
               activeTab === tab ? "bg-primary text-primary-foreground" : "hover:bg-muted text-muted-foreground"
             }`}
           >
-            {tab === "input" ? "Enter Data" : tab === "monthly" ? "Monthly View" : "Runway Status"}
+            {tab === "input" ? "Enter Data" : tab === "monthly" ? "Monthly View" : tab === "insights" ? "Burn Insights" : "Runway Status"}
           </button>
         ))}
       </div>
@@ -355,6 +355,117 @@ export default function BurnRunwayPage() {
                 })}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* ============ INSIGHTS TAB ============ */}
+      {activeTab === "insights" && results && (
+        <div className="max-w-3xl mx-auto space-y-6">
+          {/* Overall Health Score */}
+          <div className={`rounded-2xl border bg-card p-8 text-center ${
+            results.insights.healthScore >= 80 ? "border-success/30" :
+            results.insights.healthScore >= 60 ? "border-amber-400/30" :
+            results.insights.healthScore >= 40 ? "border-orange-400/30" : "border-danger/30"
+          }`}>
+            <div className="flex justify-center mb-4">
+              {results.insights.healthScore >= 80 ? <CheckCircle className="h-8 w-8 text-success" /> :
+               results.insights.healthScore >= 60 ? <Info className="h-8 w-8 text-amber-400" /> :
+               results.insights.healthScore >= 40 ? <AlertTriangle className="h-8 w-8 text-orange-400" /> :
+               <XCircle className="h-8 w-8 text-danger" />}
+            </div>
+            <div className="text-5xl font-bold mb-2">
+              <span className={results.insights.overallColor}>{results.insights.healthScore}/100</span>
+            </div>
+            <h2 className={`text-xl font-bold mb-2 ${results.insights.overallColor}`}>
+              {results.insights.overall}
+            </h2>
+          </div>
+
+          {/* Runway Trend & Cash Outlook */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="rounded-xl bg-card border border-border p-4 text-center">
+              <p className="text-xs text-muted-foreground mb-1">Runway Trend</p>
+              <p className={`text-xl font-bold ${
+                results.insights.runwayTrend === "improving" ? "text-success" :
+                results.insights.runwayTrend === "declining" ? "text-amber-400" :
+                results.insights.runwayTrend === "critical" ? "text-danger" : "text-muted-foreground"
+              }`}>
+                {results.insights.runwayTrend === "improving" ? "↑ Improving" :
+                 results.insights.runwayTrend === "declining" ? "↓ Declining" :
+                 results.insights.runwayTrend === "critical" ? "🚨 Critical" : "→ Stable"}
+              </p>
+            </div>
+            <div className="rounded-xl bg-card border border-border p-4 text-center">
+              <p className="text-xs text-muted-foreground mb-1">Cash Outlook</p>
+              <p className={`text-xl font-bold ${
+                results.insights.cashOutlook === "surplus" ? "text-success" :
+                results.insights.cashOutlook === "constrained" ? "text-amber-400" :
+                results.insights.cashOutlook === "deficit" ? "text-danger" : "text-muted-foreground"
+              }`}>
+                {results.insights.cashOutlook === "surplus" ? "💰 Surplus" :
+                 results.insights.cashOutlook === "constrained" ? "⚠️ Constrained" :
+                 results.insights.cashOutlook === "deficit" ? "🚨 Deficit" : "✓ Adequate"}
+              </p>
+            </div>
+          </div>
+
+          {/* Detailed Guidance */}
+          <div className="rounded-2xl border border-border bg-card p-6 output-panel">
+            <h3 className="font-semibold mb-4">Financial Health Analysis</h3>
+            <div className="space-y-3">
+              {results.insights.guidance.map((item, idx) => (
+                <div key={idx} className={`flex items-start gap-3 rounded-xl px-4 py-3 ${
+                  item.startsWith("✓") ? "bg-success/5 border border-success/20" :
+                  item.startsWith("🚨") ? "bg-danger/10 border border-danger/30" :
+                  item.startsWith("⚠️") ? "bg-amber-400/5 border border-amber-400/20" :
+                  item.startsWith("📊") ? "bg-blue-400/5 border border-blue-400/20" :
+                  item.startsWith("💰") ? "bg-green-400/5 border border-green-400/20" :
+                  "bg-muted/30 border border-border/50"
+                }`}>
+                  <span className="text-sm leading-relaxed">{item}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Key Metrics Summary */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="rounded-xl bg-background/50 border border-border/50 p-4 text-center">
+              <p className="text-xs text-muted-foreground mb-1">Latest Runway</p>
+              <p className="text-2xl font-bold">
+                {results.status.length > 0
+                  ? (() => {
+                      const last = results.status[results.status.length - 1];
+                      return last.runway === Infinity ? "∞" : (Math.round(last.runway * 10) / 10) + " mo";
+                    })()
+                  : "—"}
+              </p>
+            </div>
+            <div className="rounded-xl bg-background/50 border border-border/50 p-4 text-center">
+              <p className="text-xs text-muted-foreground mb-1">Net Burn</p>
+              <p className="text-2xl font-bold text-danger">
+                {results.status.length > 0
+                  ? formatCurrency(results.status[results.status.length - 1].netBurn)
+                  : "—"}
+              </p>
+            </div>
+            <div className="rounded-xl bg-background/50 border border-border/50 p-4 text-center">
+              <p className="text-xs text-muted-foreground mb-1">Cumulative Cash</p>
+              <p className={`text-2xl font-bold ${results.status.length > 0 && results.status[results.status.length - 1].cumulativeCash < 0 ? "text-danger" : ""}`}>
+                {results.status.length > 0
+                  ? formatCurrency(results.status[results.status.length - 1].cumulativeCash)
+                  : "—"}
+              </p>
+            </div>
+            <div className="rounded-xl bg-background/50 border border-border/50 p-4 text-center">
+              <p className="text-xs text-muted-foreground mb-1">GREEN/AMBER/RED</p>
+              <p className="text-2xl font-bold">
+                {results.status.length > 0
+                  ? `${results.status.filter(s => s.classification === "GREEN").length}/${results.status.filter(s => s.classification === "AMBER").length}/${results.status.filter(s => s.classification === "RED").length}`
+                  : "—"}
+              </p>
+            </div>
           </div>
         </div>
       )}

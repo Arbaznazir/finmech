@@ -59,27 +59,28 @@ export interface DCFResults {
 }
 
 export const INPUT_FIELDS: { key: keyof DCFInputs; label: string; category: string; type: "currency" | "percent" | "number" | "decimal" }[] = [
-  // Revenue
-  { key: "baseYearRevenue", label: "Base Year Revenue", category: "Revenue Assumptions", type: "currency" },
+  // Basic Assumptions
+  { key: "baseYearRevenue", label: "Base Year Revenue", category: "Basic Assumptions", type: "currency" },
+  // Revenue Assumptions
   { key: "revenueGrowthY1", label: "Revenue Growth Y1 (%)", category: "Revenue Assumptions", type: "percent" },
   { key: "revenueGrowthY2", label: "Revenue Growth Y2 (%)", category: "Revenue Assumptions", type: "percent" },
   { key: "revenueGrowthY3", label: "Revenue Growth Y3 (%)", category: "Revenue Assumptions", type: "percent" },
   { key: "revenueGrowthY4", label: "Revenue Growth Y4 (%)", category: "Revenue Assumptions", type: "percent" },
   { key: "revenueGrowthY5", label: "Revenue Growth Y5 (%)", category: "Revenue Assumptions", type: "percent" },
-  // Margins & OpEx
+  // Operating Assumptions
   { key: "ebitdaMargin", label: "EBITDA Margin (%)", category: "Operating Assumptions", type: "percent" },
   { key: "depreciationPctOfRevenue", label: "Depreciation (% of Revenue)", category: "Operating Assumptions", type: "percent" },
   { key: "capexPctOfRevenue", label: "CapEx (% of Revenue)", category: "Operating Assumptions", type: "percent" },
   { key: "workingCapitalPctOfRevenue", label: "Working Capital (% of Revenue)", category: "Operating Assumptions", type: "percent" },
-  { key: "taxRate", label: "Tax Rate (%)", category: "Operating Assumptions", type: "percent" },
-  // WACC
+  // WACC Assumptions
   { key: "riskFreeRate", label: "Risk-Free Rate (%)", category: "WACC Assumptions", type: "percent" },
   { key: "equityRiskPremium", label: "Equity Risk Premium (%)", category: "WACC Assumptions", type: "percent" },
   { key: "beta", label: "Beta", category: "WACC Assumptions", type: "decimal" },
   { key: "costOfDebt", label: "Cost of Debt (%)", category: "WACC Assumptions", type: "percent" },
+  { key: "taxRate", label: "Tax Rate (%)", category: "WACC Assumptions", type: "percent" },
   { key: "marketValueOfEquity", label: "Market Value of Equity", category: "WACC Assumptions", type: "currency" },
   { key: "marketValueOfDebt", label: "Market Value of Debt", category: "WACC Assumptions", type: "currency" },
-  // Terminal
+  // Terminal Value
   { key: "terminalGrowthRate", label: "Terminal Growth Rate (%)", category: "Terminal Value", type: "percent" },
 ];
 

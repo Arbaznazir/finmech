@@ -39,38 +39,37 @@ export interface ChecklistResults {
 
 export const QUESTIONS: ChecklistQuestion[] = [
   // Cash Flow (weight 3)
-  { id: "cf_q1", section: "Cash Flow", text: "Do you track your cash flow weekly or monthly?", weight: 3 },
-  { id: "cf_q2", section: "Cash Flow", text: "Do you know your current cash runway in months?", weight: 3 },
-  { id: "cf_q3", section: "Cash Flow", text: "Do you have a cash reserve for at least 3 months of expenses?", weight: 3 },
-  { id: "cf_q4", section: "Cash Flow", text: "Do you forecast cash flow for the next 6–12 months?", weight: 3 },
+  { id: "cf_q1", section: "Cash Flow", text: "I know exact cash available today", weight: 3 },
+  { id: "cf_q2", section: "Cash Flow", text: "I know my monthly burn rate", weight: 3 },
+  { id: "cf_q3", section: "Cash Flow", text: "I know my runway in months", weight: 3 },
+  { id: "cf_q4", section: "Cash Flow", text: "Cash review is done monthly", weight: 3 },
   // Revenue (weight 2)
-  { id: "rv_q1", section: "Revenue", text: "Do you know your monthly recurring revenue (MRR)?", weight: 2 },
-  { id: "rv_q2", section: "Revenue", text: "Do you track revenue by product/service line?", weight: 2 },
-  { id: "rv_q3", section: "Revenue", text: "Do you know your revenue growth rate month-on-month?", weight: 2 },
+  { id: "rv_q1", section: "Revenue", text: "I track receivables & ageing", weight: 2 },
+  { id: "rv_q2", section: "Revenue", text: "I know the % of one-time vs recurring revenue", weight: 2 },
+  { id: "rv_q3", section: "Revenue", text: "Collection cycle is predictable", weight: 2 },
   // Costs (weight 2)
-  { id: "co_q1", section: "Costs", text: "Do you know your total fixed costs per month?", weight: 2 },
-  { id: "co_q2", section: "Costs", text: "Do you know your variable cost per unit?", weight: 2 },
-  { id: "co_q3", section: "Costs", text: "Do you review costs quarterly to find savings?", weight: 2 },
+  { id: "co_q1", section: "Costs", text: "Fixed vs variable costs identified", weight: 2 },
+  { id: "co_q2", section: "Costs", text: "Costs are reviewed before expansion", weight: 2 },
+  { id: "co_q3", section: "Costs", text: "I can reduce burn within 30 days", weight: 2 },
   // Unit Economics (weight 3)
-  { id: "ue_q1", section: "Unit Economics", text: "Do you know your Customer Acquisition Cost (CAC)?", weight: 3 },
-  { id: "ue_q2", section: "Unit Economics", text: "Do you know your Customer Lifetime Value (LTV)?", weight: 3 },
-  { id: "ue_q3", section: "Unit Economics", text: "Is your LTV/CAC ratio above 3?", weight: 3 },
+  { id: "ue_q1", section: "Unit Economics", text: "Gross margin is known", weight: 3 },
+  { id: "ue_q2", section: "Unit Economics", text: "CAC and LTV are tracked", weight: 3 },
+  { id: "ue_q3", section: "Unit Economics", text: "Pricing covers all costs", weight: 3 },
   // Forecasting (weight 2)
-  { id: "fc_q1", section: "Forecasting", text: "Do you have a 12-month revenue forecast?", weight: 2 },
-  { id: "fc_q2", section: "Forecasting", text: "Do you update your financial model regularly?", weight: 2 },
-  { id: "fc_q3", section: "Forecasting", text: "Do you scenario-plan (best/worst/base case)?", weight: 2 },
+  { id: "fc_q1", section: "Forecasting", text: "12–24 month forecast exists", weight: 2 },
+  { id: "fc_q2", section: "Forecasting", text: "Best/Base/Worst cases modeled", weight: 2 },
+  { id: "fc_q3", section: "Forecasting", text: "Break-even point is clear", weight: 2 },
   // Compliance (weight 2)
-  { id: "cm_q1", section: "Compliance", text: "Are your books up to date (within 30 days)?", weight: 2 },
-  { id: "cm_q2", section: "Compliance", text: "Do you file taxes on time?", weight: 2 },
-  { id: "cm_q3", section: "Compliance", text: "Do you have a qualified accountant or CFO?", weight: 2 },
+  { id: "cm_q1", section: "Compliance", text: "GST/TDS/IT is tracked on calendar", weight: 2 },
+  { id: "cm_q2", section: "Compliance", text: "Tax provisions are planned", weight: 2 },
+  { id: "cm_q3", section: "Compliance", text: "Books updated monthly", weight: 2 },
   // Fundraising (weight 2)
-  { id: "fr_q1", section: "Fundraising", text: "Do you have a pitch deck with financial projections?", weight: 2 },
-  { id: "fr_q2", section: "Fundraising", text: "Do you know how much funding you need and why?", weight: 2 },
-  { id: "fr_q3", section: "Fundraising", text: "Can you articulate your unit economics to investors?", weight: 2 },
+  { id: "fr_q1", section: "Fundraising", text: "Cap Table is clean", weight: 2 },
+  { id: "fr_q2", section: "Fundraising", text: "Dilution logic is understood", weight: 2 },
+  { id: "fr_q3", section: "Fundraising", text: "Ready for Term Sheet", weight: 2 },
   // Controls (weight 2)
-  { id: "ct_q1", section: "Controls", text: "Do you have approval workflows for expenses?", weight: 2 },
-  { id: "ct_q2", section: "Controls", text: "Do you reconcile bank statements monthly?", weight: 2 },
-  { id: "ct_q3", section: "Controls", text: "Do you have clear financial KPIs and dashboards?", weight: 2 },
+  { id: "ct_q1", section: "Controls", text: "Personal & business money separated", weight: 2 },
+  { id: "ct_q2", section: "Controls", text: "Expense approvals exist", weight: 2 },
 ];
 
 export const SECTIONS = [...new Set(QUESTIONS.map((q) => q.section))];

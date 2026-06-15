@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import {
   ArrowLeft, Presentation, Save, RotateCcw,
-  CheckCircle, AlertTriangle, XCircle, Lightbulb,
+  CheckCircle, AlertTriangle, XCircle, Lightbulb, Info,
   ChevronDown, ChevronUp,
 } from "lucide-react";
 import { FieldHint } from "@/components/FieldHint";
@@ -239,6 +239,56 @@ export default function PitchDeckKPIsPage() {
                 <p className={`text-xl font-bold ${m.color || ""}`}>{m.value}</p>
               </div>
             ))}
+          </div>
+
+          {/* Overall Insights */}
+          <div className={`rounded-2xl border bg-card p-8 text-center ${
+            results.insights.healthScore >= 80 ? "border-success/30" :
+            results.insights.healthScore >= 60 ? "border-amber-400/30" :
+            results.insights.healthScore >= 40 ? "border-orange-400/30" : "border-danger/30"
+          }`}>
+            <div className="flex justify-center mb-4">
+              {results.insights.healthScore >= 80 ? <CheckCircle className="h-8 w-8 text-success" /> :
+               results.insights.healthScore >= 60 ? <Info className="h-8 w-8 text-amber-400" /> :
+               results.insights.healthScore >= 40 ? <AlertTriangle className="h-8 w-8 text-orange-400" /> :
+               <XCircle className="h-8 w-8 text-danger" />}
+            </div>
+            <div className="text-5xl font-bold mb-2">
+              <span className={results.insights.overallColor}>{results.insights.healthScore}/100</span>
+            </div>
+            <h2 className={`text-xl font-bold mb-2 ${results.insights.overallColor}`}>
+              {results.insights.overall}
+            </h2>
+            <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium ${
+              results.insights.investorReadiness === "excellent" ? "bg-success/10 text-success" :
+              results.insights.investorReadiness === "good" ? "bg-amber-400/10 text-amber-400" :
+              results.insights.investorReadiness === "needs-work" ? "bg-orange-400/10 text-orange-400" :
+              "bg-danger/10 text-danger"
+            }`}>
+              {results.insights.investorReadiness === "excellent" ? "✓ Investor Ready" :
+               results.insights.investorReadiness === "good" ? "📊 Good Progress" :
+               results.insights.investorReadiness === "needs-work" ? "⚠️ Needs Improvement" :
+               "🚨 Not Investor Ready"}
+            </span>
+          </div>
+
+          {/* Detailed Guidance */}
+          <div className="rounded-2xl border border-border bg-card p-6 output-panel">
+            <h3 className="font-semibold mb-4">Detailed Analysis & Recommendations</h3>
+            <div className="space-y-3">
+              {results.insights.guidance.map((item, idx) => (
+                <div key={idx} className={`flex items-start gap-3 rounded-xl px-4 py-3 ${
+                  item.startsWith("✓") ? "bg-success/5 border border-success/20" :
+                  item.startsWith("🚨") ? "bg-danger/10 border border-danger/30" :
+                  item.startsWith("⚠️") ? "bg-amber-400/5 border border-amber-400/20" :
+                  item.startsWith("📊") ? "bg-blue-400/5 border border-blue-400/20" :
+                  item.startsWith("💡") ? "bg-primary/5 border border-primary/20" :
+                  "bg-muted/30 border border-border/50"
+                }`}>
+                  <span className="text-sm leading-relaxed">{item}</span>
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* RAG Cards */}

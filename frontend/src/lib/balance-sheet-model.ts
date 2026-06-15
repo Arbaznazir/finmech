@@ -115,12 +115,20 @@ export interface MonthStatus {
   status: "GREEN" | "RED";
 }
 
+export interface BalanceSheetInsights {
+  overall: string;
+  overallColor: string;
+  guidance: string[];
+  healthScore: number; // 0-100
+}
+
 export interface BalanceSheetResults {
   monthlyData: Record<string, ComputedBSMonth>;
   quarters: Record<string, Record<string, number>>;
   annual: Record<string, number>;
   status: MonthStatus[];
   monthsAdded: string[];
+  insights: BalanceSheetInsights;
 }
 
 // ================== CALCULATION ENGINE ==================
@@ -248,7 +256,161 @@ export function calculateBalanceSheet(
     status: Math.abs(computed[month]["BALANCE CHECK"]) < 1 ? "GREEN" as const : "RED" as const,
   }));
 
-  return { monthlyData: computed, quarters, annual, status, monthsAdded: addedMonths };
+  // Generate comprehensive insights
+  const insights = generateInsights(computed, addedMonths, annual, status);
+
+  return { monthlyData: computed, quarters, annual, status, monthsAdded: addedMonths, insights };
+}
+
+function generateInsights(
+  computed: Record<string, ComputedBSMonth>,
+  addedMonths: string[],
+  annual: Record<string, number>,
+  status: MonthStatus[]
+): BalanceSheetInsights {
+  const guidance: string[] = [];
+  let overall: string;
+  let overallColor: string;
+  let healthScore = 100;
+
+  // Check if any data entered
+  if (addedMonths.length === 0) {
+    return {
+      overall: "Enter your balance sheet data to see financial health analysis.",
+      overallColor: "text-muted-foreground",
+      guidance: ["Start by entering asset and liability data for at least one month."],
+      healthScore: 0,
+    };
+  }
+
+  // Balance check issues
+  const unbalancedMonths = status.filter(s => s.status === "RED").length;
+  if (unbalancedMonths > 0) {
+    healthScore -= unbalancedMonths * 15;
+    guidance.push(`⚠️ ${unbalancedMonths} month(s) have balance sheet errors — Assets ≠ Liabilities + Equity.`);
+  }
+
+  // Current Ratio analysis
+  const avgCurrentRatio = status.length > 0
+    ? status.reduce((sum, s) => sum + s.currentRatio, 0) / status.length
+    : 0;
+
+  if (avgCurrentRatio < 1) {
+    healthScore -= 20;
+    guidance.push("⚠️ Current Ratio below 1 — insufficient current assets to cover short-term liabilities.");
+  } else if (avgCurrentRatio < 1.5) {
+    healthScore -= 10;
+    guidance.push("⚠️ Current Ratio between 1-1.5 — limited liquidity buffer for emergencies.");
+  } else if (avgCurrentRatio >= 2) {
+    guidance.push("✓ Strong Current Ratio (>2) — excellent short-term liquidity position.");
+  } else {
+    guidance.push("✓ Adequate Current Ratio (>1.5) — reasonable liquidity buffer.");
+  }
+
+  // Working Capital analysis
+  const totalWorkingCapital = annual["Working Capital"] || 0;
+  const totalCurrentAssets = annual["Total Current Assets"] || 0;
+  const workingCapitalRatio = totalCurrentAssets > 0 ? totalWorkingCapital / totalCurrentAssets : 0;
+
+  if (totalWorkingCapital < 0) {
+    healthScore -= 25;
+    guidance.push("🚨 Negative Working Capital — critical cash flow risk! Immediate action required.");
+  } else if (workingCapitalRatio < 0.2) {
+    healthScore -= 10;
+    guidance.push("⚠️ Low Working Capital — consider improving receivables collection or reducing payables.");
+  }
+
+  // Debt/Equity analysis
+  const debtEquity = annual["Debt/Equity Ratio"] || 0;
+  if (debtEquity > 3) {
+    healthScore -= 20;
+    guidance.push("⚠️ High Debt/Equity Ratio (>3) — heavily leveraged. Consider debt reduction.");
+  } else if (debtEquity > 1.5) {
+    healthScore -= 10;
+    guidance.push("⚠️ Elevated Debt/Equity Ratio (>1.5) — monitor debt servicing capacity.");
+  } else if (debtEquity <= 1 && debtEquity > 0) {
+    guidance.push("✓ Conservative Debt/Equity Ratio (≤1) — balanced capital structure.");
+  }
+
+  // Proprietary Ratio (Equity/Assets)
+  const proprietaryRatio = annual["Proprietary Ratio"] || 0;
+  if (proprietaryRatio < 0.3) {
+    healthScore -= 15;
+    guidance.push("⚠️ Low Proprietary Ratio (<30%) — heavy reliance on external funding.");
+  } else if (proprietaryRatio > 0.6) {
+    guidance.push("✓ High Proprietary Ratio (>60%) — strong owner equity position.");
+  }
+
+  // Quick Ratio (excluding inventory)
+  const avgQuickRatio = addedMonths.length > 0
+    ? addedMonths.reduce((sum, m) => sum + computed[m]["Quick Ratio"], 0) / addedMonths.length
+    : 0;
+
+  if (avgQuickRatio < 0.8) {
+    healthScore -= 10;
+    guidance.push("⚠️ Quick Ratio below 0.8 — limited liquid assets excluding inventory.");
+  } else if (avgQuickRatio >= 1) {
+    guidance.push("✓ Quick Ratio ≥1 — can meet short-term obligations without selling inventory.");
+  }
+
+  // Asset composition insights
+  const nonCurrentAssets = annual["Total Non-Current Assets"] || 0;
+  const currentAssets = annual["Total Current Assets"] || 0;
+  const totalAssets = annual["TOTAL ASSETS"] || 0;
+
+  if (totalAssets > 0) {
+    const nonCurrentRatio = nonCurrentAssets / totalAssets;
+    if (nonCurrentRatio > 0.8) {
+      guidance.push("📊 Asset-heavy business — high fixed assets may indicate capital-intensive operations.");
+    } else if (nonCurrentRatio < 0.2) {
+      guidance.push("📊 Asset-light business — low fixed assets, likely service/trading oriented.");
+    }
+  }
+
+  // Cash position
+  const totalCash = annual["Cash & Cash Equivalents (Cash at bank included)"] || 0;
+  const currentLiabilities = annual["Total Current Liability"] || 0;
+  const cashToCLRatio = currentLiabilities > 0 ? totalCash / currentLiabilities : 0;
+
+  if (cashToCLRatio < 0.1 && totalCash > 0) {
+    guidance.push("⚠️ Low cash position relative to current liabilities — potential liquidity crunch.");
+  } else if (cashToCLRatio > 0.5) {
+    guidance.push("✓ Strong cash buffer — well positioned for short-term obligations.");
+  }
+
+  // Inventory analysis
+  const inventory = annual["Inventory / Stock"] || 0;
+  const receivables = annual["Trade Receivables (Debtors)"] || 0;
+  const inventoryToReceivables = receivables > 0 ? inventory / receivables : 0;
+
+  if (inventoryToReceivables > 2) {
+    guidance.push("⚠️ High inventory relative to receivables — check for slow-moving stock.");
+  }
+
+  // Determine overall status
+  if (healthScore >= 80) {
+    overall = "Strong financial health! Your balance sheet shows solid fundamentals.";
+    overallColor = "text-success";
+  } else if (healthScore >= 60) {
+    overall = "Moderate financial health. Some areas need attention.";
+    overallColor = "text-amber-400";
+  } else if (healthScore >= 40) {
+    overall = "Financial health concerns detected. Review highlighted issues.";
+    overallColor = "text-orange-400";
+  } else {
+    overall = "Significant financial health issues. Immediate corrective action recommended.";
+    overallColor = "text-danger";
+  }
+
+  // Add health score to guidance
+  guidance.unshift(`📊 Financial Health Score: ${Math.max(0, healthScore)}/100`);
+
+  // Default guidance if nothing specific
+  if (guidance.length <= 1) {
+    guidance.push("📊 Continue monitoring monthly to track financial health improvements.");
+  }
+
+  return { overall, overallColor, guidance, healthScore: Math.max(0, healthScore) };
 }
 
 // Output fields for display tables

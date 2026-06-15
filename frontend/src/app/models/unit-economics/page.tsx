@@ -368,6 +368,64 @@ export default function UnitEconomicsPage() {
             );
           })()}
 
+          {/* Latest Month Insights */}
+          {results.status.length > 0 && (() => {
+            const last = results.status[results.status.length - 1];
+            return (
+              <>
+                {/* Overall Health Score */}
+                <div className={`rounded-2xl border bg-card p-8 text-center ${
+                  last.insights.healthScore >= 80 ? "border-success/30" :
+                  last.insights.healthScore >= 60 ? "border-amber-400/30" :
+                  last.insights.healthScore >= 40 ? "border-orange-400/30" : "border-danger/30"
+                }`}>
+                  <div className="flex justify-center mb-4">
+                    {last.insights.healthScore >= 80 ? <CheckCircle className="h-8 w-8 text-success" /> :
+                     last.insights.healthScore >= 60 ? <Info className="h-8 w-8 text-amber-400" /> :
+                     last.insights.healthScore >= 40 ? <AlertTriangle className="h-8 w-8 text-orange-400" /> :
+                     <XCircle className="h-8 w-8 text-danger" />}
+                  </div>
+                  <div className="text-5xl font-bold mb-2">
+                    <span className={last.insights.overallColor}>{last.insights.healthScore}/100</span>
+                  </div>
+                  <h2 className={`text-xl font-bold mb-2 ${last.insights.overallColor}`}>
+                    {last.insights.overall}
+                  </h2>
+                  <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium ${
+                    last.insights.unitEconomicsGrade === "excellent" ? "bg-success/10 text-success" :
+                    last.insights.unitEconomicsGrade === "good" ? "bg-amber-400/10 text-amber-400" :
+                    last.insights.unitEconomicsGrade === "weak" ? "bg-orange-400/10 text-orange-400" :
+                    "bg-danger/10 text-danger"
+                  }`}>
+                    {last.insights.unitEconomicsGrade === "excellent" ? "✓ Excellent Unit Economics" :
+                     last.insights.unitEconomicsGrade === "good" ? "📊 Good Unit Economics" :
+                     last.insights.unitEconomicsGrade === "weak" ? "⚠️ Weak Unit Economics" :
+                     "🚨 Critical Unit Economics"}
+                  </span>
+                </div>
+
+                {/* Detailed Guidance */}
+                <div className="rounded-2xl border border-border bg-card p-6 output-panel">
+                  <h3 className="font-semibold mb-4">Detailed Analysis & Recommendations</h3>
+                  <div className="space-y-3">
+                    {last.insights.guidance.map((item, idx) => (
+                      <div key={idx} className={`flex items-start gap-3 rounded-xl px-4 py-3 ${
+                        item.startsWith("✓") ? "bg-success/5 border border-success/20" :
+                        item.startsWith("🚨") ? "bg-danger/10 border border-danger/30" :
+                        item.startsWith("⚠️") ? "bg-amber-400/5 border border-amber-400/20" :
+                        item.startsWith("📊") ? "bg-blue-400/5 border border-blue-400/20" :
+                        item.startsWith("💡") ? "bg-primary/5 border border-primary/20" :
+                        "bg-muted/30 border border-border/50"
+                      }`}>
+                        <span className="text-sm leading-relaxed">{item}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
+            );
+          })()}
+
           {/* Per-month */}
           <div className="rounded-2xl border border-border bg-card p-6 output-panel">
             <h2 className="font-semibold mb-5">Monthly KPI Dashboard</h2>

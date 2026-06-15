@@ -26,7 +26,7 @@ import {
   type IncomeStatementResults,
 } from "@/lib/income-statement-model";
 
-type TabView = "input" | "monthly" | "quarterly" | "annual" | "status";
+type TabView = "input" | "monthly" | "quarterly" | "annual" | "historical" | "status";
 
 export default function IncomeStatementPage() {
   const { user, hydrate } = useAuth();
@@ -173,7 +173,7 @@ export default function IncomeStatementPage() {
 
       {/* Tab Navigation */}
       <div className="flex gap-1 mb-6 rounded-xl bg-card border border-border p-1 overflow-x-auto">
-        {(["input", "monthly", "quarterly", "annual", "status"] as TabView[]).map((tab) => (
+        {(["input", "monthly", "quarterly", "annual", "historical", "status"] as TabView[]).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -558,6 +558,213 @@ export default function IncomeStatementPage() {
         </div>
       )}
 
+      {/* ============ HISTORICAL TAB ============ */}
+      {activeTab === "historical" && results && (
+        <div className="space-y-6">
+          {/* Fixed vs Variable Cost Analysis */}
+          <div className="rounded-2xl border border-border bg-card p-6">
+            <h2 className="font-semibold mb-5">Cost Structure Analysis — Monthly Trend</h2>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border bg-background/50">
+                    <th className="text-left px-4 py-3 font-semibold text-muted-foreground sticky left-0 bg-background/50">Metric</th>
+                    {results.monthsAdded.map((m) => (
+                      <th key={m} className="text-right px-4 py-3 font-semibold text-muted-foreground min-w-[100px]">{m}</th>
+                    ))}
+                    <th className="text-right px-4 py-3 font-semibold text-primary bg-primary/5 min-w-[100px]">Annual</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-b border-border/30">
+                    <td className="px-4 py-2.5 font-semibold text-muted-foreground sticky left-0 bg-card">Fixed Costs</td>
+                    {results.monthsAdded.map((m) => (
+                      <td key={m} className="text-right px-4 py-2.5">{formatCurrency(results.monthlyData[m]?.["Total Fixed Costs"] || 0)}</td>
+                    ))}
+                    <td className="text-right px-4 py-2.5 font-semibold bg-primary/5">{formatCurrency(results.annual["Total Fixed Costs"] || 0)}</td>
+                  </tr>
+                  <tr className="border-b border-border/30">
+                    <td className="px-4 py-2.5 font-semibold text-muted-foreground sticky left-0 bg-card">Variable Costs</td>
+                    {results.monthsAdded.map((m) => (
+                      <td key={m} className="text-right px-4 py-2.5">{formatCurrency(results.monthlyData[m]?.["Total variable Costs"] || 0)}</td>
+                    ))}
+                    <td className="text-right px-4 py-2.5 font-semibold bg-primary/5">{formatCurrency(results.annual["Total variable Costs"] || 0)}</td>
+                  </tr>
+                  <tr className="border-b border-border/30 bg-background/30">
+                    <td className="px-4 py-2.5 font-semibold sticky left-0 bg-card">Total Costs</td>
+                    {results.monthsAdded.map((m) => {
+                      const total = (results.monthlyData[m]?.["Total Fixed Costs"] || 0) + (results.monthlyData[m]?.["Total variable Costs"] || 0);
+                      return <td key={m} className="text-right px-4 py-2.5 font-semibold">{formatCurrency(total)}</td>;
+                    })}
+                    <td className="text-right px-4 py-2.5 font-bold bg-primary/5">{formatCurrency((results.annual["Total Fixed Costs"] || 0) + (results.annual["Total variable Costs"] || 0))}</td>
+                  </tr>
+                  <tr className="border-b border-border/30">
+                    <td className="px-4 py-2.5 text-muted-foreground sticky left-0 bg-card">Fixed Cost %</td>
+                    {results.monthsAdded.map((m) => {
+                      const revenue = results.monthlyData[m]?.["Gross Revenue"] || 0;
+                      const fixed = results.monthlyData[m]?.["Total Fixed Costs"] || 0;
+                      const pct = revenue > 0 ? (fixed / revenue * 100).toFixed(1) : "0.0";
+                      return <td key={m} className="text-right px-4 py-2.5 text-muted-foreground">{pct}%</td>;
+                    })}
+                    <td className="text-right px-4 py-2.5 font-medium bg-primary/5">
+                      {results.annual["Gross Revenue"] > 0 ? ((results.annual["Total Fixed Costs"] / results.annual["Gross Revenue"] * 100).toFixed(1) + "%") : "0.0%"}
+                    </td>
+                  </tr>
+                  <tr className="border-b border-border/30">
+                    <td className="px-4 py-2.5 text-muted-foreground sticky left-0 bg-card">Variable Cost %</td>
+                    {results.monthsAdded.map((m) => {
+                      const revenue = results.monthlyData[m]?.["Gross Revenue"] || 0;
+                      const variable = results.monthlyData[m]?.["Total variable Costs"] || 0;
+                      const pct = revenue > 0 ? (variable / revenue * 100).toFixed(1) : "0.0";
+                      return <td key={m} className="text-right px-4 py-2.5 text-muted-foreground">{pct}%</td>;
+                    })}
+                    <td className="text-right px-4 py-2.5 font-medium bg-primary/5">
+                      {results.annual["Gross Revenue"] > 0 ? ((results.annual["Total variable Costs"] / results.annual["Gross Revenue"] * 100).toFixed(1) + "%") : "0.0%"}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Margin Trends */}
+          <div className="rounded-2xl border border-border bg-card p-6">
+            <h3 className="font-semibold mb-4">Margin Trends — Monthly View</h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border bg-background/50">
+                    <th className="text-left px-4 py-3 font-semibold text-muted-foreground sticky left-0 bg-background/50">Margin</th>
+                    {results.monthsAdded.map((m) => (
+                      <th key={m} className="text-right px-4 py-3 font-semibold text-muted-foreground min-w-[100px]">{m}</th>
+                    ))}
+                    <th className="text-right px-4 py-3 font-semibold text-primary bg-primary/5 min-w-[100px]">Annual</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-b border-border/30">
+                    <td className="px-4 py-2.5 font-semibold text-blue-400 sticky left-0 bg-card">Gross Margin</td>
+                    {results.monthsAdded.map((m) => (
+                      <td key={m} className="text-right px-4 py-2.5">{formatPercent(results.monthlyData[m]?.["Gross Margin %"] || 0)}</td>
+                    ))}
+                    <td className="text-right px-4 py-2.5 font-semibold bg-primary/5">{formatPercent(results.annual["Gross Margin %"] || 0)}</td>
+                  </tr>
+                  <tr className="border-b border-border/30">
+                    <td className="px-4 py-2.5 font-semibold text-purple-400 sticky left-0 bg-card">EBITDA Margin</td>
+                    {results.monthsAdded.map((m) => (
+                      <td key={m} className="text-right px-4 py-2.5">{formatPercent(results.monthlyData[m]?.["EBITDA Margin %"] || 0)}</td>
+                    ))}
+                    <td className="text-right px-4 py-2.5 font-semibold bg-primary/5">{formatPercent(results.annual["EBITDA Margin %"] || 0)}</td>
+                  </tr>
+                  <tr className="border-b border-border/30">
+                    <td className="px-4 py-2.5 font-semibold text-green-400 sticky left-0 bg-card">Net Margin</td>
+                    {results.monthsAdded.map((m) => (
+                      <td key={m} className={`text-right px-4 py-2.5 ${(results.monthlyData[m]?.["Net Margin %"] || 0) < 0 ? "text-danger" : ""}`}>{formatPercent(results.monthlyData[m]?.["Net Margin %"] || 0)}</td>
+                    ))}
+                    <td className={`text-right px-4 py-2.5 font-semibold bg-primary/5 ${(results.annual["Net Margin %"] || 0) < 0 ? "text-danger" : ""}`}>{formatPercent(results.annual["Net Margin %"] || 0)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Cost Structure Charts */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="rounded-2xl border border-border bg-card p-5">
+              <h3 className="font-semibold text-sm mb-3">Fixed vs Variable Cost Trend</h3>
+              <ReactECharts
+                style={{ height: 260 }}
+                option={{
+                  tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+                  legend: { data: ["Fixed Costs", "Variable Costs"], textStyle: { color: "#aaa", fontSize: 10 }, top: 0 },
+                  grid: { top: 30, right: 15, bottom: 30, left: 55 },
+                  xAxis: { type: "category", data: results.monthsAdded, axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
+                  yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000 ? `₹${(v/1000).toFixed(0)}k` : `₹${v}` }, splitLine: { lineStyle: { color: "#222" } } },
+                  series: [
+                    { name: "Fixed Costs", type: "bar", stack: "costs", data: results.monthsAdded.map(m => results.monthlyData[m]?.["Total Fixed Costs"] || 0), itemStyle: { color: "#f59e0b", borderRadius: [0, 0, 4, 4] } },
+                    { name: "Variable Costs", type: "bar", stack: "costs", data: results.monthsAdded.map(m => results.monthlyData[m]?.["Total variable Costs"] || 0), itemStyle: { color: "#ef4444", borderRadius: [4, 4, 0, 0] } },
+                  ],
+                }}
+              />
+            </div>
+
+            <div className="rounded-2xl border border-border bg-card p-5">
+              <h3 className="font-semibold text-sm mb-3">Margin Evolution</h3>
+              <ReactECharts
+                style={{ height: 260 }}
+                option={{
+                  tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
+                  legend: { data: ["Gross Margin", "EBITDA Margin", "Net Margin"], textStyle: { color: "#aaa", fontSize: 10 }, top: 0 },
+                  grid: { top: 30, right: 15, bottom: 30, left: 55 },
+                  xAxis: { type: "category", data: results.monthsAdded, axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
+                  yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: "{value}%" }, splitLine: { lineStyle: { color: "#222" } } },
+                  series: [
+                    { name: "Gross Margin", type: "line", data: results.monthsAdded.map(m => results.monthlyData[m]?.["Gross Margin %"] || 0), smooth: true, lineStyle: { color: "#60a5fa", width: 2 }, itemStyle: { color: "#60a5fa" }, symbol: "circle", symbolSize: 5 },
+                    { name: "EBITDA Margin", type: "line", data: results.monthsAdded.map(m => results.monthlyData[m]?.["EBITDA Margin %"] || 0), smooth: true, lineStyle: { color: "#a78bfa", width: 2 }, itemStyle: { color: "#a78bfa" }, symbol: "circle", symbolSize: 5 },
+                    { name: "Net Margin", type: "line", data: results.monthsAdded.map(m => results.monthlyData[m]?.["Net Margin %"] || 0), smooth: true, lineStyle: { color: "#34d399", width: 2 }, itemStyle: { color: "#34d399" }, symbol: "circle", symbolSize: 5 },
+                  ],
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Insights Summary */}
+          <div className="rounded-2xl border border-border bg-card p-6">
+            <h3 className="font-semibold mb-4">Key Insights</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="rounded-xl bg-background/50 border border-border/50 p-4">
+                <p className="text-xs text-muted-foreground mb-1">Avg Fixed Cost Ratio</p>
+                <p className="text-xl font-bold">
+                  {results.monthsAdded.length > 0
+                    ? (results.monthsAdded.reduce((sum, m) => {
+                        const revenue = results.monthlyData[m]?.["Gross Revenue"] || 0;
+                        const fixed = results.monthlyData[m]?.["Total Fixed Costs"] || 0;
+                        return sum + (revenue > 0 ? fixed / revenue * 100 : 0);
+                      }, 0) / results.monthsAdded.length).toFixed(1) + "%"
+                    : "0.0%"}
+                </p>
+              </div>
+              <div className="rounded-xl bg-background/50 border border-border/50 p-4">
+                <p className="text-xs text-muted-foreground mb-1">Avg Variable Cost Ratio</p>
+                <p className="text-xl font-bold">
+                  {results.monthsAdded.length > 0
+                    ? (results.monthsAdded.reduce((sum, m) => {
+                        const revenue = results.monthlyData[m]?.["Gross Revenue"] || 0;
+                        const variable = results.monthlyData[m]?.["Total variable Costs"] || 0;
+                        return sum + (revenue > 0 ? variable / revenue * 100 : 0);
+                      }, 0) / results.monthsAdded.length).toFixed(1) + "%"
+                    : "0.0%"}
+                </p>
+              </div>
+              <div className="rounded-xl bg-background/50 border border-border/50 p-4">
+                <p className="text-xs text-muted-foreground mb-1">Best Margin Month</p>
+                <p className="text-xl font-bold text-success">
+                  {results.monthsAdded.length > 0
+                    ? results.monthsAdded.reduce((best, m) => {
+                        const margin = results.monthlyData[m]?.["Net Margin %"] || 0;
+                        const bestMargin = results.monthlyData[best]?.["Net Margin %"] || 0;
+                        return margin > bestMargin ? m : best;
+                      })
+                    : "N/A"}
+                </p>
+              </div>
+              <div className="rounded-xl bg-background/50 border border-border/50 p-4">
+                <p className="text-xs text-muted-foreground mb-1">Highest Cost Month</p>
+                <p className="text-xl font-bold text-danger">
+                  {results.monthsAdded.length > 0
+                    ? results.monthsAdded.reduce((highest, m) => {
+                        const costs = (results.monthlyData[m]?.["Total Fixed Costs"] || 0) + (results.monthlyData[m]?.["Total variable Costs"] || 0);
+                        const highestCosts = (results.monthlyData[highest]?.["Total Fixed Costs"] || 0) + (results.monthlyData[highest]?.["Total variable Costs"] || 0);
+                        return costs > highestCosts ? m : highest;
+                      })
+                    : "N/A"}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ============ STATUS TAB ============ */}
       {activeTab === "status" && results && (
         <div className="max-w-2xl mx-auto space-y-6">
@@ -572,8 +779,12 @@ export default function IncomeStatementPage() {
             <h2 className={`text-xl font-bold mb-2 ${results.status.overallColor}`}>
               {results.status.overall}
             </h2>
-            {results.status.guidance && (
-              <p className="text-sm text-muted-foreground mt-3">{results.status.guidance}</p>
+            {results.status.guidance && results.status.guidance.length > 0 && (
+              <div className="mt-4 space-y-2">
+                {results.status.guidance.map((item, idx) => (
+                  <p key={idx} className="text-sm text-muted-foreground">{item}</p>
+                ))}
+              </div>
             )}
           </div>
 

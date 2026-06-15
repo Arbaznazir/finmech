@@ -66,6 +66,8 @@ export default function BillingPage() {
   const planDisplayNames: Record<string, string> = {
     free: "Free Plan",
     standalone: "Standalone Models",
+    standalone_all: "All Standalone Models",
+    standalone_standard: "Standalone + Standard",
     standard: "Standard Tool Package",
     investor: "Investor Grade",
   };

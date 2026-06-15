@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import {
   ArrowLeft, Activity, Save, RotateCcw,
-  CheckCircle, AlertTriangle, XCircle, Lightbulb,
+  CheckCircle, AlertTriangle, XCircle, Lightbulb, Info,
 } from "lucide-react";
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
@@ -261,15 +261,65 @@ export default function ViabilityDashboardPage() {
             </div>
           </div>
 
+          {/* Overall Insights */}
+          <div className={`rounded-2xl border bg-card p-8 text-center ${
+            results.insights.healthScore >= 80 ? "border-success/30" :
+            results.insights.healthScore >= 60 ? "border-amber-400/30" :
+            results.insights.healthScore >= 40 ? "border-orange-400/30" : "border-danger/30"
+          }`}>
+            <div className="flex justify-center mb-4">
+              {results.insights.healthScore >= 80 ? <CheckCircle className="h-8 w-8 text-success" /> :
+               results.insights.healthScore >= 60 ? <Info className="h-8 w-8 text-amber-400" /> :
+               results.insights.healthScore >= 40 ? <AlertTriangle className="h-8 w-8 text-orange-400" /> :
+               <XCircle className="h-8 w-8 text-danger" />}
+            </div>
+            <div className="text-5xl font-bold mb-2">
+              <span className={results.insights.overallColor}>{results.insights.healthScore}/100</span>
+            </div>
+            <h2 className={`text-xl font-bold mb-2 ${results.insights.overallColor}`}>
+              {results.insights.overall}
+            </h2>
+            <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium ${
+              results.insights.viabilityLevel === "strong" ? "bg-success/10 text-success" :
+              results.insights.viabilityLevel === "moderate" ? "bg-amber-400/10 text-amber-400" :
+              results.insights.viabilityLevel === "weak" ? "bg-orange-400/10 text-orange-400" :
+              "bg-danger/10 text-danger"
+            }`}>
+              {results.insights.viabilityLevel === "strong" ? "✓ Strong Viability" :
+               results.insights.viabilityLevel === "moderate" ? "⚠ Moderate Viability" :
+               results.insights.viabilityLevel === "weak" ? "🚨 Weak Viability" :
+               "🚨 Critical Viability"}
+            </span>
+          </div>
+
+          {/* Detailed Guidance */}
+          <div className="rounded-2xl border border-border bg-card p-6 output-panel">
+            <h3 className="font-semibold mb-4">Detailed Analysis & Recommendations</h3>
+            <div className="space-y-3">
+              {results.insights.guidance.map((item, idx) => (
+                <div key={idx} className={`flex items-start gap-3 rounded-xl px-4 py-3 ${
+                  item.startsWith("✓") ? "bg-success/5 border border-success/20" :
+                  item.startsWith("🚨") ? "bg-danger/10 border border-danger/30" :
+                  item.startsWith("⚠️") ? "bg-amber-400/5 border border-amber-400/20" :
+                  item.startsWith("📊") ? "bg-blue-400/5 border border-blue-400/20" :
+                  item.startsWith("💡") ? "bg-primary/5 border border-primary/20" :
+                  "bg-muted/30 border border-border/50"
+                }`}>
+                  <span className="text-sm leading-relaxed">{item}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
           {/* RAG Status Cards */}
           <div className="rounded-2xl border border-border bg-card p-6 output-panel">
             <h2 className="font-semibold mb-5">RAG Classification</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {([
-                { label: "Contribution Margin", status: results.contributionStatus, value: results.contributionMarginPct.toFixed(1) + "%", tip: results.mentoringTips.contribution },
-                { label: "Net Profit Margin", status: results.netProfitStatus, value: results.netProfitMarginPct.toFixed(1) + "%", tip: results.mentoringTips.netProfit },
-                { label: "Break-Even Utilisation", status: results.breakevenStatus, value: results.breakEvenUtilisationPct.toFixed(1) + "%", tip: results.mentoringTips.breakeven },
-                { label: "Margin of Safety", status: results.marginSafetyStatus, value: results.marginOfSafetyPct.toFixed(1) + "%", tip: results.mentoringTips.marginSafety },
+                { label: "Contribution Margin", status: results.contributionStatus, value: results.contributionMarginPct.toFixed(1) + "%", tip: results.contributionStatus === "GREEN" ? "> 25% is healthy" : results.contributionStatus === "AMBER" ? "10-25% needs improvement" : "< 10% is critical" },
+                { label: "Net Profit", status: results.netProfitStatus, value: formatCurrency(results.netProfitLoss), tip: results.netProfitStatus === "GREEN" ? "Profitable" : results.netProfitStatus === "AMBER" ? "Small loss (< ₹10k)" : "Significant loss (≥ ₹10k)" },
+                { label: "Break-Even Utilisation", status: results.breakevenStatus, value: results.breakEvenUtilisationPct.toFixed(1) + "%", tip: results.breakevenStatus === "GREEN" ? "< 70% is comfortable" : results.breakevenStatus === "AMBER" ? "70-100% is tight" : "> 100% is unsustainable" },
+                { label: "Margin of Safety", status: results.marginSafetyStatus, value: results.marginOfSafetyPct.toFixed(1) + "%", tip: results.marginSafetyStatus === "GREEN" ? "> 20% buffer" : results.marginSafetyStatus === "AMBER" ? "0-20% buffer" : "Negative - below break-even" },
               ] as const).map((card) => (
                 <div key={card.label} className={`rounded-xl border px-5 py-4 ${ragBg(card.status)}`}>
                   <div className="flex items-center justify-between mb-2">

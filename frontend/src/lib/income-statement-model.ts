@@ -78,7 +78,7 @@ export interface QuarterData {
 export interface StatusMessages {
   overall: string;
   overallColor: string;
-  guidance: string;
+  guidance: string[];
 }
 
 export interface IncomeStatementResults {
@@ -179,10 +179,22 @@ function computeMonth(m: Record<string, number>): ComputedMonth {
       ? (computed["Net Profit"] / computed["Gross Revenue"]) * 100
       : 0;
 
-  // Fixed & Variable costs (Excel rows 41-42 logic)
+  // Fixed & Variable costs - Proper classification
+  // Fixed Costs: Costs that don't change with revenue volume
   computed["Total Fixed Costs"] =
-    computed["Total Operating Expenses"] + dep + interestExp;
-  computed["Total variable Costs"] = computed["Total of COGS"];
+    (m["Salaries & Benefits"] || 0) +
+    (m["Rent & Utilities"] || 0) +
+    (m["Professional & Legal Fees"] || 0) +
+    (m["Technology & IT Costs"] || 0) +
+    dep + // Depreciation is fixed
+    interestExp; // Interest is fixed
+
+  // Variable Costs: Costs that scale with revenue/production
+  computed["Total variable Costs"] =
+    computed["Total of COGS"] + // COGS includes Direct Costs, Freight, Other Variable
+    (m["Marketing & Advertising"] || 0) + // Marketing typically scales with revenue
+    (m["Travel"] || 0) + // Travel varies with business activity
+    (m["Miscll Operating expenses"] || 0); // Misc operating varies
 
   return computed as ComputedMonth;
 }
@@ -252,32 +264,72 @@ export function calculateIncomeStatement(
   const ebitdaMarginAnnual = annual["EBITDA Margin %"] || 0;
   const netMarginAnnual = annual["Net Margin %"] || 0;
 
-  // 5. Status messages
+  // 5. Status messages - Clear, specific, actionable insights
   let overall: string;
   let overallColor: string;
-  if (annual["Net Profit"] > 0 && netMarginAnnual > 10) {
-    overall = "Great trend! You are outperforming baseline expectations.";
+  let guidance: string[] = [];
+
+  const fixedCostRatio = annual["Gross Revenue"] > 0 
+    ? (annual["Total Fixed Costs"] / annual["Gross Revenue"]) * 100 
+    : 0;
+  const variableCostRatio = annual["Gross Revenue"] > 0 
+    ? (annual["Total variable Costs"] / annual["Gross Revenue"]) * 100 
+    : 0;
+
+  // Determine overall status
+  if (addedMonths.length === 0) {
+    overall = "Enter your monthly data to see your complete P&L analysis.";
+    overallColor = "text-muted-foreground";
+    guidance.push("Start by entering revenue and expense data for at least one month.");
+  } else if (annual["Net Profit"] > 0 && netMarginAnnual > 15) {
+    overall = "Strong profitability! Your business is performing exceptionally well.";
     overallColor = "text-success";
   } else if (annual["Net Profit"] > 0) {
-    overall = "Profitable, but margins could improve. Review cost structure.";
+    overall = "Profitable but room for improvement. Focus on margin optimization.";
     overallColor = "text-amber-400";
-  } else if (annual["Net Profit"] === 0 || addedMonths.length === 0) {
-    overall = "Add monthly data to see your P&L analysis.";
-    overallColor = "text-muted-foreground";
+  } else if (annual["EBITDA"] > 0) {
+    overall = "Operating profit exists, but interest/tax burden is high.";
+    overallColor = "text-amber-400";
   } else {
-    overall = "Crossed a critical threshold. Take corrective action without delay.";
+    overall = "Loss-making. Immediate cost review or revenue strategy needed.";
     overallColor = "text-danger";
   }
 
-  let guidance = "";
-  if (grossMarginAnnual < 30 && addedMonths.length > 0) {
-    guidance = "Gross margin below 30% — review COGS and pricing urgently.";
-  } else if (ebitdaMarginAnnual < 0 && addedMonths.length > 0) {
-    guidance = "Negative EBITDA — operating expenses exceed gross profit.";
-  } else if (revenueGrowthQ2Q !== null && revenueGrowthQ2Q > 0 && netMarginAnnual < 5) {
-    guidance = "Revenue is growing but margins are thin — fix pricing or cut costs.";
-  } else if (addedMonths.length > 0) {
-    guidance = "Business fundamentals look healthy. Keep monitoring monthly.";
+  // Specific guidance based on metrics
+  if (grossMarginAnnual < 20 && addedMonths.length > 0) {
+    guidance.push("⚠️ Low gross margin (<20%) — increase prices or reduce direct costs.");
+  } else if (grossMarginAnnual > 50 && addedMonths.length > 0) {
+    guidance.push("✓ Strong gross margin (>50%) — your core business is healthy.");
+  }
+
+  if (ebitdaMarginAnnual < 0 && addedMonths.length > 0) {
+    guidance.push("⚠️ Negative EBITDA — your operating expenses exceed gross profit.");
+  }
+
+  if (fixedCostRatio > 40 && addedMonths.length > 0) {
+    guidance.push("⚠️ High fixed cost ratio (>40%) — consider cost flexibility or revenue growth.");
+  }
+
+  if (revenueGrowthQ2Q !== null) {
+    if (revenueGrowthQ2Q > 20) {
+      guidance.push("✓ Strong revenue growth (>20% quarter-over-quarter).");
+    } else if (revenueGrowthQ2Q < -10) {
+      guidance.push("⚠️ Revenue declining (>10%) — investigate sales/marketing effectiveness.");
+    }
+  }
+
+  if (netMarginAnnual < 0 && annual["Net Profit"] < 0 && addedMonths.length > 0) {
+    const breakEvenPct = (Math.abs(annual["Net Profit"]) / annual["Gross Revenue"] * 100).toFixed(1);
+    guidance.push(`💡 To break even, increase revenue by ${breakEvenPct}% or reduce costs by ₹${Math.abs(annual["Net Profit"]).toLocaleString("en-IN")}`);
+  }
+
+  // Default guidance if nothing specific
+  if (guidance.length === 0 && addedMonths.length > 0) {
+    if (netMarginAnnual > 10) {
+      guidance.push("✓ Business fundamentals are strong. Maintain this performance.");
+    } else {
+      guidance.push("📊 Continue monitoring monthly to track improvements.");
+    }
   }
 
   return {
