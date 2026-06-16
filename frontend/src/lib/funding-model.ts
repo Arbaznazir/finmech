@@ -12,19 +12,19 @@ export const MONTHS_ORDER = [
 
 export type MonthName = (typeof MONTHS_ORDER)[number];
 
-export interface FundingMonthInputs {
-  [key: string]: number;
-  "Revenue": number;
-  "Cost of Goods Sold (COGS)": number;
-  "Variable Cost": number;
-  "Fixed Cost": number;
-  "Inventory": number;
-  "Trade Receivables": number;
-  "Trade Payables": number;
-  "CapEx": number;
-}
+export type FundingFieldKey =
+  | "Revenue"
+  | "Cost of Goods Sold (COGS)"
+  | "Variable Cost"
+  | "Fixed Cost"
+  | "Inventory"
+  | "Trade Receivables"
+  | "Trade Payables"
+  | "CapEx";
 
-export const INPUT_FIELDS: { key: keyof FundingMonthInputs; label: string; category: string; prefix: string }[] = [
+export type FundingMonthInputs = Record<FundingFieldKey, number>;
+
+export const INPUT_FIELDS: { key: FundingFieldKey; label: string; category: string; prefix: string }[] = [
   { key: "Revenue", label: "Revenue", category: "P&L", prefix: "$" },
   { key: "Cost of Goods Sold (COGS)", label: "COGS", category: "P&L", prefix: "$" },
   { key: "Variable Cost", label: "Variable Cost", category: "P&L", prefix: "$" },

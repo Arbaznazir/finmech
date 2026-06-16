@@ -196,6 +196,6 @@ export const FREE_MODEL_HINTS: Record<string, HintDef> = {
   ct_q3: tip("Do you track clear financial KPIs on a dashboard or report?"),
 };
 
-export function freeHint(key: string): HintDef | undefined {
-  return FREE_MODEL_HINTS[key];
+export function freeHint(key: string | number): HintDef | undefined {
+  return FREE_MODEL_HINTS[String(key)];
 }

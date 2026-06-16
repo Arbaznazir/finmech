@@ -258,6 +258,7 @@ export const STANDARD_MODEL_HINTS: Record<string, HintDef> = {
   ),
 };
 
-export function standardHint(key: string): HintDef | undefined {
-  return STANDARD_MODEL_HINTS[key] ?? standaloneHint(key);
+export function standardHint(key: string | number): HintDef | undefined {
+  const k = String(key);
+  return STANDARD_MODEL_HINTS[k] ?? standaloneHint(k);
 }

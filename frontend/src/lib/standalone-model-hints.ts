@@ -440,6 +440,7 @@ export const STANDALONE_MODEL_HINTS: Record<string, HintDef> = {
   newShares: tip("Shares issued to new investors in this round.", "Investment ÷ price per share."),
 };
 
-export function standaloneHint(key: string): HintDef | undefined {
-  return STANDALONE_MODEL_HINTS[key] ?? FIELD_HINTS[key];
+export function standaloneHint(key: string | number): HintDef | undefined {
+  const k = String(key);
+  return STANDALONE_MODEL_HINTS[k] ?? FIELD_HINTS[k];
 }

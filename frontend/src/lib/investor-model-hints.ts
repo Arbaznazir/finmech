@@ -298,6 +298,7 @@ export const INVESTOR_MODEL_HINTS: Record<string, HintDef> = {
   ),
 };
 
-export function investorHint(key: string): HintDef | undefined {
-  return INVESTOR_MODEL_HINTS[key] ?? standardHint(key);
+export function investorHint(key: string | number): HintDef | undefined {
+  const k = String(key);
+  return INVESTOR_MODEL_HINTS[k] ?? standardHint(k);
 }
