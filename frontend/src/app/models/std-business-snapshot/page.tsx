@@ -185,7 +185,7 @@ export default function StdBusinessSnapshotPage() {
   const handleSave = async () => {
     if (!user || !results) return;
     try {
-      await api.post("/calculations", { modelSlug: "std-business-snapshot", inputs, outputs: results });
+      await api.post("/calculations", { modelSlug: "std-business-snapshot", inputs, outputs: { ...inputs, ...results } });
       await persistState();
     } catch (err) { console.error("Failed to save:", err); }
   };

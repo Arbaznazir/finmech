@@ -41,7 +41,6 @@ export default function BreakEvenPage() {
 
   const handleCalculate = () => {
     if (inputs.pricePerUnit <= 0) return;
-    // Wrap single month in monthly structure for calculation
     const monthlyData = { "Apr": inputs };
     const fullResults = calculateBreakEven(monthlyData);
     const monthResult = fullResults.monthlyData["Apr"] || null;
@@ -62,13 +61,7 @@ export default function BreakEvenPage() {
       await api.post("/calculations", {
         modelSlug: "break-even-pro",
         inputs,
-        outputs: {
-          contributionPerUnit: results.contributionPerUnit,
-          breakEvenUnits: results.breakEvenUnits,
-          breakEvenRevenue: results.breakEvenRevenue,
-          profitAtUnits: results.profitAtUnits,
-          status: results.status,
-        },
+        outputs: results,
       });
       await persistState();
     } catch (err) {

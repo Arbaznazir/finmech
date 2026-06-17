@@ -91,14 +91,7 @@ export default function ViabilityDashboardPage() {
       await api.post("/calculations", {
         modelSlug: "viability-dashboard",
         inputs,
-        outputs: {
-          contributionPerUnit: results.contributionPerUnit,
-          netProfitLoss: results.netProfitLoss,
-          breakEvenUnits: results.breakEvenUnits,
-          marginOfSafetyPct: results.marginOfSafetyPct,
-          contributionStatus: results.contributionStatus,
-          netProfitStatus: results.netProfitStatus,
-        },
+        outputs: results,
       });
       await persistState();
     } catch (err) {

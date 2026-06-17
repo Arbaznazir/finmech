@@ -125,7 +125,7 @@ export default function StdCommonUtilityIncomePage() {
   const handleSave = async () => {
     if (!user) return;
     persistResults();
-    const outputs = { monthlyData: isResult.monthlyData, annual: isResult.annual };
+    const outputs = isResult;
     try {
       await api.post("/calculations", {
         modelSlug: "std-common-utility",

@@ -89,6 +89,7 @@ export default function BreakEvenPage() {
           contributionMargin: results.contributionMargin,
           breakEvenUnits: results.breakEvenUnits,
           breakEvenRevenue: results.breakEvenRevenue,
+          simulation: results.simulation,
           insights: results.insights,
         },
       });

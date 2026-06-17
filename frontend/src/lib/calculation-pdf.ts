@@ -1,4 +1,22 @@
 import { TIER_INFO } from "@/lib/models-data";
+import {
+  FREE_MODEL_SLUGS,
+  generateFreeModelAnalysis,
+  formatFreeModelOutputsHTML,
+  getFreeModelHeroCards,
+} from "@/lib/free-model-pdf";
+import {
+  STANDALONE_MODEL_SLUGS,
+  generateStandaloneModelAnalysis,
+  formatStandaloneModelOutputsHTML,
+  getStandaloneModelHeroCards,
+} from "@/lib/standalone-model-pdf";
+import {
+  STANDARD_MODEL_SLUGS,
+  generateStandardModelAnalysis,
+  formatStandardModelOutputsHTML,
+  getStandardModelHeroCards,
+} from "@/lib/standard-model-pdf";
 
 export interface CalculationExport {
   id?: string;
@@ -238,6 +256,21 @@ function svgDonutChart(segments: { name: string; value: number; color: string }[
 // ── Model-specific analysis generator ────────────────────────────────────────
 
 function generateAnalysis(calc: CalculationExport): string {
+  if (FREE_MODEL_SLUGS.has(calc.modelSlug)) {
+    const freeAnalysis = generateFreeModelAnalysis(calc);
+    if (freeAnalysis) return freeAnalysis;
+  }
+
+  if (STANDALONE_MODEL_SLUGS.has(calc.modelSlug)) {
+    const standaloneAnalysis = generateStandaloneModelAnalysis(calc);
+    if (standaloneAnalysis) return standaloneAnalysis;
+  }
+
+  if (STANDARD_MODEL_SLUGS.has(calc.modelSlug)) {
+    const standardAnalysis = generateStandardModelAnalysis(calc);
+    if (standardAnalysis) return standardAnalysis;
+  }
+
   const slug = calc.modelSlug;
   const out = calc.outputs as Record<string, any>;
   const inp = calc.inputs as Record<string, any>;
@@ -817,12 +850,26 @@ export function exportCalculationPDF(calc: CalculationExport) {
   // ── Key metric cards from flat outputs ──
   let heroCards = "";
   if (isPlainObject(calc.outputs)) {
-    const out = calc.outputs as Record<string, unknown>;
-    const flat = Object.entries(out)
-      .filter(([, v]) => typeof v === "number" && v !== 0)
-      .slice(0, 6)
-      .map(([k, v]) => ({ label: k, value: formatVal(v), color: tierColor }));
-    if (flat.length) heroCards = metricCards(flat);
+    const freeCards = FREE_MODEL_SLUGS.has(calc.modelSlug)
+      ? getFreeModelHeroCards(calc)
+      : [];
+    const standaloneCards = STANDALONE_MODEL_SLUGS.has(calc.modelSlug)
+      ? getStandaloneModelHeroCards(calc)
+      : [];
+    const standardCards = STANDARD_MODEL_SLUGS.has(calc.modelSlug)
+      ? getStandardModelHeroCards(calc)
+      : [];
+    const heroCardRows = freeCards.length ? freeCards : standaloneCards.length ? standaloneCards : standardCards;
+    if (heroCardRows.length) {
+      heroCards = metricCards(heroCardRows.map((c) => ({ label: c.label, value: c.value, color: tierColor })));
+    } else {
+      const out = calc.outputs as Record<string, unknown>;
+      const flat = Object.entries(out)
+        .filter(([, v]) => typeof v === "number" && v !== 0)
+        .slice(0, 6)
+        .map(([k, v]) => ({ label: k, value: formatVal(v), color: tierColor }));
+      if (flat.length) heroCards = metricCards(flat);
+    }
   }
 
   // ── Inputs table ──
@@ -904,6 +951,22 @@ export function exportCalculationPDF(calc: CalculationExport) {
           </table>`;
       }
     } else {
+      const freeOutputs = FREE_MODEL_SLUGS.has(calc.modelSlug)
+        ? formatFreeModelOutputsHTML(calc, tierColor)
+        : null;
+      const standaloneOutputs = STANDALONE_MODEL_SLUGS.has(calc.modelSlug)
+        ? formatStandaloneModelOutputsHTML(calc, tierColor)
+        : null;
+      const standardOutputs = STANDARD_MODEL_SLUGS.has(calc.modelSlug)
+        ? formatStandardModelOutputsHTML(calc, tierColor)
+        : null;
+      if (freeOutputs) {
+        outputsHTML = freeOutputs;
+      } else if (standaloneOutputs) {
+        outputsHTML = standaloneOutputs;
+      } else if (standardOutputs) {
+        outputsHTML = standardOutputs;
+      } else {
       const rows = flattenToRows(calc.outputs).filter((r) => r.value !== "—");
       const half = Math.ceil(rows.length / 2);
       const left  = rows.slice(0, half);
@@ -922,6 +985,7 @@ export function exportCalculationPDF(calc: CalculationExport) {
           </tr>`;
         }).join("")}
       </table>`;
+      }
     }
   }
 

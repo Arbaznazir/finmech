@@ -98,11 +98,7 @@ export default function BalanceSheetPage() {
       await api.post("/calculations", {
         modelSlug: "balance-sheet",
         inputs: monthsData,
-        outputs: {
-          annual: results.annual,
-          monthsAdded: results.monthsAdded,
-          status: results.status,
-        },
+        outputs: results,
       });
       await persistState();
     } catch (err) {

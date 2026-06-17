@@ -90,14 +90,7 @@ export default function PitchDeckKPIsPage() {
       await api.post("/calculations", {
         modelSlug: "pitchdeck-kpis",
         inputs,
-        outputs: {
-          grossMargin: results.grossMargin,
-          cac: results.cac,
-          ltv: results.ltv,
-          ltvCacRatio: results.ltvCacRatio,
-          runwayMonths: results.runwayMonths,
-          netBurn: results.netBurn,
-        },
+        outputs: results,
       });
       await persistState();
     } catch (err) {

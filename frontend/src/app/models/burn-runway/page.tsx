@@ -120,10 +120,7 @@ export default function BurnRunwayPage() {
       await api.post("/calculations", {
         modelSlug: "burn-runway",
         inputs: { openingCash, monthsData },
-        outputs: {
-          monthsAdded: results.monthsAdded,
-          status: results.status,
-        },
+        outputs: results,
       });
       await persistState();
     } catch (err) {

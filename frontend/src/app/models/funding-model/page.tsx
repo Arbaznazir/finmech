@@ -94,7 +94,7 @@ export default function FundingModelPage() {
       await api.post("/calculations", {
         modelSlug: "funding-model",
         inputs: { monthsData, openingCash, contingencyPct },
-        outputs: results.summary,
+        outputs: results,
       });
       await persistState();
     } catch (err) {

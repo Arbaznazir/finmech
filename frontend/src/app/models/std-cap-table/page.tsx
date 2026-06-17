@@ -78,7 +78,7 @@ export default function StdCapTablePage() {
   const handleSave = async () => {
     if (!user || !results) return;
     try {
-      await api.post("/calculations", { modelSlug: "std-cap-table", inputs: { shareholders, rounds, exitValue }, outputs: { totalShares: results.totalShares, shareholderCount: results.shareholders.length, roundCount: results.rounds.length, exitValue: results.exit?.exitValue } });
+      await api.post("/calculations", { modelSlug: "std-cap-table", inputs: { shareholders, rounds, exitValue }, outputs: results });
       await persistState();
     } catch (err) { console.error("Failed to save:", err); }
   };

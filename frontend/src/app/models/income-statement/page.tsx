@@ -90,12 +90,7 @@ export default function IncomeStatementPage() {
       await api.post("/calculations", {
         modelSlug: "income-statement",
         inputs: monthsData,
-        outputs: {
-          annual: results.annual,
-          monthsAdded: results.monthsAdded,
-          derived: results.derived,
-          status: results.status,
-        },
+        outputs: results,
       });
       await persistState();
     } catch (err) {

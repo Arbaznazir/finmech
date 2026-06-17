@@ -64,12 +64,7 @@ export default function DCFValuationPage() {
       await api.post("/calculations", {
         modelSlug: "dcf-valuation",
         inputs,
-        outputs: {
-          wacc: results.wacc,
-          enterpriseValue: results.enterpriseValue,
-          equityValue: results.equityValue,
-          terminalValue: results.terminalValue,
-        },
+        outputs: results,
       });
       await persistState();
     } catch (err) {

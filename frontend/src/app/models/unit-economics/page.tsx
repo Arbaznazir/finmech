@@ -131,7 +131,7 @@ export default function UnitEconomicsPage() {
       await api.post("/calculations", {
         modelSlug: "unit-economics",
         inputs: monthsData,
-        outputs: { monthsAdded: results.monthsAdded, status: results.status },
+        outputs: results,
       });
       await persistState();
     } catch (err) {
