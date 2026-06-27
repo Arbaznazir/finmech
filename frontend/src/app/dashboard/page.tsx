@@ -7,6 +7,7 @@ import { BarChart3, Clock, Calculator, TrendingUp, ArrowRight, Crown } from "luc
 import { useAuth } from "@/lib/store";
 import api from "@/lib/api";
 import { TIER_INFO } from "@/lib/models-data";
+import { modelHref } from "@/lib/model-navigation";
 
 interface Stats {
   totalCalculations: number;
@@ -123,7 +124,7 @@ export default function DashboardPage() {
               {stats.recentCalculations.map((calc) => (
                 <Link
                   key={calc.id}
-                  href={`/models/${calc.modelSlug}`}
+                  href={modelHref(calc.modelSlug, "dashboard")}
                   className="flex items-center justify-between rounded-lg border border-border/50 px-4 py-3 hover:bg-muted/50 transition-colors"
                 >
                   <span className="text-sm font-medium">{calc.modelName}</span>
@@ -161,7 +162,7 @@ export default function DashboardPage() {
                   key={usage.modelSlug}
                   className="flex items-center justify-between rounded-lg border border-border/50 px-4 py-3"
                 >
-                  <Link href={`/models/${usage.modelSlug}`} className="text-sm font-medium hover:text-primary transition-colors">
+                  <Link href={modelHref(usage.modelSlug, "dashboard")} className="text-sm font-medium hover:text-primary transition-colors">
                     {usage.modelSlug}
                   </Link>
                   <span className="text-xs text-muted-foreground">

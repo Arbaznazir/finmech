@@ -2,13 +2,14 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import dynamic from "next/dynamic";
-import Link from "next/link";
+import Link from "next/link"
+import { ModelBackLink } from "@/components/model-back-link";
 import { ArrowLeft, Settings, Save, RotateCcw, ArrowRight } from "lucide-react";
 import { FieldHint } from "@/components/FieldHint";
 import { FIELD_HINTS } from "@/lib/field-hints";
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
-import { formatCurrency } from "@/lib/utils";
+import {formatCurrency, formatChartCurrency} from "@/lib/utils";
 import api from "@/lib/api";
 import { offerSmartResultsAfterCalculate } from "@/lib/smart-results";
 import { saveModelResults, clearModelResults } from "@/lib/model-link";
@@ -143,9 +144,7 @@ export default function InvIncomeStatementPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-8">
-      <Link href="/models/inv-common-utility" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
-        <ArrowLeft className="h-4 w-4" /> Back to Common Utility Hub
-      </Link>
+      <ModelBackLink fallbackHref="/models/inv-common-utility" label="Back to Common Utility Hub" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors" />
 
       <div className="flex items-start justify-between gap-4 mb-6">
         <div className="flex items-start gap-4">
@@ -195,7 +194,7 @@ export default function InvIncomeStatementPage() {
                   <div key={field.key}>
                     <label className="flex items-center text-xs text-muted-foreground mb-1">{field.label}{FIELD_HINTS[field.key] && <FieldHint hint={FIELD_HINTS[field.key]} />}</label>
                     <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">$</span>
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">₹</span>
                       <input type="number" data-field={field.key}
                         value={monthData[activeMonth][field.key] || ""}
                         onChange={(e) => handleChange(field.key, e.target.value)}
@@ -310,7 +309,7 @@ export default function InvIncomeStatementPage() {
               legend: { data: ["Revenue", "Net Profit"], textStyle: { color: "#aaa", fontSize: 10 }, top: 0 },
               grid: { top: 30, right: 15, bottom: 25, left: 55 },
               xAxis: { type: "category", data: MONTHS_ORDER, axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
-              yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
+              yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => formatChartCurrency(v) }, splitLine: { lineStyle: { color: "#222" } } },
               series: [
                 { name: "Revenue", type: "bar", data: MONTHS_ORDER.map(m => isResult.monthlyData[m]?.["Gross Revenue"] || 0), itemStyle: { color: "#60a5fa", borderRadius: [4, 4, 0, 0] } },
                 { name: "Net Profit", type: "line", data: MONTHS_ORDER.map(m => isResult.monthlyData[m]?.["Net Profit"] || 0), smooth: true, lineStyle: { color: "#34d399", width: 2 }, itemStyle: { color: "#34d399" }, symbol: "circle", symbolSize: 5 },
@@ -359,7 +358,7 @@ export default function InvIncomeStatementPage() {
               tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
               grid: { top: 15, right: 15, bottom: 35, left: 55 },
               xAxis: { type: "category", data: ["Revenue", "Gross Profit", "EBITDA", "EBIT", "Net Profit"], axisLabel: { color: "#888", fontSize: 9 }, axisLine: { lineStyle: { color: "#333" } } },
-              yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
+              yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => formatChartCurrency(v) }, splitLine: { lineStyle: { color: "#222" } } },
               series: [{ type: "bar", barWidth: 28,
                 data: [
                   { value: isResult.annual["Gross Revenue"] || 0, itemStyle: { color: "#60a5fa", borderRadius: [4, 4, 0, 0] } },
@@ -368,7 +367,7 @@ export default function InvIncomeStatementPage() {
                   { value: isResult.annual["EBIT"] || 0, itemStyle: { color: "#a78bfa", borderRadius: [4, 4, 0, 0] } },
                   { value: isResult.annual["Net Profit"] || 0, itemStyle: { color: (isResult.annual["Net Profit"] || 0) >= 0 ? "#34d399" : "#ef4444", borderRadius: [4, 4, 0, 0] } },
                 ],
-                label: { show: true, position: "top", color: "#aaa", fontSize: 9, formatter: (p: any) => p.value >= 1000 ? `$${(p.value/1000).toFixed(0)}k` : `$${p.value}` },
+                label: { show: true, position: "top", color: "#aaa", fontSize: 9, formatter: (p: any) => formatChartCurrency(p.value) },
               }],
             }} />
           </div>
@@ -381,7 +380,7 @@ export default function InvIncomeStatementPage() {
               legend: { data: ["Revenue", "COGS", "OPEX"], textStyle: { color: "#aaa", fontSize: 10 }, top: 0 },
               grid: { top: 30, right: 15, bottom: 25, left: 55 },
               xAxis: { type: "category", data: MONTHS_ORDER, axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
-              yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
+              yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => formatChartCurrency(v) }, splitLine: { lineStyle: { color: "#222" } } },
               series: [
                 { name: "Revenue", type: "line", data: MONTHS_ORDER.map(m => isResult.monthlyData[m]?.["Gross Revenue"] || 0), smooth: true, lineStyle: { color: "#60a5fa", width: 2 }, itemStyle: { color: "#60a5fa" }, symbol: "circle", symbolSize: 4 },
                 { name: "COGS", type: "bar", stack: "cost", data: MONTHS_ORDER.map(m => Math.abs(isResult.monthlyData[m]?.["Total of COGS"] || 0)), itemStyle: { color: "#ef4444" } },

@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import dynamic from "next/dynamic";
-import Link from "next/link";
+import Link from "next/link"
+import { ModelBackLink } from "@/components/model-back-link";
 import {
   ArrowLeft, Scale, Save, RotateCcw, ChevronDown, ChevronUp,
   CheckCircle, XCircle, Info, AlertTriangle,
@@ -12,7 +13,7 @@ import { HintLabel } from "@/components/HintLabel";
 import { standaloneHint } from "@/lib/standalone-model-hints";
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
-import { formatCurrency } from "@/lib/utils";
+import {formatCurrency, formatChartCurrency, ragCardClasses, ragTextClass} from "@/lib/utils";
 import api from "@/lib/api";
 import { useSavedModel } from "@/lib/use-saved-model";
 import { offerSmartResultsAfterCalculate } from "@/lib/smart-results";
@@ -40,6 +41,7 @@ export default function BalanceSheetPage() {
   const { user, hydrate } = useAuth();
   const [activeMonth, setActiveMonth] = useState<MonthName>("Apr");
   const [monthsData, setMonthsData] = useState<Record<string, Record<string, number>>>({});
+  const [historicalInputs, setHistoricalInputs] = useState<Record<string, number>>(createEmptyInputs());
   const [results, setResults] = useState<BalanceSheetResults | null>(null);
   const [activeTab, setActiveTab] = useState<TabView>("input");
   const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({});
@@ -48,8 +50,9 @@ export default function BalanceSheetPage() {
     modelSlug: "balance-sheet",
     onLoad: (data: Record<string, unknown>) => {
       if (data.monthsData) setMonthsData(data.monthsData as Record<string, Record<string, number>>);
+      if (data.historicalInputs) setHistoricalInputs(data.historicalInputs as Record<string, number>);
     },
-    getState: useCallback(() => ({ monthsData }), [monthsData]),
+    getState: useCallback(() => ({ monthsData, historicalInputs }), [monthsData, historicalInputs]),
   });
 
   useEffect(() => { hydrate(); }, [hydrate]);
@@ -69,15 +72,21 @@ export default function BalanceSheetPage() {
 
   const handleCalculate = useCallback(() => {
     if (Object.keys(monthsData).length === 0) return;
-    const result = calculateBalanceSheet(monthsData);
+    const result = calculateBalanceSheet(monthsData, undefined, historicalInputs);
     setResults(result);
-    offerSmartResultsAfterCalculate("balance-sheet", { monthsData }, result);
+    offerSmartResultsAfterCalculate("balance-sheet", { monthsData, historicalInputs }, result);
     setActiveTab("monthly");
     persistState();
-  }, [monthsData]);
+  }, [monthsData, historicalInputs]);
+
+  const handleHistoricalChange = (key: string, value: string) => {
+    setHistoricalInputs((prev) => ({ ...prev, [key]: parseFloat(value) || 0 }));
+    markDirty();
+  };
 
   const handleReset = () => {
     setMonthsData({});
+    setHistoricalInputs(createEmptyInputs());
     setResults(null);
     setActiveTab("input");
     clearPersisted();
@@ -121,9 +130,7 @@ export default function BalanceSheetPage() {
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
-      <Link href="/models?tier=standalone" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
-        <ArrowLeft className="h-4 w-4" /> Back to Models
-      </Link>
+      <ModelBackLink modelSlug="balance-sheet" label="Back to Models" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors" />
 
       <div className="flex items-start justify-between gap-4 mb-8">
         <div className="flex items-start gap-4">
@@ -215,6 +222,31 @@ export default function BalanceSheetPage() {
               </button>
             </div>
 
+            <div className="mb-6 rounded-lg border border-primary/20 bg-primary/5 p-4">
+              <h3 className="flex items-center text-sm font-semibold mb-3">
+                Historical Data (Prior Period)
+                {standaloneHint("historicalPeriod") && <FieldHint hint={standaloneHint("historicalPeriod")!} />}
+              </h3>
+              <p className="text-xs text-muted-foreground mb-3">Prior-period balance sheet baseline, shown as the first column in results.</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[320px] overflow-y-auto pr-1">
+                {INPUT_FIELDS.map((field) => (
+                  <div key={`hist-${field.key}`}>
+                    <label className="flex items-center text-xs text-muted-foreground mb-1">{field.label}{standaloneHint(field.key) && <FieldHint hint={standaloneHint(field.key)!} />}</label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">₹</span>
+                      <input
+                        type="number"
+                        value={historicalInputs[field.key] || ""}
+                        onChange={(e) => handleHistoricalChange(field.key, e.target.value)}
+                        placeholder="0"
+                        className="w-full rounded-lg border border-border bg-input pl-7 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             {Object.entries(categories).map(([category, fields]) => (
               <div key={category} className="mb-4">
                 <button
@@ -230,7 +262,7 @@ export default function BalanceSheetPage() {
                       <div key={field.key}>
                         <label className="flex items-center text-xs text-muted-foreground mb-1">{field.label}{standaloneHint(field.key) && <FieldHint hint={standaloneHint(field.key)!} />}</label>
                         <div className="relative">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">$</span>
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">₹</span>
                           <input
                             type="number"
                             data-field={field.key}
@@ -284,6 +316,9 @@ export default function BalanceSheetPage() {
               <thead>
                 <tr className="border-b border-border bg-background/50">
                   <th className="text-left px-4 py-3 font-semibold text-muted-foreground sticky left-0 bg-background/50 min-w-[220px]">Line Item</th>
+                  {results.historical && (
+                    <th className="text-right px-4 py-3 font-semibold text-amber-400 bg-amber-400/5 min-w-[110px]">Historical</th>
+                  )}
                   {results.monthsAdded.map((m) => (
                     <th key={m} className="text-right px-4 py-3 font-semibold text-muted-foreground min-w-[110px]">{m}</th>
                   ))}
@@ -298,6 +333,11 @@ export default function BalanceSheetPage() {
                       <td className={`px-4 py-2.5 sticky left-0 bg-card ${isBold ? "font-semibold bg-background/30" : isSection ? "font-medium" : "text-muted-foreground"}`}>
                         <HintLabel hint={standaloneHint(field.key)} className={isBold ? "font-semibold" : ""}>{field.label}</HintLabel>
                       </td>
+                      {results.historical && (
+                        <td className={`text-right px-4 py-2.5 bg-amber-400/5 ${isBold ? "font-semibold" : ""}`}>
+                          {fmtVal(field.key, results.historical[field.key] as number | undefined)}
+                        </td>
+                      )}
                       {results.monthsAdded.map((m) => {
                         const val = results.monthlyData[m]?.[field.key];
                         const isCheck = field.key === "BALANCE CHECK";
@@ -326,6 +366,9 @@ export default function BalanceSheetPage() {
               <thead>
                 <tr className="border-b border-border bg-background/50">
                   <th className="text-left px-4 py-3 font-semibold text-muted-foreground sticky left-0 bg-background/50 min-w-[220px]">Line Item</th>
+                  {results.historical && (
+                    <th className="text-right px-4 py-3 font-semibold text-amber-400 bg-amber-400/5 min-w-[110px]">Historical</th>
+                  )}
                   {Object.keys(results.quarters).map((q) => (
                     <th key={q} className="text-right px-4 py-3 font-semibold text-muted-foreground min-w-[130px]">{q}</th>
                   ))}
@@ -339,6 +382,11 @@ export default function BalanceSheetPage() {
                       <td className={`px-4 py-2.5 sticky left-0 bg-card ${isBold ? "font-semibold bg-background/30" : "text-muted-foreground"}`}>
                         <HintLabel hint={standaloneHint(field.key)} className={isBold ? "font-semibold" : ""}>{field.label}</HintLabel>
                       </td>
+                      {results.historical && (
+                        <td className={`text-right px-4 py-2.5 bg-amber-400/5 ${isBold ? "font-semibold" : ""}`}>
+                          {fmtVal(field.key, results.historical[field.key] as number | undefined)}
+                        </td>
+                      )}
                       {Object.entries(results.quarters).map(([q, data]) => {
                         const val = data[field.key];
                         const isCheck = field.key === "BALANCE CHECK";
@@ -415,7 +463,7 @@ export default function BalanceSheetPage() {
                   legend: { data: ["Total Assets", "Total Liabilities", "Equity"], textStyle: { color: "#aaa", fontSize: 10 }, top: 0 },
                   grid: { top: 30, right: 15, bottom: 30, left: 55 },
                   xAxis: { type: "category", data: results.monthsAdded, axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
-                  yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
+                  yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => formatChartCurrency(v) }, splitLine: { lineStyle: { color: "#222" } } },
                   series: [
                     { name: "Total Assets", type: "bar", data: results.monthsAdded.map(m => results.monthlyData[m]?.["TOTAL ASSETS"] || 0), itemStyle: { color: "#60a5fa", borderRadius: [4, 4, 0, 0] } },
                     { name: "Total Liabilities", type: "bar", data: results.monthsAdded.map(m => results.monthlyData[m]?.["TOTAL LIABILITIES"] || 0), itemStyle: { color: "#ef4444", borderRadius: [4, 4, 0, 0] } },
@@ -494,7 +542,7 @@ export default function BalanceSheetPage() {
                     tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
                     grid: { top: 15, right: 15, bottom: 30, left: 55 },
                     xAxis: { type: "category", data: results.monthsAdded, axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
-                    yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => `$${(v/1000).toFixed(0)}k` }, splitLine: { lineStyle: { color: "#222" } } },
+                    yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => formatChartCurrency(v) }, splitLine: { lineStyle: { color: "#222" } } },
                     series: [{
                       type: "line", smooth: true,
                       data: results.monthsAdded.map(m => (results.monthlyData[m]?.["Total Current Assets"] || 0) - (results.monthlyData[m]?.["Total Current Liabilities"] || 0)),
@@ -530,12 +578,15 @@ export default function BalanceSheetPage() {
         <div className="space-y-6">
           {/* Key Ratios Historical Trend */}
           <div className="rounded-2xl border border-border bg-card p-6">
-            <h2 className="font-semibold mb-5">Key Ratios — Monthly Trend</h2>
+            <h2 className="font-semibold mb-5">Key Ratios: Monthly Trend</h2>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border bg-background/50">
                     <th className="text-left px-4 py-3 font-semibold text-muted-foreground sticky left-0 bg-background/50">Ratio</th>
+                    {results.historical && (
+                      <th className="text-right px-4 py-3 font-semibold text-amber-400 bg-amber-400/5 min-w-[100px]">Historical</th>
+                    )}
                     {results.monthsAdded.map((m) => (
                       <th key={m} className="text-right px-4 py-3 font-semibold text-muted-foreground min-w-[100px]">{m}</th>
                     ))}
@@ -544,7 +595,12 @@ export default function BalanceSheetPage() {
                 </thead>
                 <tbody>
                   <tr className="border-b border-border/30">
-                    <td className="px-4 py-2.5 font-semibold text-blue-400 sticky left-0 bg-card">Current Ratio</td>
+                    <td className="px-4 py-2.5 font-semibold text-blue-400 sticky left-0 bg-card">
+                      <HintLabel hint={standaloneHint("Current Ratio")}>Current Ratio</HintLabel>
+                    </td>
+                    {results.historical && (
+                      <td className="text-right px-4 py-2.5 bg-amber-400/5">{(results.historical["Current Ratio"] || 0).toFixed(2)}</td>
+                    )}
                     {results.monthsAdded.map((m) => (
                       <td key={m} className={`text-right px-4 py-2.5 ${(results.monthlyData[m]?.["Current Ratio"] || 0) < 1 ? "text-danger" : ""}`}>
                         {(results.monthlyData[m]?.["Current Ratio"] || 0).toFixed(2)}
@@ -553,7 +609,12 @@ export default function BalanceSheetPage() {
                     <td className="text-right px-4 py-2.5 font-semibold bg-primary/5">{(results.annual["Current Ratio"] || 0).toFixed(2)}</td>
                   </tr>
                   <tr className="border-b border-border/30">
-                    <td className="px-4 py-2.5 font-semibold text-purple-400 sticky left-0 bg-card">Quick Ratio</td>
+                    <td className="px-4 py-2.5 font-semibold text-purple-400 sticky left-0 bg-card">
+                      <HintLabel hint={standaloneHint("Quick Ratio")}>Quick Ratio</HintLabel>
+                    </td>
+                    {results.historical && (
+                      <td className="text-right px-4 py-2.5 bg-amber-400/5">{(results.historical["Quick Ratio"] || 0).toFixed(2)}</td>
+                    )}
                     {results.monthsAdded.map((m) => (
                       <td key={m} className={`text-right px-4 py-2.5 ${(results.monthlyData[m]?.["Quick Ratio"] || 0) < 0.8 ? "text-amber-400" : ""}`}>
                         {(results.monthlyData[m]?.["Quick Ratio"] || 0).toFixed(2)}
@@ -562,7 +623,12 @@ export default function BalanceSheetPage() {
                     <td className="text-right px-4 py-2.5 font-semibold bg-primary/5">{(results.annual["Quick Ratio"] || 0).toFixed(2)}</td>
                   </tr>
                   <tr className="border-b border-border/30">
-                    <td className="px-4 py-2.5 font-semibold text-amber-400 sticky left-0 bg-card">Debt/Equity</td>
+                    <td className="px-4 py-2.5 font-semibold text-amber-400 sticky left-0 bg-card">
+                      <HintLabel hint={standaloneHint("Debt/Equity Ratio")}>Debt/Equity</HintLabel>
+                    </td>
+                    {results.historical && (
+                      <td className="text-right px-4 py-2.5 bg-amber-400/5">{(results.historical["Debt/Equity Ratio"] || 0).toFixed(2)}</td>
+                    )}
                     {results.monthsAdded.map((m) => (
                       <td key={m} className={`text-right px-4 py-2.5 ${(results.monthlyData[m]?.["Debt/Equity Ratio"] || 0) > 1.5 ? "text-amber-400" : ""}`}>
                         {(results.monthlyData[m]?.["Debt/Equity Ratio"] || 0).toFixed(2)}
@@ -571,7 +637,12 @@ export default function BalanceSheetPage() {
                     <td className="text-right px-4 py-2.5 font-semibold bg-primary/5">{(results.annual["Debt/Equity Ratio"] || 0).toFixed(2)}</td>
                   </tr>
                   <tr className="border-b border-border/30">
-                    <td className="px-4 py-2.5 font-semibold text-green-400 sticky left-0 bg-card">Proprietary Ratio</td>
+                    <td className="px-4 py-2.5 font-semibold text-green-400 sticky left-0 bg-card">
+                      <HintLabel hint={standaloneHint("Proprietary Ratio")}>Proprietary Ratio</HintLabel>
+                    </td>
+                    {results.historical && (
+                      <td className="text-right px-4 py-2.5 bg-amber-400/5">{(results.historical["Proprietary Ratio"] || 0).toFixed(2)}</td>
+                    )}
                     {results.monthsAdded.map((m) => (
                       <td key={m} className="text-right px-4 py-2.5">
                         {(results.monthlyData[m]?.["Proprietary Ratio"] || 0).toFixed(2)}
@@ -691,21 +762,34 @@ export default function BalanceSheetPage() {
         <div className="max-w-3xl mx-auto space-y-6">
           {/* Overall Health Score */}
           <div className={`rounded-2xl border bg-card p-8 text-center ${
-            results.insights.healthScore >= 80 ? "border-success/30" :
-            results.insights.healthScore >= 60 ? "border-amber-400/30" :
-            results.insights.healthScore >= 40 ? "border-orange-400/30" : "border-danger/30"
+            results.insights.primaryClassification
+              ? ragCardClasses(results.insights.primaryClassification)
+              : "border-border"
           }`}>
             <div className="flex justify-center mb-4">
-              {results.insights.healthScore >= 80 ? <CheckCircle className="h-8 w-8 text-success" /> :
-               results.insights.healthScore >= 60 ? <Info className="h-8 w-8 text-amber-400" /> :
-               results.insights.healthScore >= 40 ? <AlertTriangle className="h-8 w-8 text-orange-400" /> :
-               <XCircle className="h-8 w-8 text-danger" />}
+              {results.insights.primaryClassification === "GREEN" ? <CheckCircle className="h-8 w-8 text-success" /> :
+               results.insights.primaryClassification === "AMBER" ? <AlertTriangle className="h-8 w-8 text-amber-400" /> :
+               results.insights.primaryClassification === "RED" ? <XCircle className="h-8 w-8 text-danger" /> :
+               <Info className="h-8 w-8 text-muted-foreground" />}
             </div>
+            {results.insights.primaryClassification && (
+              <div className="mb-3">
+                <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold border ${
+                  results.insights.primaryClassification === "GREEN" ? "bg-success/10 text-success border-success/30" :
+                  results.insights.primaryClassification === "AMBER" ? "bg-amber-400/10 text-amber-400 border-amber-400/30" :
+                  "bg-danger/10 text-danger border-danger/30"
+                }`}>
+                  {results.insights.primaryClassification}
+                </span>
+              </div>
+            )}
             <div className="text-5xl font-bold mb-2">
-              <span className={results.insights.overallColor}>{results.insights.healthScore}/100</span>
+              <span className={results.insights.primaryClassification ? ragTextClass(results.insights.primaryClassification) : results.insights.overallColor}>
+                {results.insights.healthScore}/100
+              </span>
             </div>
-            <h2 className={`text-xl font-bold mb-2 ${results.insights.overallColor}`}>
-              {results.insights.overall}
+            <h2 className={`text-xl font-bold mb-2 ${results.insights.primaryClassification ? ragTextClass(results.insights.primaryClassification) : results.insights.overallColor}`}>
+              <HintLabel hint={standaloneHint("bsHealthScore")}>{results.insights.overall}</HintLabel>
             </h2>
           </div>
 

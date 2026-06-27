@@ -22,7 +22,7 @@ export interface RevenueResults {
 }
 
 export const REVENUE_FIELDS: { key: keyof RevenueInputs; label: string; prefix: string; step: string }[] = [
-  { key: "pricePerUnit", label: "Price Per Unit", prefix: "$", step: "0.01" },
+  { key: "pricePerUnit", label: "Price Per Unit", prefix: "₹", step: "0.01" },
   { key: "customersPerMonth", label: "Customers Per Month", prefix: "#", step: "1" },
   { key: "unitsPerCustomer", label: "Units Per Customer", prefix: "#", step: "1" },
   { key: "purchaseFrequencyPerYear", label: "Purchase Frequency / Year", prefix: "#", step: "1" },
@@ -52,7 +52,7 @@ export function calculateRevenue(inputs: RevenueInputs): RevenueResults {
 
   return {
     pricePerUnit,
-    monthlyPurchaseRate: Math.round(monthlyPurchaseRate * 100) / 100,
+    monthlyPurchaseRate,
     monthlyUnitsSold,
     monthlyRevenue: Math.round(monthlyRevenue),
     annualRevenue: Math.round(annualRevenue),

@@ -2,14 +2,15 @@
 
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import dynamic from "next/dynamic";
-import Link from "next/link";
+import Link from "next/link"
+import { ModelBackLink } from "@/components/model-back-link";
 import { ArrowLeft, TrendingUp, Save, RotateCcw, Users } from "lucide-react";
 import { FieldHint } from "@/components/FieldHint";
 import { HintLabel } from "@/components/HintLabel";
 import { investorHint } from "@/lib/investor-model-hints";
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
-import { formatCurrency } from "@/lib/utils";
+import {formatCurrency, formatChartCurrency} from "@/lib/utils";
 import api from "@/lib/api";
 import { offerSmartResultsAfterCalculate } from "@/lib/smart-results";
 import { loadModelResults, saveModelResults, clearModelResults } from "@/lib/model-link";
@@ -151,9 +152,7 @@ export default function InvUnitEconomicsPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-8">
-      <Link href="/models?tier=investor" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
-        <ArrowLeft className="h-4 w-4" /> Back to Models
-      </Link>
+      <ModelBackLink modelSlug="inv-unit-economics" label="Back to Models" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors" />
 
       <div className="flex items-start justify-between gap-4 mb-6">
         <div className="flex items-start gap-4">
@@ -343,7 +342,7 @@ export default function InvUnitEconomicsPage() {
               legend: { data: ["CAC", "LTV"], textStyle: { color: "#aaa", fontSize: 10 }, top: 0 },
               grid: { top: 30, right: 15, bottom: 25, left: 55 },
               xAxis: { type: "category", data: results.monthsAdded, axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
-              yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
+              yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => formatChartCurrency(v) }, splitLine: { lineStyle: { color: "#222" } } },
               series: [
                 { name: "CAC", type: "bar", data: results.monthsAdded.map(m => results.monthlyData[m]?.["CAC"] || 0), itemStyle: { color: "#ef4444", borderRadius: [4, 4, 0, 0] } },
                 { name: "LTV", type: "line", data: results.monthsAdded.map(m => results.monthlyData[m]?.["LTV"] || 0), smooth: true, lineStyle: { color: "#34d399", width: 2 }, itemStyle: { color: "#34d399" }, symbol: "circle", symbolSize: 5 },

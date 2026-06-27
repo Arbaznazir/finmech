@@ -25,15 +25,15 @@ export const INVESTOR_MODEL_HINTS: Record<string, HintDef> = {
     "Multiplied by customer count to get gross revenue and MRR."
   ),
   "Variable Cost per Customer": tip(
-    "Monthly cost that increases with every customer — hosting, support, payment fees, etc.",
+    "Monthly cost that increases with every customer ,  hosting, support, payment fees, etc.",
     "Scaled by customer count to get total variable cost."
   ),
   "Marketing Spend": tip(
-    "Total money spent on acquiring new customers — ads, sales, promotions.",
+    "Total money spent on acquiring new customers ,  ads, sales, promotions.",
     "Divided by new customers to calculate CAC."
   ),
   "Fixed Costs": tip(
-    "Monthly costs that do not change with customer count — salaries, rent, software.",
+    "Monthly costs that do not change with customer count ,  salaries, rent, software.",
     "Subtracted from contribution margin to reach profitability."
   ),
 
@@ -55,15 +55,15 @@ export const INVESTOR_MODEL_HINTS: Record<string, HintDef> = {
     "Multiplied by customer count to get gross revenue and MRR."
   ),
   variableCostPerCustomer: tip(
-    "Monthly cost that increases with every customer — hosting, support, payment fees, etc.",
+    "Monthly cost that increases with every customer ,  hosting, support, payment fees, etc.",
     "Scaled by customer count to get total variable cost."
   ),
   marketingSpend: tip(
-    "Total money spent on acquiring new customers — ads, sales, promotions.",
+    "Total money spent on acquiring new customers ,  ads, sales, promotions.",
     "Divided by new customers to calculate CAC."
   ),
   fixedCosts: tip(
-    "Monthly costs that do not change with customer count — salaries, rent, software.",
+    "Monthly costs that do not change with customer count ,  salaries, rent, software.",
     "Subtracted from contribution margin to reach profitability."
   ),
 
@@ -90,7 +90,7 @@ export const INVESTOR_MODEL_HINTS: Record<string, HintDef> = {
   ),
   "Retention %": tip(
     "Percentage of customers retained (100% − churn rate).",
-    "Key SaaS health metric — investors target 90%+ monthly retention."
+    "Key SaaS health metric ,  investors target 90%+ monthly retention."
   ),
   "LTV/CAC Ratio": tip(
     "LTV divided by CAC.",
@@ -98,7 +98,7 @@ export const INVESTOR_MODEL_HINTS: Record<string, HintDef> = {
   ),
   "CAC Payback (Months)": tip(
     "How many months it takes to recover the cost of acquiring a customer.",
-    "CAC ÷ ARPU — under 12 months is investor-friendly."
+    "CAC ÷ ARPU ,  under 12 months is investor-friendly."
   ),
   "Beginning MRR": tip(
     "Monthly Recurring Revenue at the start of the month.",
@@ -110,27 +110,27 @@ export const INVESTOR_MODEL_HINTS: Record<string, HintDef> = {
   ),
   "Churned MRR": tip(
     "MRR lost from customers who churned this month.",
-    "Drag on MRR growth — lower is better."
+    "Drag on MRR growth ,  lower is better."
   ),
   "Ending MRR": tip(
     "Monthly Recurring Revenue at month end.",
-    "Key SaaS metric — tracks predictable revenue base."
+    "Key SaaS metric ,  tracks predictable revenue base."
   ),
   "MRR Growth %": tip(
     "Percentage growth in Monthly Recurring Revenue.",
     "Sustained MRR growth is a core investor metric."
   ),
   "Gross Revenue Retention (GRR)": tip(
-    "Gross Revenue Retention — how much revenue you kept from existing customers (excluding expansion).",
+    "Gross Revenue Retention ,  how much revenue you kept from existing customers (excluding expansion).",
     "100% = no revenue lost from churn/downgrades."
   ),
   "Net Revenue Retention (NRR)": tip(
-    "Net Revenue Retention — revenue retained plus expansion from existing customers.",
+    "Net Revenue Retention ,  revenue retained plus expansion from existing customers.",
     "120%+ NRR is considered best-in-class for SaaS."
   ),
   "Rule of 40": tip(
     "Growth % + profit margin %.",
-    "Quick benchmark for SaaS business health — 40+ is good."
+    "Quick benchmark for SaaS business health ,  40+ is good."
   ),
   "Revenue Growth %": tip(
     "Month-over-month revenue growth rate.",
@@ -141,7 +141,7 @@ export const INVESTOR_MODEL_HINTS: Record<string, HintDef> = {
     "Shows whether your customer base is expanding."
   ),
   "RAG Status": tip(
-    "Overall unit economics health — GREEN, AMBER, or RED.",
+    "Overall unit economics health ,  GREEN, AMBER, or RED.",
     "Based on LTV/CAC, churn, CAC payback, and Rule of 40."
   ),
 
@@ -166,8 +166,8 @@ export const INVESTOR_MODEL_HINTS: Record<string, HintDef> = {
   ltvCacRatio: tip("If LTV is significantly higher than CAC, your unit economics are healthy.", "Investors look for 3×+ as a benchmark."),
   cacPaybackMonths: tip("How many months it takes to recover the cost of acquiring a customer.", "Under 12 months is investor-friendly."),
   mrrGrowthPct: tip("Percentage growth in Monthly Recurring Revenue.", "Sustained MRR growth is a core investor metric."),
-  grr: tip("Gross Revenue Retention — revenue kept from existing customers excluding expansion.", "100% = no revenue lost from churn."),
-  nrr: tip("Net Revenue Retention — revenue retained plus expansion from existing customers.", "120%+ is best-in-class for SaaS."),
+  grr: tip("Gross Revenue Retention ,  revenue kept from existing customers excluding expansion.", "100% = no revenue lost from churn."),
+  nrr: tip("Net Revenue Retention ,  revenue retained plus expansion from existing customers.", "120%+ is best-in-class for SaaS."),
 
   // ── Funding Model (investor refresh) ──
   revenue: tip(
@@ -179,7 +179,7 @@ export const INVESTOR_MODEL_HINTS: Record<string, HintDef> = {
     "Subtracted from revenue along with COGS."
   ),
   fixedCost: tip(
-    "Fixed monthly costs — salaries, rent, software, etc.",
+    "Fixed monthly costs ,  salaries, rent, software, etc.",
     "Subtracted from contribution to get EBITDA."
   ),
   inventory: tip(
@@ -199,7 +199,7 @@ export const INVESTOR_MODEL_HINTS: Record<string, HintDef> = {
     "Positive change reduces free cash flow."
   ),
   capex: tip(
-    "Capital expenditure — money spent on long-term assets.",
+    "Capital expenditure ,  money spent on long-term assets.",
     "Cash outflow for equipment, technology, or facilities."
   ),
   netCashFlow: tip(
@@ -220,7 +220,7 @@ export const INVESTOR_MODEL_HINTS: Record<string, HintDef> = {
   ),
   totalFundingRequired: tip(
     "How much money you need to raise (including contingency buffer).",
-    "Max cash deficit + safety margin — your fundraising target."
+    "Max cash deficit + safety margin ,  your fundraising target."
   ),
   fundingRequired: tip(
     "Funding needed to cover the maximum cash deficit.",
@@ -232,25 +232,25 @@ export const INVESTOR_MODEL_HINTS: Record<string, HintDef> = {
   ),
   contingency: tip(
     "Safety buffer added on top of the funding requirement.",
-    "Typically 10–20% to cover unexpected costs or delays."
+    "Typically 10, 20% to cover unexpected costs or delays."
   ),
 
   // ── Burn & Runway (investor refresh) ──
   "Fixed Expenses": tip(
     "Costs that stay the same every month regardless of sales.",
-    "Must be covered even at zero revenue — key driver of gross burn."
+    "Must be covered even at zero revenue ,  key driver of gross burn."
   ),
   "Variable Expenses": tip(
     "Costs that increase when you sell more.",
     "Scales with revenue volume."
   ),
   "Recurring Revenue": tip(
-    "Revenue expected to repeat next month — subscriptions, retainers.",
+    "Revenue expected to repeat next month ,  subscriptions, retainers.",
     "Higher recurring share = more predictable and investor-friendly revenue."
   ),
   "Gross Burn": tip(
     "Total cash going out every month before revenue.",
-    "Total expenses — your full monthly spend rate."
+    "Total expenses ,  your full monthly spend rate."
   ),
   "Net Burn": tip(
     "Actual monthly cash loss (Total Expenses − Total Revenue).",

@@ -1,8 +1,9 @@
 // ========================================================
 // DCF VALUATION MODEL – FULL EXCEL MATCH
-// WACC + 5-year projection + Terminal Value +
-// Enterprise/Equity Value
+// Sheet: DCF Engine — WACC + 5-year FCFF + Terminal Value
 // ========================================================
+
+import { DCF_EXACT } from "@/lib/excel-exact-content.generated";
 
 export interface DCFInputs {
   baseYearRevenue: number;
@@ -13,19 +14,20 @@ export interface DCFInputs {
   revenueGrowthY5: number;
   ebitdaMargin: number;
   depreciationPctOfRevenue: number;
-  capexPctOfRevenue: number;
+  annualCapex: number;
   workingCapitalPctOfRevenue: number;
+  sharePrice: number;
+  dilutedShares: number;
+  debt: number;
   riskFreeRate: number;
   equityRiskPremium: number;
   beta: number;
   costOfDebt: number;
   taxRate: number;
   terminalGrowthRate: number;
-  marketValueOfEquity: number;
-  marketValueOfDebt: number;
 }
 
-export interface ProjectionRow {
+export interface DCFYearRow {
   year: string;
   revenue: number;
   ebitda: number;
@@ -38,162 +40,256 @@ export interface ProjectionRow {
   pvOfFCFF: number;
 }
 
-export interface DCFResults {
-  // WACC
+export interface WACCResult {
   costOfEquity: number;
   afterTaxCostOfDebt: number;
   equityWeight: number;
   debtWeight: number;
   wacc: number;
-  // Projection
-  projection: ProjectionRow[];
-  // Valuation
-  terminalValue: number;
-  pvOfTerminalValue: number;
-  totalPVOfFCFF: number;
-  enterpriseValue: number;
-  equityValue: number;
-  // Inputs echoed
-  baseYearRevenue: number;
-  terminalGrowthRate: number;
+  marketValueOfEquity: number;
 }
 
-export const INPUT_FIELDS: { key: keyof DCFInputs; label: string; category: string; type: "currency" | "percent" | "number" | "decimal" }[] = [
-  // Basic Assumptions
+export type HealthScenario = "BASE CASE" | "UPSIDE CASE" | "DOWNSIDE CASE";
+
+export interface DCFResults {
+  wacc: WACCResult;
+  years: DCFYearRow[];
+  totalPVofFCFF: number;
+  terminalValue: number;
+  pvOfTerminalValue: number;
+  enterpriseValue: number;
+  equityValue: number;
+  valuePerShare: number;
+  averageRevenueGrowth: number;
+  ebitdaMarginDecimal: number;
+  revenueGrowthScenario: HealthScenario;
+  ebitdaMarginScenario: HealthScenario;
+  insights: {
+    interpretation: string;
+    mentoring: string;
+    scenarioLabel: string;
+  };
+}
+
+export const INPUT_FIELDS: {
+  key: keyof DCFInputs;
+  label: string;
+  category: string;
+  type: "currency" | "percent" | "number" | "decimal";
+}[] = [
   { key: "baseYearRevenue", label: "Base Year Revenue", category: "Basic Assumptions", type: "currency" },
-  // Revenue Assumptions
   { key: "revenueGrowthY1", label: "Revenue Growth Y1 (%)", category: "Revenue Assumptions", type: "percent" },
   { key: "revenueGrowthY2", label: "Revenue Growth Y2 (%)", category: "Revenue Assumptions", type: "percent" },
   { key: "revenueGrowthY3", label: "Revenue Growth Y3 (%)", category: "Revenue Assumptions", type: "percent" },
   { key: "revenueGrowthY4", label: "Revenue Growth Y4 (%)", category: "Revenue Assumptions", type: "percent" },
   { key: "revenueGrowthY5", label: "Revenue Growth Y5 (%)", category: "Revenue Assumptions", type: "percent" },
-  // Operating Assumptions
   { key: "ebitdaMargin", label: "EBITDA Margin (%)", category: "Operating Assumptions", type: "percent" },
   { key: "depreciationPctOfRevenue", label: "Depreciation (% of Revenue)", category: "Operating Assumptions", type: "percent" },
-  { key: "capexPctOfRevenue", label: "CapEx (% of Revenue)", category: "Operating Assumptions", type: "percent" },
+  { key: "annualCapex", label: "Annual CapEx", category: "Operating Assumptions", type: "currency" },
   { key: "workingCapitalPctOfRevenue", label: "Working Capital (% of Revenue)", category: "Operating Assumptions", type: "percent" },
-  // WACC Assumptions
+  { key: "sharePrice", label: "Share Price", category: "Capital Structure", type: "currency" },
+  { key: "dilutedShares", label: "Diluted Shares Outstanding", category: "Capital Structure", type: "number" },
+  { key: "debt", label: "Market Value of Debt", category: "Capital Structure", type: "currency" },
   { key: "riskFreeRate", label: "Risk-Free Rate (%)", category: "WACC Assumptions", type: "percent" },
   { key: "equityRiskPremium", label: "Equity Risk Premium (%)", category: "WACC Assumptions", type: "percent" },
   { key: "beta", label: "Beta", category: "WACC Assumptions", type: "decimal" },
   { key: "costOfDebt", label: "Cost of Debt (%)", category: "WACC Assumptions", type: "percent" },
   { key: "taxRate", label: "Tax Rate (%)", category: "WACC Assumptions", type: "percent" },
-  { key: "marketValueOfEquity", label: "Market Value of Equity", category: "WACC Assumptions", type: "currency" },
-  { key: "marketValueOfDebt", label: "Market Value of Debt", category: "WACC Assumptions", type: "currency" },
-  // Terminal Value
   { key: "terminalGrowthRate", label: "Terminal Growth Rate (%)", category: "Terminal Value", type: "percent" },
 ];
 
 export function createDefaultInputs(): DCFInputs {
   return {
-    baseYearRevenue: 0,
-    revenueGrowthY1: 0, revenueGrowthY2: 0, revenueGrowthY3: 0,
-    revenueGrowthY4: 0, revenueGrowthY5: 0,
-    ebitdaMargin: 0,
-    depreciationPctOfRevenue: 0,
-    capexPctOfRevenue: 0,
-    workingCapitalPctOfRevenue: 0,
-    riskFreeRate: 0,
-    equityRiskPremium: 0,
-    beta: 0,
-    costOfDebt: 0,
-    taxRate: 0,
-    terminalGrowthRate: 0,
-    marketValueOfEquity: 0,
-    marketValueOfDebt: 0,
+    baseYearRevenue: 5_000_000,
+    revenueGrowthY1: 10,
+    revenueGrowthY2: 10,
+    revenueGrowthY3: 10,
+    revenueGrowthY4: 10,
+    revenueGrowthY5: 10,
+    ebitdaMargin: 21.2,
+    depreciationPctOfRevenue: 10.82,
+    annualCapex: 100_000,
+    workingCapitalPctOfRevenue: 13,
+    sharePrice: 25,
+    dilutedShares: 180_000,
+    debt: 2_711_500,
+    riskFreeRate: 7,
+    equityRiskPremium: 2,
+    beta: 0.01,
+    costOfDebt: 9,
+    taxRate: 20,
+    terminalGrowthRate: 3,
   };
+}
+
+function pct(v: number): number {
+  return v / 100;
+}
+
+function revenueGrowthScenario(avg: number): HealthScenario {
+  if (avg > 0.08 && avg < 0.15) return "BASE CASE";
+  if (avg > 0.14) return "UPSIDE CASE";
+  return "DOWNSIDE CASE";
+}
+
+function ebitdaMarginScenario(margin: number): HealthScenario {
+  if (margin > 0.1 && margin < 0.19) return "BASE CASE";
+  if (margin > 0.2) return "UPSIDE CASE";
+  return "DOWNSIDE CASE";
+}
+
+function scenarioInsights(scenario: HealthScenario) {
+  switch (scenario) {
+    case "UPSIDE CASE":
+      return {
+        interpretation: DCF_EXACT.interpretationUpside,
+        mentoring: DCF_EXACT.mentoringUpside,
+      };
+    case "DOWNSIDE CASE":
+      return {
+        interpretation: DCF_EXACT.interpretationDownside,
+        mentoring: DCF_EXACT.mentoringDownside,
+      };
+    default:
+      return {
+        interpretation: DCF_EXACT.interpretationBase,
+        mentoring: DCF_EXACT.mentoringBase,
+      };
+  }
 }
 
 export function calculateDCF(inputs: DCFInputs): DCFResults {
   const {
     baseYearRevenue,
-    revenueGrowthY1, revenueGrowthY2, revenueGrowthY3,
-    revenueGrowthY4, revenueGrowthY5,
-    ebitdaMargin, depreciationPctOfRevenue,
-    capexPctOfRevenue, workingCapitalPctOfRevenue,
-    riskFreeRate, equityRiskPremium, beta,
-    costOfDebt, taxRate, terminalGrowthRate,
-    marketValueOfEquity, marketValueOfDebt,
+    revenueGrowthY1,
+    revenueGrowthY2,
+    revenueGrowthY3,
+    revenueGrowthY4,
+    revenueGrowthY5,
+    ebitdaMargin,
+    depreciationPctOfRevenue,
+    annualCapex,
+    workingCapitalPctOfRevenue,
+    sharePrice,
+    dilutedShares,
+    debt,
+    riskFreeRate,
+    equityRiskPremium,
+    beta,
+    costOfDebt,
+    taxRate,
+    terminalGrowthRate,
   } = inputs;
 
-  // Convert percentages to decimals
-  const growths = [revenueGrowthY1, revenueGrowthY2, revenueGrowthY3, revenueGrowthY4, revenueGrowthY5].map((g) => g / 100);
-  const ebitdaM = ebitdaMargin / 100;
-  const depPct = depreciationPctOfRevenue / 100;
-  const capexPct = capexPctOfRevenue / 100;
-  const wcPct = workingCapitalPctOfRevenue / 100;
-  const rf = riskFreeRate / 100;
-  const erp = equityRiskPremium / 100;
-  const cod = costOfDebt / 100;
-  const tax = taxRate / 100;
-  const tg = terminalGrowthRate / 100;
+  const growthInputs = [
+    pct(revenueGrowthY1),
+    pct(revenueGrowthY2),
+    pct(revenueGrowthY3),
+    pct(revenueGrowthY4),
+    pct(revenueGrowthY5),
+  ];
+  // Excel B49 uses E14 (Y4 growth) for Year 5 revenue — not E15
+  const projectionGrowths = [
+    growthInputs[0],
+    growthInputs[1],
+    growthInputs[2],
+    growthInputs[3],
+    growthInputs[3],
+  ];
 
-  // WACC
-  const totalValue = marketValueOfEquity + marketValueOfDebt;
-  const equityWeight = totalValue > 0 ? marketValueOfEquity / totalValue : 0.5;
-  const debtWeight = totalValue > 0 ? marketValueOfDebt / totalValue : 0.5;
-  const costOfEquity = rf + (beta * erp);
+  const ebitdaM = pct(ebitdaMargin);
+  const depPct = pct(depreciationPctOfRevenue);
+  const wcPct = pct(workingCapitalPctOfRevenue);
+  const rf = pct(riskFreeRate);
+  const erp = pct(equityRiskPremium);
+  const cod = pct(costOfDebt);
+  const tax = pct(taxRate);
+  const tg = pct(terminalGrowthRate);
+
+  const marketValueOfEquity = sharePrice * dilutedShares;
+  const totalValue = marketValueOfEquity + debt;
+  const equityWeight = totalValue > 0 ? marketValueOfEquity / totalValue : 0;
+  const debtWeight = totalValue > 0 ? debt / totalValue : 0;
+  const costOfEquity = rf + beta * erp;
   const afterTaxCostOfDebt = cod * (1 - tax);
-  const wacc = (equityWeight * costOfEquity) + (debtWeight * afterTaxCostOfDebt);
+  const waccRate =
+    totalValue > 0
+      ? equityWeight * costOfEquity + debtWeight * afterTaxCostOfDebt
+      : 0;
 
-  // 5-Year Projection
-  const projection: ProjectionRow[] = [];
-  let revenue = baseYearRevenue;
-
-  for (let year = 0; year < 5; year++) {
-    revenue *= (1 + growths[year]);
-
-    const ebitda = revenue * ebitdaM;
-    const depreciation = revenue * depPct;
-    const ebit = ebitda - depreciation;
-    const nopat = ebit * (1 - tax);
-    const capex = revenue * capexPct;
-    const deltaWC = revenue * wcPct;
-    const fcff = nopat + depreciation - capex - deltaWC;
-
-    projection.push({
-      year: `Year ${year + 1}`,
-      revenue: Math.round(revenue),
-      ebitda: Math.round(ebitda),
-      depreciation: Math.round(depreciation),
-      ebit: Math.round(ebit),
-      nopat: Math.round(nopat),
-      capex: Math.round(capex),
-      deltaWC: Math.round(deltaWC),
-      fcff: Math.round(fcff),
-      pvOfFCFF: 0,
-    });
-  }
-
-  // Terminal Value (Gordon Growth)
-  const lastFCFF = projection[4].fcff;
-  const terminalValue = wacc > tg ? lastFCFF * (1 + tg) / (wacc - tg) : 0;
-
-  // Present Values
-  let totalPVOfFCFF = 0;
-  projection.forEach((row, i) => {
-    const pv = row.fcff / Math.pow(1 + wacc, i + 1);
-    row.pvOfFCFF = Math.round(pv);
-    totalPVOfFCFF += pv;
-  });
-
-  const pvOfTerminalValue = wacc > tg ? terminalValue / Math.pow(1 + wacc, 5) : 0;
-  const enterpriseValue = totalPVOfFCFF + pvOfTerminalValue;
-  const equityValue = enterpriseValue - marketValueOfDebt;
-
-  return {
+  const wacc: WACCResult = {
     costOfEquity,
     afterTaxCostOfDebt,
     equityWeight,
     debtWeight,
+    wacc: waccRate,
+    marketValueOfEquity,
+  };
+
+  const years: DCFYearRow[] = [];
+  let previousRevenue = baseYearRevenue;
+  let totalPVofFCFF = 0;
+
+  for (let i = 0; i < 5; i++) {
+    const revenue = previousRevenue * (1 + projectionGrowths[i]);
+    const ebitda = revenue * ebitdaM;
+    const depreciation = revenue * depPct;
+    const ebit = ebitda - depreciation;
+    const nopat = ebit * (1 - tax);
+    const capex = annualCapex;
+    const deltaWC = (revenue - previousRevenue) * wcPct;
+    const fcff = nopat + depreciation - capex - deltaWC;
+    // Excel J45:J49 — single-period discount 1/(1+WACC), not compounded
+    const pvOfFCFF = waccRate > 0 ? fcff / (1 + waccRate) : 0;
+
+    totalPVofFCFF += pvOfFCFF;
+
+    years.push({
+      year: `Year ${i + 1}`,
+      revenue,
+      ebitda,
+      depreciation,
+      ebit,
+      nopat,
+      capex,
+      deltaWC,
+      fcff,
+      pvOfFCFF,
+    });
+
+    previousRevenue = revenue;
+  }
+
+  const lastFCFF = years[4].fcff;
+  const terminalValue = waccRate > tg ? (lastFCFF * (1 + tg)) / (waccRate - tg) : 0;
+  const pvOfTerminalValue = waccRate > 0 ? terminalValue / (1 + waccRate) : 0;
+  const enterpriseValue = totalPVofFCFF + pvOfTerminalValue;
+  const equityValue = enterpriseValue - debt;
+  const valuePerShare = dilutedShares > 0 ? equityValue / dilutedShares : 0;
+
+  const averageRevenueGrowth =
+    growthInputs.reduce((sum, g) => sum + g, 0) / growthInputs.length;
+  const revScenario = revenueGrowthScenario(averageRevenueGrowth);
+  const marginScenario = ebitdaMarginScenario(ebitdaM);
+  const { interpretation, mentoring } = scenarioInsights(revScenario);
+
+  return {
     wacc,
-    projection,
-    terminalValue: Math.round(terminalValue),
-    pvOfTerminalValue: Math.round(pvOfTerminalValue),
-    totalPVOfFCFF: Math.round(totalPVOfFCFF),
-    enterpriseValue: Math.round(enterpriseValue),
-    equityValue: Math.round(equityValue),
-    baseYearRevenue,
-    terminalGrowthRate: tg,
+    years,
+    totalPVofFCFF,
+    terminalValue,
+    pvOfTerminalValue,
+    enterpriseValue,
+    equityValue,
+    valuePerShare,
+    averageRevenueGrowth,
+    ebitdaMarginDecimal: ebitdaM,
+    revenueGrowthScenario: revScenario,
+    ebitdaMarginScenario: marginScenario,
+    insights: {
+      interpretation,
+      mentoring,
+      scenarioLabel: revScenario,
+    },
   };
 }

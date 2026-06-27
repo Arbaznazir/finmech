@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import dynamic from "next/dynamic";
-import Link from "next/link";
+import Link from "next/link"
+import { ModelBackLink } from "@/components/model-back-link";
 import {
   ArrowLeft, TrendingUp, Save, RotateCcw,
   CheckCircle, AlertTriangle, XCircle, Info, Lightbulb,
@@ -15,15 +16,16 @@ import { useSavedModel } from "@/lib/use-saved-model";
 import { offerSmartResultsAfterCalculate } from "@/lib/smart-results";
 import { FieldHint } from "@/components/FieldHint";
 import { HintLabel } from "@/components/HintLabel";
-import { standaloneHint } from "@/lib/standalone-model-hints";
+import { useModelHints } from "@/hooks/use-model-hints";
 import {
   calculateBreakEven,
   createEmptyInputs,
+  EXCEL_STANDALONE_PROJECTION_UNITS,
   type BreakEvenInputs,
   type BreakEvenCompleteResults,
   INPUT_FIELDS,
-  BREAK_EVEN_TOOLTIPS,
 } from "@/lib/break-even-standalone-model";
+import { ragTextClass } from "@/lib/utils";
 
 type TabView = "calculator" | "simulation" | "insights";
 
@@ -43,10 +45,13 @@ function difficultyLabel(d: string): string {
 
 export default function BreakEvenPage() {
   const { user, hydrate } = useAuth();
+  const { hint } = useModelHints("break-even");
   const [inputs, setInputs] = useState<BreakEvenInputs>(createEmptyInputs());
   const [results, setResults] = useState<BreakEvenCompleteResults | null>(null);
   const [activeTab, setActiveTab] = useState<TabView>("calculator");
-  const [simulationUnits, setSimulationUnits] = useState<string>("100, 500, 1000, 2000, 5000, 10000");
+  const [simulationUnits, setSimulationUnits] = useState<string>(
+    EXCEL_STANDALONE_PROJECTION_UNITS.join(", "),
+  );
 
   const { save: persistState, reset: clearPersisted, saving, saved, markDirty } = useSavedModel({
     modelSlug: "break-even",
@@ -102,9 +107,7 @@ export default function BreakEvenPage() {
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
-      <Link href="/models?tier=standalone" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
-        <ArrowLeft className="h-4 w-4" /> Back to Models
-      </Link>
+      <ModelBackLink modelSlug="break-even" label="Back to Models" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors" />
 
       <div className="flex items-start justify-between gap-4 mb-8">
         <div className="flex items-start gap-4">
@@ -164,7 +167,7 @@ export default function BreakEvenPage() {
                 <div key={field.key}>
                   <label className="flex items-center text-xs text-muted-foreground mb-1">
                     {field.label}
-                    <FieldHint hint={BREAK_EVEN_TOOLTIPS[field.key]} />
+                    {hint(field.key) && <FieldHint hint={hint(field.key)!} />}
                   </label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">₹</span>
@@ -189,13 +192,13 @@ export default function BreakEvenPage() {
             <div className="mt-6 pt-4 border-t border-border">
               <label className="flex items-center text-xs text-muted-foreground mb-1">
                 Simulation Units (comma-separated)
-                <FieldHint hint={{ what: "Units to simulate in the projection table.", why: "Helps visualize profitability at different sales volumes." }} />
+                {hint("simulationUnits") && <FieldHint hint={hint("simulationUnits")!} />}
               </label>
               <input
                 type="text"
                 value={simulationUnits}
                 onChange={(e) => setSimulationUnits(e.target.value)}
-                placeholder="100, 500, 1000, 2000, 5000, 10000"
+                placeholder={EXCEL_STANDALONE_PROJECTION_UNITS.slice(0, 6).join(", ")}
                 className="w-full rounded-lg border border-border bg-input px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
               />
             </div>
@@ -225,7 +228,9 @@ export default function BreakEvenPage() {
                   <div className="space-y-4">
                     {/* Contribution per Unit */}
                     <div className="rounded-xl bg-success/5 border border-success/20 p-4">
-                      <p className="text-xs text-muted-foreground mb-1">Contribution per Unit</p>
+                      <p className="text-xs text-muted-foreground mb-1">
+                        <HintLabel hint={hint("contributionPerUnit")}>Contribution per Unit</HintLabel>
+                      </p>
                       <p className="text-3xl font-bold text-success">{formatCurrency(results.contributionPerUnit)}</p>
                       <p className="text-xs text-muted-foreground mt-1">
                         Margin: {formatPercent(results.contributionMargin)}
@@ -234,7 +239,9 @@ export default function BreakEvenPage() {
 
                     {/* Break-Even Units */}
                     <div className="rounded-xl bg-primary/5 border border-primary/20 p-4">
-                      <p className="text-xs text-muted-foreground mb-1">Break-Even Units</p>
+                      <p className="text-xs text-muted-foreground mb-1">
+                        <HintLabel hint={hint("breakEvenUnits")}>Break-Even Units</HintLabel>
+                      </p>
                       <p className="text-3xl font-bold text-primary">
                         {Math.ceil(results.breakEvenUnits).toLocaleString()}
                       </p>
@@ -245,7 +252,9 @@ export default function BreakEvenPage() {
 
                     {/* Break-Even Revenue */}
                     <div className="rounded-xl bg-blue-400/5 border border-blue-400/20 p-4">
-                      <p className="text-xs text-muted-foreground mb-1">Break-Even Revenue</p>
+                      <p className="text-xs text-muted-foreground mb-1">
+                        <HintLabel hint={hint("breakEvenRevenue")}>Break-Even Revenue</HintLabel>
+                      </p>
                       <p className="text-3xl font-bold text-blue-400">
                         {formatCurrency(results.breakEvenRevenue)}
                       </p>
@@ -313,30 +322,31 @@ export default function BreakEvenPage() {
                     <th className="text-right px-6 py-3 font-semibold text-muted-foreground">Fixed Costs</th>
                     <th className="text-right px-6 py-3 font-semibold text-muted-foreground">Total Costs</th>
                     <th className="text-right px-6 py-3 font-semibold text-muted-foreground">Profit / Loss</th>
-                    <th className="text-center px-6 py-3 font-semibold text-muted-foreground">Status</th>
+                    <th className="text-center px-6 py-3 font-semibold text-muted-foreground">
+                      <HintLabel hint={hint("simulationStatus")}>Status</HintLabel>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {results.simulation.map((row, idx) => (
-                    <tr key={idx} className={`border-b border-border/30 ${row.aboveBreakEven ? "bg-success/5" : ""}`}>
+                    <tr key={idx} className={`border-b border-border/30 ${row.status === "GREEN" ? "bg-success/5" : ""}`}>
                       <td className="px-6 py-3 font-medium">{row.units.toLocaleString()}</td>
                       <td className="text-right px-6 py-3">{formatCurrency(row.revenue)}</td>
-                      <td className="text-right px-6 py-3 text-muted-foreground">{formatCurrency(row.totalVariableCost)}</td>
+                      <td className="text-right px-6 py-3 text-muted-foreground">
+                        {formatCurrency(row.units * inputs.variableCostPerUnit)}
+                      </td>
                       <td className="text-right px-6 py-3 text-muted-foreground">{formatCurrency(inputs.fixedCostMonthly)}</td>
                       <td className="text-right px-6 py-3">{formatCurrency(row.totalCost)}</td>
-                      <td className={`text-right px-6 py-3 font-semibold ${row.profitLoss >= 0 ? "text-success" : "text-danger"}`}>
+                      <td className={`text-right px-6 py-3 font-semibold ${row.status === "GREEN" ? "text-success" : "text-danger"}`}>
                         {row.profitLoss >= 0 ? "+" : ""}{formatCurrency(row.profitLoss)}
                       </td>
                       <td className="text-center px-6 py-3">
-                        {row.aboveBreakEven ? (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-success/10 text-success px-2 py-0.5 text-xs font-medium">
-                            <CheckCircle className="h-3 w-3" /> Profitable
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-danger/10 text-danger px-2 py-0.5 text-xs font-medium">
-                            <XCircle className="h-3 w-3" /> Loss
-                          </span>
-                        )}
+                        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
+                          row.status === "GREEN" ? "bg-success/10 text-success" : "bg-danger/10 text-danger"
+                        }`}>
+                          {row.status === "GREEN" ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
+                          <span className={ragTextClass(row.status)}>{row.status}</span>
+                        </span>
                       </td>
                     </tr>
                   ))}

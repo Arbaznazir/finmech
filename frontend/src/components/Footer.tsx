@@ -1,17 +1,16 @@
-import { BarChart3 } from "lucide-react";
+import BrandLogo from "@/components/BrandLogo";
 
 export default function Footer() {
   return (
-    <footer className="border-t border-border bg-card/50 mt-auto">
+    <footer className="border-t border-border bg-card/50">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div>
-            <div className="flex items-center gap-2 mb-4">
-              <BarChart3 className="h-6 w-6 text-primary" />
-              <span className="text-lg font-bold">FinMech</span>
+            <div className="mb-4">
+              <BrandLogo variant="footer" />
             </div>
             <p className="text-sm text-muted-foreground">
-              Financial mechanics made simple. Build, analyze, and share financial models for your startup.
+              Smart tools. Smart finance. Build, analyze, and share financial models for your startup.
             </p>
           </div>
           <div>
@@ -19,6 +18,7 @@ export default function Footer() {
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li><a href="/models" className="hover:text-foreground transition-colors">Models</a></li>
               <li><a href="/pricing" className="hover:text-foreground transition-colors">Pricing</a></li>
+              <li><a href="/faq" className="hover:text-foreground transition-colors">FAQ</a></li>
             </ul>
           </div>
           <div>

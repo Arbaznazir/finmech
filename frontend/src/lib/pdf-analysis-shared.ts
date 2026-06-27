@@ -10,7 +10,7 @@ export function fmt(v: unknown): string {
     if (!Number.isFinite(v)) return "—";
     if (Math.abs(v) >= 1000) return formatCurrency(v);
     if (v % 1 !== 0) return v.toFixed(2);
-    return v.toLocaleString();
+    return v.toLocaleString("en-IN");
   }
   return String(v);
 }
@@ -77,6 +77,12 @@ export function scenarioTable(headers: string[], rows: string[][], accent = STAN
     <thead><tr style="background:${accent};color:#fff">${headers.map((h) => `<th style="padding:8px 10px;text-align:${h === headers[0] ? "left" : "right"}">${h}</th>`).join("")}</tr></thead>
     <tbody>${rows.map((row, i) => `<tr style="background:${i % 2 === 0 ? "#fafafa" : "#fff"}">${row.map((cell, j) => `<td style="padding:7px 10px;border-bottom:1px solid #eee;text-align:${j === 0 ? "left" : "right"};${j > 0 ? "font-weight:600" : ""}">${cell}</td>`).join("")}</tr>`).join("")}</tbody>
   </table>`;
+}
+
+export function wrapExcelReport(sections: string, accent = STANDALONE_ACCENT) {
+  return `<div style="margin-top:28px;padding:22px 26px;background:#fafafa;border:1px solid #e8e8e8;border-left:5px solid ${accent};border-radius:0 10px 10px 0">
+    ${sections}
+  </div>`;
 }
 
 export function wrapAnalysis(sections: string, accent = STANDALONE_ACCENT) {

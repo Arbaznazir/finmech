@@ -1,6 +1,7 @@
 "use client";
 
-import Link from "next/link";
+import Link from "next/link"
+import { ModelBackLink } from "@/components/model-back-link";
 import { ArrowLeft, Settings, ArrowRight, FileText, TrendingUp, Flame, Users, BarChart2 } from "lucide-react";
 
 const PAGES = [
@@ -49,9 +50,7 @@ const PAGES = [
 export default function StdCommonUtilityPage() {
   return (
     <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-8">
-      <Link href="/models?tier=standard" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
-        <ArrowLeft className="h-4 w-4" /> Back to Models
-      </Link>
+      <ModelBackLink modelSlug="std-common-utility" label="Back to Models" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors" />
 
       <div className="flex items-start gap-4 mb-8">
         <div className="h-14 w-14 rounded-2xl flex items-center justify-center shrink-0 bg-primary/10">

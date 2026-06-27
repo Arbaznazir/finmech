@@ -1,8 +1,9 @@
 // ========================================================
-// PITCH DECK KPIs MODEL – FULL EXCEL MATCH
-// All inputs → Gross Margin, Contribution, CAC, LTV,
-// Runway, Burn Multiple, RAG status + mentoring tips
+// PITCH DECK KPIs – Excel sheet "Growth Stage"
+// FINMECH-UPGRADED/2.Stand alone models/8.Pitchdeck KPIs.xlsx
 // ========================================================
+
+import { PITCHDECK_EXACT } from "@/lib/excel-model-content";
 
 export interface PitchDeckInputs {
   grossMonthlyRevenue: number;
@@ -17,15 +18,27 @@ export interface PitchDeckInputs {
   monthlyDebt: number;
   averageCustomerLifetime: number;
   arpu: number;
+  monthlyChurnRate: number;
 }
 
 export type RAGStatus = "GREEN" | "AMBER" | "RED";
+export type PitchTier = "BEST-IN-CLASS" | "IMPROVING" | "WEAK";
+
+export interface MetricClassification {
+  tier: PitchTier;
+  rag: RAGStatus;
+  message: string;
+}
 
 export interface MentoringTips {
   grossMargin: string;
+  contribution: string;
+  cac: string;
+  ltv: string;
   ltvCac: string;
-  runway: string;
   recurring: string;
+  netBurn: string;
+  runway: string;
 }
 
 export interface SummaryFlags {
@@ -44,7 +57,6 @@ export interface PitchDeckInsights {
 }
 
 export interface PitchDeckResults {
-  // Echoed inputs
   grossMonthlyRevenue: number;
   recurringRevenue: number;
   cogs: number;
@@ -56,7 +68,7 @@ export interface PitchDeckResults {
   cashAvailable: number;
   monthlyDebt: number;
   arpu: number;
-  // Computed
+  monthlyChurnRate: number;
   grossMargin: number;
   contributionMarginAfterCAC: number;
   cac: number;
@@ -68,319 +80,272 @@ export interface PitchDeckResults {
   burnMultiple: number;
   cashEfficiencyRatio: number;
   cacPaybackMonths: number;
-  // RAG
+  revenuePerCustomer: number;
+  servicingCostPerCustomer: number;
+  churnAdjustedLtv: number;
   grossMarginStatus: RAGStatus;
+  contributionStatus: RAGStatus;
+  cacStatus: RAGStatus;
+  ltvStatus: RAGStatus;
   ltvCacStatus: RAGStatus;
-  runwayStatus: RAGStatus;
   recurringRatioStatus: RAGStatus;
   burnStatus: RAGStatus;
-  contributionStatus: RAGStatus;
-  // Tips & summary
+  runwayStatus: RAGStatus;
+  classifications: Record<string, MetricClassification>;
   mentoringTips: MentoringTips;
   summary: SummaryFlags;
   insights: PitchDeckInsights;
 }
 
 export const INPUT_FIELDS: { key: keyof PitchDeckInputs; label: string; category: string; prefix: string }[] = [
-  { key: "grossMonthlyRevenue", label: "Gross Monthly Revenue", category: "Revenue", prefix: "$" },
-  { key: "recurringRevenue", label: "Recurring Revenue", category: "Revenue", prefix: "$" },
-  { key: "cogs", label: "COGS", category: "Costs", prefix: "$" },
-  { key: "monthlyMarketingSpend", label: "Monthly Marketing Spend", category: "Costs", prefix: "$" },
-  { key: "variableCosts", label: "Variable Costs", category: "Costs", prefix: "$" },
-  { key: "fixedCosts", label: "Fixed Costs", category: "Costs", prefix: "$" },
+  { key: "grossMonthlyRevenue", label: "Gross Monthly Revenue (net of refunds and discounts)", category: "Revenue", prefix: "₹" },
+  { key: "recurringRevenue", label: "Recurring Revenue (Included in Gross revenue)", category: "Revenue", prefix: "₹" },
+  { key: "cogs", label: "Cost of Goods Cost (COGS)", category: "Costs", prefix: "₹" },
+  { key: "monthlyMarketingSpend", label: "Monthly Marketing Spend", category: "Costs", prefix: "₹" },
+  { key: "variableCosts", label: "Variable Costs (includes COGS & Marketing spend)", category: "Costs", prefix: "₹" },
+  { key: "fixedCosts", label: "Fixed Costs", category: "Costs", prefix: "₹" },
   { key: "customersAddedMonthly", label: "Customers Added (Monthly)", category: "Customers", prefix: "#" },
   { key: "activeCustomers", label: "Active Customers", category: "Customers", prefix: "#" },
-  { key: "arpu", label: "Avg Revenue per Customer", category: "Customers", prefix: "$" },
-  { key: "averageCustomerLifetime", label: "Avg Customer Lifetime (months)", category: "Customers", prefix: "#" },
-  { key: "cashAvailable", label: "Cash Available", category: "Cash", prefix: "$" },
-  { key: "monthlyDebt", label: "Monthly Debt", category: "Cash", prefix: "$" },
+  { key: "arpu", label: "Avg Price Per Customer (monthly) ARPU", category: "Customers", prefix: "₹" },
+  { key: "averageCustomerLifetime", label: "Average Customers Lifetime (months)", category: "Customers", prefix: "#" },
+  { key: "monthlyChurnRate", label: "Monthly Churn Rate (%)", category: "Customers", prefix: "%" },
+  { key: "cashAvailable", label: "Cash Available", category: "Cash", prefix: "₹" },
+  { key: "monthlyDebt", label: "Monthly Debt (Obligations if any)", category: "Cash", prefix: "₹" },
 ];
 
 export function createEmptyInputs(): PitchDeckInputs {
   return {
-    grossMonthlyRevenue: 0, recurringRevenue: 0, cogs: 0,
-    monthlyMarketingSpend: 0, variableCosts: 0, fixedCosts: 0,
-    customersAddedMonthly: 0, activeCustomers: 0, cashAvailable: 0,
-    monthlyDebt: 0, averageCustomerLifetime: 0, arpu: 0,
+    grossMonthlyRevenue: 0,
+    recurringRevenue: 0,
+    cogs: 0,
+    monthlyMarketingSpend: 0,
+    variableCosts: 0,
+    fixedCosts: 0,
+    customersAddedMonthly: 0,
+    activeCustomers: 0,
+    cashAvailable: 0,
+    monthlyDebt: 0,
+    averageCustomerLifetime: 0,
+    arpu: 0,
+    monthlyChurnRate: 0,
   };
+}
+
+function tierToRag(tier: PitchTier): RAGStatus {
+  if (tier === "BEST-IN-CLASS") return "GREEN";
+  if (tier === "IMPROVING") return "AMBER";
+  return "RED";
+}
+
+function classifyGrossMargin(gm: number): MetricClassification {
+  if (gm >= 0.6) {
+    return { tier: "BEST-IN-CLASS", rag: "GREEN", message: "BEST-IN-CLASS: Strong gross margins indicate scalable unit economics." };
+  }
+  if (gm >= 0.4) {
+    return { tier: "IMPROVING", rag: "AMBER", message: "IMPROVING: Margins acceptable but cost optimisation required." };
+  }
+  return { tier: "WEAK", rag: "RED", message: "WEAK: Low margins constrain profitable growth." };
+}
+
+function classifyContribution(cm: number): MetricClassification {
+  if (cm >= 0.3) {
+    return { tier: "BEST-IN-CLASS", rag: "GREEN", message: "BEST-IN-CLASS: Contribution economics support aggressive scaling." };
+  }
+  if (cm >= 0.15) {
+    return { tier: "IMPROVING", rag: "AMBER", message: "IMPROVING: Positive contribution but CAC efficiency must improve." };
+  }
+  return { tier: "WEAK", rag: "RED", message: "WEAK: Contribution insufficient to fund growth." };
+}
+
+function classifyCac(cac: number, revenuePerCustomer: number): MetricClassification {
+  if (revenuePerCustomer <= 0) {
+    return { tier: "WEAK", rag: "RED", message: "WEAK: High CAC threatens growth sustainability." };
+  }
+  if (cac <= 0.25 * revenuePerCustomer) {
+    return { tier: "BEST-IN-CLASS", rag: "GREEN", message: "BEST-IN-CLASS: Customer acquisition highly efficient." };
+  }
+  if (cac <= 0.5 * revenuePerCustomer) {
+    return { tier: "IMPROVING", rag: "AMBER", message: "IMPROVING: CAC manageable but optimisation required." };
+  }
+  return { tier: "WEAK", rag: "RED", message: "WEAK: High CAC threatens growth sustainability." };
+}
+
+function classifyLtv(ltv: number, cac: number): MetricClassification {
+  if (ltv >= 5 * cac) {
+    return { tier: "BEST-IN-CLASS", rag: "GREEN", message: "BEST-IN-CLASS: Strong lifetime value supports capital efficiency" };
+  }
+  if (ltv >= 3 * cac) {
+    return { tier: "IMPROVING", rag: "AMBER", message: "IMPROVING: LTV acceptable but retention upside exists." };
+  }
+  return { tier: "WEAK", rag: "RED", message: "WEAK: Limited value extraction from customers." };
+}
+
+function classifyLtvCac(ratio: number): MetricClassification {
+  if (ratio >= 5) {
+    return { tier: "BEST-IN-CLASS", rag: "GREEN", message: "BEST-IN-CLASS: Exceptional unit economics." };
+  }
+  if (ratio >= 3) {
+    return { tier: "IMPROVING", rag: "AMBER", message: "IMPROVING: Healthy but not investor-grade yet." };
+  }
+  return { tier: "WEAK", rag: "RED", message: "WEAK: Unit economics unattractive for growth capital." };
+}
+
+function classifyRecurring(ratio: number): MetricClassification {
+  if (ratio >= 0.6) {
+    return { tier: "BEST-IN-CLASS", rag: "GREEN", message: "BEST-IN-CLASS: High revenue predictability and visibility." };
+  }
+  if (ratio >= 0.3) {
+    return { tier: "IMPROVING", rag: "AMBER", message: "IMPROVING: Partial revenue stability achieved." };
+  }
+  return { tier: "WEAK", rag: "RED", message: "WEAK: Revenue volatility increases risk." };
+}
+
+function classifyNetBurn(netBurn: number, variableCosts: number, fixedCosts: number): MetricClassification {
+  if (netBurn <= 0) {
+    return {
+      tier: "BEST-IN-CLASS",
+      rag: "GREEN",
+      message: "Efficient cash flow management: Business is self-sustaining and on a growth curve.",
+    };
+  }
+  if (netBurn <= variableCosts + fixedCosts) {
+    return { tier: "BEST-IN-CLASS", rag: "GREEN", message: "BEST-IN-CLASS: Burn tightly controlled. Try generating more cash." };
+  }
+  return { tier: "WEAK", rag: "RED", message: "WEAK: Excessive burn relative to scale. Dangerous signs. Improve your cash flow." };
+}
+
+function classifyRunway(runwayMonths: number): MetricClassification {
+  if (runwayMonths >= 18) {
+    return { tier: "BEST-IN-CLASS", rag: "GREEN", message: "BEST-IN-CLASS: Comfortable runway enabling strategic growth." };
+  }
+  if (runwayMonths >= 9) {
+    return { tier: "IMPROVING", rag: "AMBER", message: "IMPROVING: Adequate but execution-sensitive runway." };
+  }
+  return { tier: "WEAK", rag: "RED", message: "WEAK: Funding risk within short horizon." };
 }
 
 export function calculatePitchDeck(inputs: PitchDeckInputs): PitchDeckResults {
   const {
-    grossMonthlyRevenue, recurringRevenue, cogs,
-    monthlyMarketingSpend, variableCosts, fixedCosts,
-    customersAddedMonthly, activeCustomers, cashAvailable,
-    monthlyDebt, averageCustomerLifetime, arpu,
+    grossMonthlyRevenue: rev,
+    recurringRevenue,
+    cogs,
+    monthlyMarketingSpend,
+    variableCosts,
+    fixedCosts,
+    customersAddedMonthly,
+    activeCustomers,
+    cashAvailable,
+    monthlyDebt,
+    arpu,
+    monthlyChurnRate,
   } = inputs;
 
-  // FIXED: Accurate formulas matching Excel
-  const grossMarginRaw = grossMonthlyRevenue > 0 ? (grossMonthlyRevenue - cogs) / grossMonthlyRevenue : 0;
-  
-  // Contribution Margin After CAC = (Revenue - Variable Costs - Marketing) / Revenue
-  const totalVariableCost = variableCosts || cogs;
-  const contributionAfterCAC = grossMonthlyRevenue - totalVariableCost - monthlyMarketingSpend;
-  const contributionRaw = grossMonthlyRevenue > 0 ? contributionAfterCAC / grossMonthlyRevenue : 0;
-
-  // CAC and LTV
+  const grossMarginRaw = rev > 0 ? (rev - cogs) / rev : 0;
+  const contributionRaw = rev > 0 ? (rev - variableCosts) / rev : 0;
   const cac = customersAddedMonthly > 0 ? monthlyMarketingSpend / customersAddedMonthly : 0;
-  const ltv = averageCustomerLifetime > 0 && arpu > 0 ? arpu * averageCustomerLifetime : 0;
+  const ltv =
+    monthlyChurnRate > 0 ? (arpu * grossMarginRaw) / monthlyChurnRate : 0;
   const ltvCacRatio = cac > 0 ? ltv / cac : 0;
-  const cacPaybackMonths = arpu > 0 ? cac / arpu : 0;
+  const recurringRatioRaw = rev > 0 ? recurringRevenue / rev : 0;
 
-  const recurringRatioRaw = grossMonthlyRevenue > 0 ? recurringRevenue / grossMonthlyRevenue : 0;
+  const netBurn = rev >= variableCosts + fixedCosts ? 0 : variableCosts + fixedCosts - rev;
+  const runwayMonths = netBurn > 0 ? cashAvailable / netBurn : Infinity;
 
-  // Burn and Runway
-  const totalOpEx = totalVariableCost + fixedCosts + monthlyMarketingSpend;
-  const netBurn = totalOpEx - grossMonthlyRevenue;
-  const runwayMonths = netBurn <= 0 ? Infinity : cashAvailable / netBurn;
+  const revenuePerCustomer = activeCustomers > 0 ? rev / activeCustomers : 0;
+  const servicingCostPerCustomer = activeCustomers > 0 ? cogs / activeCustomers : 0;
+  const churnAdjustedLtv = monthlyChurnRate > 0 ? arpu / (monthlyChurnRate / 100) : 0;
+  const burnMultiple = rev > 0 ? netBurn / rev : 0;
+  const cashEfficiencyRatio = variableCosts + fixedCosts > 0 ? rev / (variableCosts + fixedCosts) : 0;
+  const cacPaybackMonths = revenuePerCustomer > 0 ? cac / revenuePerCustomer : 0;
 
-  const burnMultiple = grossMonthlyRevenue > 0 ? Math.abs(netBurn) / grossMonthlyRevenue : 0;
-  const cashEfficiencyRatio = totalOpEx > 0 ? grossMonthlyRevenue / totalOpEx : 0;
+  const classifications = {
+    "Gross Margin": classifyGrossMargin(grossMarginRaw),
+    "Contribution Margin": classifyContribution(contributionRaw),
+    CAC: classifyCac(cac, revenuePerCustomer),
+    LTV: classifyLtv(ltv, cac),
+    "LTV/CAC": classifyLtvCac(ltvCacRatio),
+    "Recurring Revenue Ratio": classifyRecurring(recurringRatioRaw),
+    "Net Burn": classifyNetBurn(netBurn, variableCosts, fixedCosts),
+    "Runway (Months)": classifyRunway(runwayMonths === Infinity ? 99 : runwayMonths),
+  };
 
-  // RAG Status
-  const grossMarginStatus: RAGStatus = grossMarginRaw > 0.4 ? "GREEN" : grossMarginRaw > 0.2 ? "AMBER" : "RED";
-  const ltvCacStatus: RAGStatus = ltvCacRatio > 3 ? "GREEN" : ltvCacRatio > 1 ? "AMBER" : "RED";
-  const runwayStatus: RAGStatus = runwayMonths === Infinity || runwayMonths > 12 ? "GREEN" : runwayMonths > 6 ? "AMBER" : "RED";
-  const recurringRatioStatus: RAGStatus = recurringRatioRaw * 100 > 70 ? "GREEN" : recurringRatioRaw * 100 > 40 ? "AMBER" : "RED";
-  const burnStatus: RAGStatus = netBurn <= 0 ? "GREEN" : netBurn < 50000 ? "AMBER" : "RED";
-  const contributionStatus: RAGStatus = contributionRaw > 0.3 ? "GREEN" : contributionRaw > 0 ? "AMBER" : "RED";
-
-  // Enhanced mentoring tips
   const mentoringTips: MentoringTips = {
-    grossMargin: grossMarginRaw > 0.4 
-      ? "Strong gross margins indicate pricing power." 
-      : grossMarginRaw > 0.2 
-        ? "Margins need improvement. Consider premium pricing." 
-        : "Low margins threaten sustainability. Reduce COGS or increase prices.",
-    ltvCac: ltvCacRatio > 3 
-      ? "Excellent unit economics — highly investable." 
-      : ltvCacRatio > 1 
-        ? "Unit economics are viable but need optimization." 
-        : "LTV/CAC below 1 means losing money per customer. Fix immediately.",
-    runway: runwayMonths === Infinity || runwayMonths > 12 
-      ? "Comfortable runway — focus on growth." 
-      : runwayMonths > 6 
-        ? "Moderate runway — monitor burn carefully." 
-        : "Critical runway — fundraise urgently or cut costs.",
-    recurring: recurringRatioRaw > 0.7 
-      ? "Strong recurring base provides predictability." 
-      : recurringRatioRaw > 0.4 
-        ? "Growing recurring share — good for investor confidence." 
-        : "Low recurring revenue increases risk. Build subscriptions.",
+    grossMargin: classifications["Gross Margin"].message,
+    contribution: classifications["Contribution Margin"].message,
+    cac: classifications.CAC.message,
+    ltv: classifications.LTV.message,
+    ltvCac: classifications["LTV/CAC"].message,
+    recurring: classifications["Recurring Revenue Ratio"].message,
+    netBurn: classifications["Net Burn"].message,
+    runway: classifications["Runway (Months)"].message,
   };
 
   const summary: SummaryFlags = {
-    isUnitEconomicsPositive: ltvCacRatio > 1 && grossMarginRaw > 0.2 && contributionRaw > 0,
-    isCACRecoverable: ltvCacRatio > 1 && cacPaybackMonths < 12,
-    isBurnControlled: netBurn <= 0 || runwayMonths > 6,
-    canScaleImproveMargins: contributionRaw > 0.3 && grossMarginRaw > 0.4,
+    isUnitEconomicsPositive: ltvCacRatio >= 3 && grossMarginRaw >= 0.4 && contributionRaw >= 0.15,
+    isCACRecoverable: ltvCacRatio >= 3 && cacPaybackMonths < 12,
+    isBurnControlled: netBurn <= 0 || runwayMonths >= 9,
+    canScaleImproveMargins: contributionRaw >= 0.3 && grossMarginRaw >= 0.6,
   };
 
-  // Generate comprehensive insights
-  const insights = generateInsights({
-    grossMargin: grossMarginRaw * 100,
-    contributionMargin: contributionRaw * 100,
-    ltvCacRatio,
-    cacPaybackMonths,
-    runwayMonths,
-    recurringRatio: recurringRatioRaw * 100,
-    netBurn,
-    burnMultiple,
-    ltv,
-    cac,
-    arpu,
-  });
+  const ragStatuses = Object.values(classifications).map((c) => c.rag);
+  const greenCount = ragStatuses.filter((s) => s === "GREEN").length;
+  const healthScore = Math.round((greenCount / ragStatuses.length) * 100);
+
+  const worst = Object.values(classifications).find((c) => c.rag === "RED")
+    ?? Object.values(classifications).find((c) => c.rag === "AMBER")
+    ?? classifications["Gross Margin"];
+
+  const guidance = Object.entries(classifications).map(
+    ([metric, c]) => `${metric}: ${c.message}`,
+  );
+
+  const insights: PitchDeckInsights = {
+    overall: worst.message,
+    overallColor: worst.rag === "GREEN" ? "text-success" : worst.rag === "AMBER" ? "text-amber-400" : "text-danger",
+    guidance: guidance.length > 0 ? guidance : [...PITCHDECK_EXACT.smartReportLines],
+    healthScore,
+    investorReadiness:
+      healthScore >= 75 ? "excellent" : healthScore >= 50 ? "good" : healthScore >= 25 ? "needs-work" : "not-ready",
+  };
 
   return {
-    grossMonthlyRevenue, recurringRevenue, cogs,
-    monthlyMarketingSpend, variableCosts, fixedCosts,
-    customersAddedMonthly, activeCustomers, cashAvailable,
-    monthlyDebt, arpu,
+    grossMonthlyRevenue: rev,
+    recurringRevenue,
+    cogs,
+    monthlyMarketingSpend,
+    variableCosts,
+    fixedCosts,
+    customersAddedMonthly,
+    activeCustomers,
+    cashAvailable,
+    monthlyDebt,
+    arpu,
+    monthlyChurnRate,
     grossMargin: grossMarginRaw * 100,
     contributionMarginAfterCAC: contributionRaw * 100,
-    cac, ltv, ltvCacRatio,
+    cac,
+    ltv,
+    ltvCacRatio,
     recurringRevenueRatio: recurringRatioRaw * 100,
-    netBurn, runwayMonths, burnMultiple, cashEfficiencyRatio, cacPaybackMonths,
-    grossMarginStatus, ltvCacStatus, runwayStatus, recurringRatioStatus, burnStatus, contributionStatus,
-    mentoringTips, summary, insights,
-  };
-}
-
-function generateInsights(metrics: {
-  grossMargin: number;
-  contributionMargin: number;
-  ltvCacRatio: number;
-  cacPaybackMonths: number;
-  runwayMonths: number;
-  recurringRatio: number;
-  netBurn: number;
-  burnMultiple: number;
-  ltv: number;
-  cac: number;
-  arpu: number;
-}): PitchDeckInsights {
-  const { grossMargin, contributionMargin, ltvCacRatio, cacPaybackMonths, runwayMonths, recurringRatio, netBurn, burnMultiple, ltv, cac, arpu } = metrics;
-  const guidance: string[] = [];
-  let healthScore = 100;
-  let investorReadiness: "excellent" | "good" | "needs-work" | "not-ready" = "excellent";
-  
-  // Helper to safely downgrade readiness without type errors
-  const downgradeReadiness = (target: "good" | "needs-work" | "not-ready") => {
-    if (investorReadiness === "excellent" || 
-        (investorReadiness === "good" && target !== "good") ||
-        (investorReadiness === "needs-work" && target === "not-ready")) {
-      investorReadiness = target;
-    }
-  };
-
-  // Gross Margin Analysis
-  if (grossMargin > 60) {
-    guidance.push("✓ Excellent Gross Margin (> 60%) — Strong pricing power and scalable business model.");
-  } else if (grossMargin > 40) {
-    healthScore -= 5;
-    guidance.push("✓ Good Gross Margin (40-60%) — Healthy unit economics with room for optimization.");
-  } else if (grossMargin > 20) {
-    healthScore -= 15;
-    downgradeReadiness("good");
-    guidance.push("⚠️ Moderate Gross Margin (20-40%) — Margins need improvement. Review pricing strategy.");
-  } else {
-    healthScore -= 30;
-    downgradeReadiness("needs-work");
-    guidance.push("🚨 Low Gross Margin (< 20%) — Critical issue. Either reduce COGS or increase prices significantly.");
-  }
-
-  // Contribution Margin After CAC Analysis
-  if (contributionMargin > 30) {
-    guidance.push("✓ Strong Contribution After CAC (> 30%) — Plenty of room for fixed costs and profit.");
-  } else if (contributionMargin > 0) {
-    healthScore -= 10;
-    downgradeReadiness("good");
-    guidance.push("⚠️ Thin Contribution After CAC (0-30%) — Limited room for fixed costs. Optimize variable costs or CAC.");
-  } else {
-    healthScore -= 35;
-    downgradeReadiness("needs-work");
-    guidance.push("🚨 Negative Contribution After CAC — Each sale loses money after acquisition costs. Unsustainable!");
-  }
-
-  // LTV/CAC Analysis
-  if (ltvCacRatio > 3) {
-    guidance.push("✓ Excellent LTV/CAC (> 3x) — Highly investable unit economics. Investors love this ratio.");
-  } else if (ltvCacRatio > 1.5) {
-    healthScore -= 10;
-    downgradeReadiness("good");
-    guidance.push("📊 Good LTV/CAC (1.5-3x) — Unit economics work. Push toward 3x+ for Series A readiness.");
-  } else if (ltvCacRatio >= 1) {
-    healthScore -= 25;
-    downgradeReadiness("needs-work");
-    guidance.push("⚠️ Marginal LTV/CAC (1-1.5x) — Barely breaking even per customer. Needs improvement before scaling.");
-  } else {
-    healthScore -= 50;
-    investorReadiness = "not-ready";
-    guidance.push("🚨 Critical LTV/CAC (< 1x) — Losing money on every customer! Stop marketing, fix product first.");
-  }
-
-  // CAC Payback Analysis
-  if (cacPaybackMonths < 6) {
-    guidance.push("✓ Fast CAC Payback (< 6 months) — Capital-efficient growth. Great for bootstrapping or lean funding.");
-  } else if (cacPaybackMonths < 12) {
-    healthScore -= 5;
-    guidance.push("📊 Reasonable CAC Payback (6-12 months) — Standard for SaaS. Ensure funding covers this period.");
-  } else if (cacPaybackMonths < 18) {
-    healthScore -= 15;
-    downgradeReadiness("good");
-    guidance.push("⚠️ Slow CAC Payback (12-18 months) — Requires significant working capital. Ensure strong runway.");
-  } else {
-    healthScore -= 25;
-    downgradeReadiness("needs-work");
-    guidance.push("🚨 Very Slow CAC Payback (> 18 months) — Capital-intensive model. Needs strong VC backing.");
-  }
-
-  // Runway Analysis
-  if (runwayMonths === Infinity || runwayMonths > 18) {
-    guidance.push("✓ Excellent Runway (> 18 months) — Strong financial position. Focus on growth milestones.");
-  } else if (runwayMonths > 12) {
-    healthScore -= 5;
-    guidance.push("✓ Good Runway (12-18 months) — Comfortable position. Plan next funding round proactively.");
-  } else if (runwayMonths > 6) {
-    healthScore -= 15;
-    downgradeReadiness("good");
-    guidance.push("⚠️ Limited Runway (6-12 months) — Start fundraising now. Optimize burn rate.");
-  } else {
-    healthScore -= 40;
-    downgradeReadiness("needs-work");
-    guidance.push("🚨 Critical Runway (< 6 months) — Urgent fundraising or severe cost-cutting required.");
-  }
-
-  // Recurring Revenue Analysis
-  if (recurringRatio > 80) {
-    guidance.push("✓ High Recurring Revenue (> 80%) — Predictable revenue model. Premium SaaS valuation multiples.");
-  } else if (recurringRatio > 60) {
-    guidance.push("✓ Good Recurring Base (60-80%) — Strong subscription model with some variable component.");
-  } else if (recurringRatio > 40) {
-    healthScore -= 10;
-    guidance.push("⚠️ Mixed Revenue (40-60% recurring) — Work on converting one-time to recurring revenue.");
-  } else {
-    healthScore -= 20;
-    if (investorReadiness !== "not-ready") investorReadiness = "needs-work";
-    guidance.push("🚨 Low Recurring Revenue (< 40%) — Heavy reliance on new sales. Build subscription offerings.");
-  }
-
-  // Burn Analysis
-  if (netBurn <= 0) {
-    guidance.push("✓ Cash Flow Positive — Revenue covers all costs. Exceptional for early-stage.");
-  } else if (netBurn < 50000) {
-    healthScore -= 10;
-    guidance.push("📊 Controlled Burn (< ₹50k/month) — Manageable burn rate with proper funding.");
-  } else if (netBurn < 200000) {
-    healthScore -= 20;
-    downgradeReadiness("good");
-    guidance.push("⚠️ High Burn (₹50k-200k/month) — Requires significant capital. Ensure strong metrics to justify.");
-  } else {
-    healthScore -= 35;
-    downgradeReadiness("needs-work");
-    guidance.push("🚨 Very High Burn (> ₹200k/month) — Capital-intensive. Need exceptional growth to justify.");
-  }
-
-  // Specific recommendations
-  if (ltvCacRatio < 3 && cac > 0) {
-    const cacReductionTarget = Math.round((1 - (ltvCacRatio / 3)) * 100);
-    guidance.push(`💡 Action: To reach 3x LTV/CAC, reduce CAC by ${cacReductionTarget}% or increase LTV by ${Math.round((3/ltvCacRatio - 1) * 100)}%.`);
-  }
-
-  if (contributionMargin < 20 && contributionMargin > 0) {
-    guidance.push("💡 Action: Low contribution margin after CAC limits scalability. Focus on upsells or cost reduction.");
-  }
-
-  if (ltvCacRatio < 1.5 && cacPaybackMonths > 12) {
-    guidance.push("🚨 Double Warning: Weak unit economics + slow payback = major fundraising challenge. Fix fundamentals first.");
-  }
-
-  // Determine overall status
-  let overall: string;
-  let overallColor: string;
-
-  if (healthScore >= 80) {
-    overall = "Excellent investor readiness! Strong metrics across all key dimensions.";
-    overallColor = "text-success";
-  } else if (healthScore >= 60) {
-    overall = "Good foundation with some metrics needing improvement.";
-    overallColor = "text-amber-400";
-  } else if (healthScore >= 40) {
-    overall = "Needs significant work on fundamentals before investor conversations.";
-    overallColor = "text-orange-400";
-  } else {
-    overall = "Not ready for fundraising. Fix critical issues in unit economics and cash position.";
-    overallColor = "text-danger";
-  }
-
-  // Add health score to guidance
-  guidance.unshift(`📊 Investor Readiness Score: ${Math.max(0, healthScore)}/100`);
-
-  return {
-    overall,
-    overallColor,
-    guidance,
-    healthScore: Math.max(0, healthScore),
-    investorReadiness,
+    netBurn,
+    runwayMonths,
+    burnMultiple,
+    cashEfficiencyRatio,
+    cacPaybackMonths,
+    revenuePerCustomer,
+    servicingCostPerCustomer,
+    churnAdjustedLtv,
+    grossMarginStatus: classifications["Gross Margin"].rag,
+    contributionStatus: classifications["Contribution Margin"].rag,
+    cacStatus: classifications.CAC.rag,
+    ltvStatus: classifications.LTV.rag,
+    ltvCacStatus: classifications["LTV/CAC"].rag,
+    recurringRatioStatus: classifications["Recurring Revenue Ratio"].rag,
+    burnStatus: classifications["Net Burn"].rag,
+    runwayStatus: classifications["Runway (Months)"].rag,
+    classifications,
+    mentoringTips,
+    summary,
+    insights,
   };
 }

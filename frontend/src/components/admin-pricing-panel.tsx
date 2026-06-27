@@ -4,9 +4,10 @@ import { useEffect, useState } from "react";
 import { Loader2, Save, RefreshCcw } from "lucide-react";
 import api from "@/lib/api";
 import type { PlanPriceRow, ModelPriceRow } from "@/lib/pricing-api";
+import { STANDALONE_PRODUCTS } from "@/lib/pricing-catalog";
 
 function paiseToRupees(paise: number | null) {
-  if (paise == null) return "";
+  if (paise == null || paise === 0) return "";
   return String(paise / 100);
 }
 
@@ -116,12 +117,18 @@ export function AdminPricingPanel() {
       </section>
 
       <section>
-        <h3 className="font-semibold mb-4">Per-model pricing (standalone)</h3>
+        <h3 className="font-semibold mb-1">Per-model pricing (standalone workbooks)</h3>
+        <p className="text-xs text-muted-foreground mb-4">
+          One row per Excel workbook. Sub-sheets (e.g. Cashflow Ops inside Cash Flow Statement) are
+          not priced separately. Leave price at 0 until after client consultation — the public page
+          shows &quot;Contact for pricing&quot;.
+        </p>
         <div className="rounded-2xl border border-border overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-muted/50">
               <tr>
                 <th className="text-left py-3 px-4">Model</th>
+                <th className="text-left py-3 px-4">Includes</th>
                 <th className="text-left py-3 px-4">Price (₹)</th>
                 <th className="text-left py-3 px-4">Discount %</th>
                 <th className="text-left py-3 px-4">Discount label</th>
@@ -129,14 +136,19 @@ export function AdminPricingPanel() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {modelPrices.map((mp) => (
-                <ModelPriceEditor
-                  key={mp.modelSlug}
-                  model={mp}
-                  saving={saving === mp.modelSlug}
-                  onSave={(draft) => saveModel(mp.modelSlug, draft)}
-                />
-              ))}
+              {STANDALONE_PRODUCTS.map((product) => {
+                const mp = modelPrices.find((m) => m.modelSlug === product.slug);
+                if (!mp) return null;
+                return (
+                  <ModelPriceEditor
+                    key={mp.modelSlug}
+                    model={mp}
+                    includes={product.includes}
+                    saving={saving === mp.modelSlug}
+                    onSave={(draft) => saveModel(mp.modelSlug, draft)}
+                  />
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -198,10 +210,12 @@ function PlanEditor({
 
 function ModelPriceEditor({
   model,
+  includes,
   saving,
   onSave,
 }: {
   model: ModelPriceRow;
+  includes?: readonly string[];
   saving: boolean;
   onSave: (draft: Record<string, unknown>) => void;
 }) {
@@ -212,6 +226,9 @@ function ModelPriceEditor({
   return (
     <tr>
       <td className="py-3 px-4 font-medium">{model.modelName}</td>
+      <td className="py-3 px-4 text-xs text-muted-foreground max-w-[160px]">
+        {includes?.length ? includes.join(" · ") : "—"}
+      </td>
       <td className="py-3 px-4">
         <input
           type="number"
@@ -245,7 +262,7 @@ function ModelPriceEditor({
           disabled={saving}
           onClick={() =>
             onSave({
-              priceOneTime: rupeesToPaise(price),
+              priceOneTime: rupeesToPaise(price) ?? 0,
               discountPercent: Number(discount) || 0,
               discountLabel: label || null,
             })

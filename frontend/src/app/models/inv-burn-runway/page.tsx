@@ -2,14 +2,15 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import dynamic from "next/dynamic";
-import Link from "next/link";
+import Link from "next/link"
+import { ModelBackLink } from "@/components/model-back-link";
 import { ArrowLeft, Flame, Save, RotateCcw } from "lucide-react";
 import { FieldHint } from "@/components/FieldHint";
 import { HintLabel } from "@/components/HintLabel";
 import { investorHint } from "@/lib/investor-model-hints";
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
-import { formatCurrency } from "@/lib/utils";
+import {formatCurrency, formatChartCurrency} from "@/lib/utils";
 import api from "@/lib/api";
 import { offerSmartResultsAfterCalculate } from "@/lib/smart-results";
 import { loadModelResults, saveModelResults, clearModelResults } from "@/lib/model-link";
@@ -19,6 +20,8 @@ import {
   INPUT_FIELDS,
   calculateBurnRunway,
   createEmptyInputs,
+  formatRunway,
+  isInfiniteRunway,
   type MonthName,
 } from "@/lib/burn-runway-model";
 
@@ -135,9 +138,7 @@ export default function InvBurnRunwayPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-8">
-      <Link href="/models?tier=investor" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
-        <ArrowLeft className="h-4 w-4" /> Back to Models
-      </Link>
+      <ModelBackLink modelSlug="inv-burn-runway" label="Back to Models" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors" />
 
       <div className="flex items-start justify-between gap-4 mb-6">
         <div className="flex items-start gap-4">
@@ -177,7 +178,7 @@ export default function InvBurnRunwayPage() {
           {investorHint("Opening Cash Balance") && <FieldHint hint={investorHint("Opening Cash Balance")!} />}
         </label>
         <div className="relative max-w-xs">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">$</span>
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">₹</span>
           <input type="number" value={openingCash || ""} onChange={(e) => { setOpeningCash(parseFloat(e.target.value) || 0); markDirty(); }}
             placeholder="100000" className="w-full rounded-lg border border-border bg-input pl-7 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/50" />
         </div>
@@ -207,7 +208,7 @@ export default function InvBurnRunwayPage() {
                   {isLocked && <span className="ml-1 text-[10px] text-amber-400/70">(auto-filled)</span>}
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">$</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">₹</span>
                   <input type="number" data-field={field.key}
                     value={monthData[activeMonth][field.key] || ""}
                     onChange={(e) => handleChange(field.key, e.target.value)}
@@ -244,7 +245,7 @@ export default function InvBurnRunwayPage() {
                       row.key === "Net Burn" ? (Number(cur[row.key]) > 0 ? "text-danger" : "text-success") : ""
                     }`}>
                       {row.key === "Runway (months)"
-                        ? (cur[row.key] === Infinity || Number(cur[row.key]) >= 9999 ? "∞" : `${Number(cur[row.key]).toFixed(1)} mo`)
+                        ? formatRunway(cur[row.key] as number | null)
                         : formatCurrency(Number(cur[row.key]) || 0)}
                     </span>
                   </div>
@@ -279,7 +280,7 @@ export default function InvBurnRunwayPage() {
               tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
               grid: { top: 15, right: 15, bottom: 30, left: 55 },
               xAxis: { type: "category", data: results.status.map(s => s.month), axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
-              yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
+              yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => formatChartCurrency(v) }, splitLine: { lineStyle: { color: "#222" } } },
               series: [{
                 type: "line", smooth: true,
                 data: results.status.map(s => s.cumulativeCash),
@@ -297,7 +298,7 @@ export default function InvBurnRunwayPage() {
               tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
               grid: { top: 15, right: 15, bottom: 30, left: 55 },
               xAxis: { type: "category", data: results.status.map(s => s.month), axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
-              yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
+              yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => formatChartCurrency(v) }, splitLine: { lineStyle: { color: "#222" } } },
               series: [{
                 type: "bar",
                 data: results.status.map(s => ({ value: s.netBurn, itemStyle: { color: s.netBurn > 0 ? "#ef4444" : "#34d399", borderRadius: [4, 4, 0, 0] } })),
@@ -315,7 +316,7 @@ export default function InvBurnRunwayPage() {
               yAxis: { type: "value", name: "months", nameTextStyle: { color: "#888", fontSize: 9 }, axisLabel: { color: "#888", fontSize: 10 }, splitLine: { lineStyle: { color: "#222" } } },
               series: [{
                 type: "line", smooth: true,
-                data: results.status.map(s => s.runway === Infinity || s.runway >= 9999 ? 36 : Math.min(s.runway, 36)),
+                data: results.status.map(s => isInfiniteRunway(s.runway) ? 36 : Math.min(s.runway as number, 36)),
                 lineStyle: { color: "#f59e0b", width: 2 }, itemStyle: { color: "#f59e0b" }, symbol: "circle", symbolSize: 5,
                 markLine: { data: [{ yAxis: 12, lineStyle: { color: "#34d399", type: "dashed" } }, { yAxis: 6, lineStyle: { color: "#ef4444", type: "dashed" } }], label: { formatter: (p: any) => `${p.value}mo`, color: "#888", fontSize: 9 }, symbol: "none" },
               }],
@@ -346,7 +347,7 @@ export default function InvBurnRunwayPage() {
               legend: { data: ["Revenue", "Expenses"], textStyle: { color: "#aaa", fontSize: 10 }, top: 0 },
               grid: { top: 30, right: 15, bottom: 30, left: 55 },
               xAxis: { type: "category", data: MONTHS_ORDER, axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
-              yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
+              yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => formatChartCurrency(v) }, splitLine: { lineStyle: { color: "#222" } } },
               series: [
                 { name: "Revenue", type: "bar", data: MONTHS_ORDER.map(m => results.monthlyData[m]?.["Total Revenue"] || 0), itemStyle: { color: "#34d399", borderRadius: [4, 4, 0, 0] } },
                 { name: "Expenses", type: "bar", data: MONTHS_ORDER.map(m => Math.abs(results.monthlyData[m]?.["Total Expenses"] || 0)), itemStyle: { color: "#ef4444", borderRadius: [4, 4, 0, 0] } },
@@ -367,8 +368,8 @@ export default function InvBurnRunwayPage() {
                     axisLine: { lineStyle: { width: 20, color: [[0.25, "#ef4444"], [0.5, "#f59e0b"], [1, "#34d399"]] } },
                     axisTick: { show: false }, splitLine: { show: false },
                     axisLabel: { color: "#888", fontSize: 9, distance: 25 },
-                    detail: { valueAnimation: true, formatter: (v: number) => v >= 24 ? "∞" : `${v} mo`, color: "#e0e0e0", fontSize: 20, offsetCenter: [0, "70%"] },
-                    data: [{ value: latest.runway === Infinity || latest.runway >= 9999 ? 24 : Math.min(Math.round(latest.runway * 10) / 10, 24) }],
+                    detail: { valueAnimation: true, formatter: () => isInfiniteRunway(latest.runway) ? "∞" : `${Math.min(24, Math.round((latest.runway as number) * 10) / 10)} mo`, color: "#e0e0e0", fontSize: 20, offsetCenter: [0, "70%"] },
+                    data: [{ value: isInfiniteRunway(latest.runway) ? 24 : Math.min(Math.round((latest.runway as number) * 10) / 10, 24) }],
                   }],
                 }} />
               </div>

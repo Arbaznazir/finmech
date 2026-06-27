@@ -34,7 +34,8 @@ export interface ModelPriceRow {
   discountPercent: number;
   discountLabel: string | null;
   isActive: boolean;
-  pricing: PriceDisplay;
+  includes?: string[] | null;
+  pricing: PriceDisplay | null;
 }
 
 export type CheckoutPlanKey =

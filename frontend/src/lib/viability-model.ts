@@ -4,6 +4,8 @@
 // Margin of Safety + RAG status + mentoring tips
 // ========================================================
 
+import { viabilityExcelCommentary } from "@/lib/excel-model-content";
+
 export interface ViabilityInputs {
   averagePricePerUnit: number;
   variableCostPerUnit: number;
@@ -55,9 +57,13 @@ export interface ViabilityInsights {
   viabilityLevel: "strong" | "moderate" | "weak" | "critical";
 }
 
+function excelViabilityRag(metricValue: number): RAGStatus {
+  return metricValue < 0.2 ? "RED" : "GREEN";
+}
+
 function getRAG(metrics: {
   contributionMarginPct: number;
-  netProfitLoss: number;
+  netProfitMarginPct: number;
   breakEvenUtilisationPct: number;
   marginOfSafetyPct: number;
 }): {
@@ -67,29 +73,18 @@ function getRAG(metrics: {
   marginSafetyStatus: RAGStatus;
   insights: ViabilityInsights;
 } {
-  const { contributionMarginPct, netProfitLoss, breakEvenUtilisationPct, marginOfSafetyPct } = metrics;
+  const {
+    contributionMarginPct,
+    netProfitMarginPct,
+    breakEvenUtilisationPct,
+    marginOfSafetyPct,
+  } = metrics;
 
-  // === CORRECTED RAG Logic (Matched to Excel) ===
-  
-  // Contribution Margin: > 25% GREEN, > 10% AMBER, else RED
-  let contributionStatus: RAGStatus = "RED";
-  if (contributionMarginPct > 25) contributionStatus = "GREEN";
-  else if (contributionMarginPct > 10) contributionStatus = "AMBER";
-
-  // Net Profit: > 0 GREEN, > -10000 AMBER, else RED
-  let netProfitStatus: RAGStatus = "RED";
-  if (netProfitLoss > 0) netProfitStatus = "GREEN";
-  else if (netProfitLoss > -10000) netProfitStatus = "AMBER";
-
-  // Break-even Utilization: < 70% GREEN, < 100% AMBER, else RED
-  let breakevenStatus: RAGStatus = "RED";
-  if (breakEvenUtilisationPct < 70) breakevenStatus = "GREEN";
-  else if (breakEvenUtilisationPct < 100) breakevenStatus = "AMBER";
-
-  // Margin of Safety: > 20% GREEN, > 0% AMBER, else RED
-  let marginSafetyStatus: RAGStatus = "RED";
-  if (marginOfSafetyPct > 20) marginSafetyStatus = "GREEN";
-  else if (marginOfSafetyPct > 0) marginSafetyStatus = "AMBER";
+  // Excel: =IF(B<0.2,"RED","GREEN") on each metric row (no AMBER)
+  const contributionStatus = excelViabilityRag(contributionMarginPct);
+  const netProfitStatus = excelViabilityRag(netProfitMarginPct);
+  const breakevenStatus = excelViabilityRag(breakEvenUtilisationPct);
+  const marginSafetyStatus = excelViabilityRag(marginOfSafetyPct);
 
   // Generate comprehensive insights
   const insights = generateInsights(metrics, {
@@ -122,104 +117,38 @@ function generateInsights(
     marginSafetyStatus: RAGStatus;
   }
 ): ViabilityInsights {
-  const { contributionMarginPct, netProfitLoss, breakEvenUtilisationPct, marginOfSafetyPct } = metrics;
   const guidance: string[] = [];
-  let healthScore = 100;
-  let viabilityLevel: "strong" | "moderate" | "weak" | "critical" = "strong";
 
-  // Contribution Margin Analysis
-  if (status.contributionStatus === "RED") {
-    healthScore -= 35;
-    viabilityLevel = "critical";
-    guidance.push("🚨 Critical Contribution Margin — Each unit contributes very little toward fixed costs. Immediate price increase or cost reduction required.");
-  } else if (status.contributionStatus === "AMBER") {
-    healthScore -= 15;
-    viabilityLevel = "weak";
-    guidance.push("⚠️ Low Contribution Margin — Unit profitability is weak. Consider premium pricing or reducing variable costs.");
-  } else {
-    guidance.push("✓ Healthy Contribution Margin — Each sale makes a meaningful contribution to covering fixed costs.");
+  const ragRows: { metric: string; rag: RAGStatus }[] = [
+    { metric: "Contribution Margin %", rag: status.contributionStatus },
+    { metric: "Net Profit Margin %", rag: status.netProfitStatus },
+    { metric: "Break-even Utilisation %", rag: status.breakevenStatus },
+    { metric: "Margin of Safety %", rag: status.marginSafetyStatus },
+  ];
+
+  for (const { metric, rag } of ragRows) {
+    guidance.push(...viabilityExcelCommentary(metric, rag));
   }
 
-  // Net Profit Analysis
-  if (status.netProfitStatus === "RED") {
-    healthScore -= 30;
-    viabilityLevel = viabilityLevel === "critical" ? "critical" : "weak";
-    guidance.push("🚨 Significant Losses — Monthly losses exceed ₹10,000. Urgent cost control or revenue boost needed.");
-  } else if (status.netProfitStatus === "AMBER") {
-    healthScore -= 10;
-    if (viabilityLevel === "strong") viabilityLevel = "moderate";
-    guidance.push("⚠️ Marginal Losses — Small monthly losses. Monitor closely and take corrective action.");
-  } else {
-    guidance.push("✓ Profitable — Business is generating positive monthly profit.");
-  }
-
-  // Break-even Utilization Analysis
-  if (status.breakevenStatus === "RED") {
-    healthScore -= 25;
-    viabilityLevel = viabilityLevel === "critical" ? "critical" : "weak";
-    guidance.push("🚨 High Break-even Burden — You need to sell more than current capacity just to break even. Critical issue.");
-  } else if (status.breakevenStatus === "AMBER") {
-    healthScore -= 10;
-    if (viabilityLevel === "strong") viabilityLevel = "moderate";
-    guidance.push("⚠️ Elevated Break-even — Most of your sales capacity goes to covering costs. Limited room for error.");
-  } else {
-    guidance.push("✓ Comfortable Break-even — You have substantial capacity above break-even for profit generation.");
-  }
-
-  // Margin of Safety Analysis
-  if (status.marginSafetyStatus === "RED") {
-    healthScore -= 20;
-    viabilityLevel = viabilityLevel === "critical" ? "critical" : "weak";
-    guidance.push("🚨 Negative Margin of Safety — You're already below break-even. Any sales drop worsens losses.");
-  } else if (status.marginSafetyStatus === "AMBER") {
-    healthScore -= 10;
-    if (viabilityLevel === "strong") viabilityLevel = "moderate";
-    guidance.push("⚠️ Thin Safety Margin — Sales can only drop slightly before hitting losses. Build buffer.");
-  } else {
-    guidance.push("✓ Good Safety Margin — Sales can drop significantly before you start losing money.");
-  }
-
-  // Specific recommendations based on metrics
-  if (contributionMarginPct < 5 && contributionMarginPct > 0) {
-    guidance.push("💡 Action: With such low contribution per unit, focus on either 20%+ price increase or 15%+ variable cost reduction.");
-  }
-
-  if (breakEvenUtilisationPct > 100) {
-    const extraUnitsNeeded = Math.ceil((breakEvenUtilisationPct - 100) / 100 * 100); // approximate
-    guidance.push(`💡 Action: You need to increase sales capacity or units sold by ${(breakEvenUtilisationPct - 100).toFixed(1)}% just to break even.`);
-  }
-
-  if (marginOfSafetyPct < 0 && marginOfSafetyPct > -20) {
-    guidance.push("💡 Action: You're slightly below break-even. A small sales increase or modest cost cut can turn this around.");
-  }
-
-  // Determine overall status
-  let overall: string;
-  let overallColor: string;
-
-  if (healthScore >= 80) {
-    overall = "Strong business viability! Healthy margins and comfortable break-even position.";
-    overallColor = "text-success";
-  } else if (healthScore >= 60) {
-    overall = "Moderate viability. Some metrics need attention but fundamentals are okay.";
-    overallColor = "text-amber-400";
-  } else if (healthScore >= 40) {
-    overall = "Weak viability. Multiple warning signs require immediate action.";
-    overallColor = "text-orange-400";
-  } else {
-    overall = "Critical viability issues. Business model needs fundamental restructuring.";
-    overallColor = "text-danger";
-  }
-
-  // Add health score to guidance
-  guidance.unshift(`📊 Viability Health Score: ${Math.max(0, healthScore)}/100`);
+  const worst =
+    ragRows.find((r) => r.rag === "RED") ??
+    ragRows.find((r) => r.rag === "AMBER") ??
+    ragRows[0];
+  const worstMsgs = viabilityExcelCommentary(worst.metric, worst.rag);
+  const overall = worstMsgs[0]?.replace(/^(GREEN|AMBER|RED): /, "") ?? "";
+  const overallColor =
+    worst.rag === "GREEN"
+      ? "text-success"
+      : worst.rag === "AMBER"
+        ? "text-amber-400"
+        : "text-danger";
 
   return {
     overall,
     overallColor,
     guidance,
-    healthScore: Math.max(0, healthScore),
-    viabilityLevel,
+    healthScore: 0,
+    viabilityLevel: worst.rag === "GREEN" ? "strong" : worst.rag === "AMBER" ? "moderate" : "critical",
   };
 }
 
@@ -235,18 +164,23 @@ export function calculateViability(inputs: ViabilityInputs): ViabilityResults {
 
   const netProfitLoss = totalContribution - fixed;
 
-  const breakEvenUnits = contributionPerUnit > 0 ? Math.ceil(fixed / contributionPerUnit) : Infinity;
+  const breakEvenUnits = contributionPerUnit > 0 ? fixed / contributionPerUnit : Infinity;
   const breakEvenRevenue = breakEvenUnits === Infinity ? Infinity : breakEvenUnits * price;
 
-  const marginOfSafetyPct = totalRevenue > 0
-    ? ((totalRevenue - (breakEvenRevenue === Infinity ? totalRevenue * 2 : breakEvenRevenue)) / totalRevenue) * 100
-    : -100;
+  const marginOfSafetyPct =
+    units > 0 ? ((units - (breakEvenUnits === Infinity ? units * 2 : breakEvenUnits)) / units) * 100 : -100;
 
   const netProfitMarginPct = totalRevenue > 0 ? (netProfitLoss / totalRevenue) * 100 : 0;
 
-  const breakEvenUtilisationPct = units > 0 ? (breakEvenUnits === Infinity ? 999 : (breakEvenUnits / units) * 100) : 0;
+  const breakEvenUtilisationPct =
+    units > 0 ? (breakEvenUnits === Infinity ? 999 : (breakEvenUnits / units) * 100) : 0;
 
-  const rag = getRAG({ contributionMarginPct, netProfitLoss, breakEvenUtilisationPct, marginOfSafetyPct });
+  const rag = getRAG({
+    contributionMarginPct,
+    netProfitMarginPct,
+    breakEvenUtilisationPct,
+    marginOfSafetyPct,
+  });
 
   return {
     averagePricePerUnit: price,

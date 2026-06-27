@@ -2,17 +2,18 @@
 
 import { useState, useEffect, useCallback } from "react";
 import dynamic from "next/dynamic";
-import Link from "next/link";
+import Link from "next/link"
+import { ModelBackLink } from "@/components/model-back-link";
 import {
   ArrowLeft, Users, Save, RotateCcw, CheckCircle,
   AlertTriangle, XCircle, Info,
 } from "lucide-react";
 import { FieldHint } from "@/components/FieldHint";
 import { HintLabel } from "@/components/HintLabel";
-import { standaloneHint } from "@/lib/standalone-model-hints";
+import { useModelHints } from "@/hooks/use-model-hints";
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, formatChartCurrency } from "@/lib/utils";
 import api from "@/lib/api";
 import { useSavedModel } from "@/lib/use-saved-model";
 import { offerSmartResultsAfterCalculate } from "@/lib/smart-results";
@@ -60,6 +61,7 @@ function ragIcon(s: RAGStatus) {
 
 export default function UnitEconomicsPage() {
   const { user, hydrate } = useAuth();
+  const { hint } = useModelHints("unit-economics");
   const [activeMonth, setActiveMonth] = useState<MonthName>("Apr");
   const [monthsData, setMonthsData] = useState<Record<string, Record<string, number>>>({});
   const [results, setResults] = useState<UnitEconomicsResults | null>(null);
@@ -150,9 +152,7 @@ export default function UnitEconomicsPage() {
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
-      <Link href="/models?tier=standalone" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
-        <ArrowLeft className="h-4 w-4" /> Back to Models
-      </Link>
+      <ModelBackLink modelSlug="unit-economics" label="Back to Models" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors" />
 
       <div className="flex items-start justify-between gap-4 mb-8">
         <div className="flex items-start gap-4">
@@ -252,7 +252,7 @@ export default function UnitEconomicsPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 px-1">
                   {fields.map((field) => (
                     <div key={field.key}>
-                      <label className="flex items-center text-xs text-muted-foreground mb-1">{field.label}{standaloneHint(field.key) && <FieldHint hint={standaloneHint(field.key)!} />}</label>
+                      <label className="flex items-center text-xs text-muted-foreground mb-1">{field.label}{hint(field.key) && <FieldHint hint={hint(field.key)!} />}</label>
                       <div className="relative">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">{field.prefix}</span>
                         <input
@@ -318,7 +318,7 @@ export default function UnitEconomicsPage() {
                   return (
                     <tr key={field.key} className={`border-b border-border/30 ${isBold ? "bg-background/30" : ""}`}>
                       <td className={`px-4 py-2.5 sticky left-0 bg-card ${isBold ? "font-semibold bg-background/30" : "text-muted-foreground"}`}>
-                        <HintLabel hint={standaloneHint(field.key)} className={isBold ? "font-semibold" : ""}>{field.label}</HintLabel>
+                        <HintLabel hint={hint(field.key)} className={isBold ? "font-semibold" : ""}>{field.label}</HintLabel>
                       </td>
                       {results.monthsAdded.map((m) => {
                         const val = results.monthlyData[m]?.[field.key];
@@ -350,13 +350,13 @@ export default function UnitEconomicsPage() {
               <div className="grid grid-cols-3 gap-4">
                 <div className="rounded-xl bg-card border border-border p-4 text-center">
                   <p className="text-xs text-muted-foreground mb-1 flex items-center justify-center">
-                    <HintLabel hint={standaloneHint("ltvCacRatio")}>Latest LTV/CAC</HintLabel>
+                    <HintLabel hint={hint("ltvCacRatio")}>Latest LTV/CAC</HintLabel>
                   </p>
                   <p className="text-2xl font-bold">{last.ltvCacRatio.toFixed(1)}x</p>
                 </div>
                 <div className="rounded-xl bg-card border border-border p-4 text-center">
                   <p className="text-xs text-muted-foreground mb-1 flex items-center justify-center">
-                    <HintLabel hint={standaloneHint("Churn Rate %")}>Latest Churn</HintLabel>
+                    <HintLabel hint={hint("Churn Rate %")}>Latest Churn</HintLabel>
                   </p>
                   <p className="text-2xl font-bold">{last.churnRate.toFixed(1)}%</p>
                 </div>
@@ -479,7 +479,7 @@ export default function UnitEconomicsPage() {
                     legend: { data: ["CAC", "LTV"], textStyle: { color: "#aaa", fontSize: 10 }, top: 0 },
                     grid: { top: 30, right: 15, bottom: 30, left: 55 },
                     xAxis: { type: "category", data: results.monthsAdded, axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
-                    yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => `$${v.toLocaleString()}` }, splitLine: { lineStyle: { color: "#222" } } },
+                    yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: formatChartCurrency }, splitLine: { lineStyle: { color: "#222" } } },
                     series: [
                       { name: "CAC", type: "bar", data: results.monthsAdded.map(m => results.monthlyData[m]?.["CAC"] || 0), itemStyle: { color: "#ef4444", borderRadius: [4, 4, 0, 0] } },
                       { name: "LTV", type: "line", data: results.monthsAdded.map(m => results.monthlyData[m]?.["LTV"] || 0), smooth: true, lineStyle: { color: "#34d399", width: 2 }, itemStyle: { color: "#34d399" }, symbol: "circle", symbolSize: 5 },

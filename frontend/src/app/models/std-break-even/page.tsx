@@ -2,14 +2,15 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import dynamic from "next/dynamic";
-import Link from "next/link";
+import Link from "next/link"
+import { ModelBackLink } from "@/components/model-back-link";
 import { ArrowLeft, TrendingUp, Save, RotateCcw, CheckCircle, XCircle } from "lucide-react";
 import { FieldHint } from "@/components/FieldHint";
 import { HintLabel } from "@/components/HintLabel";
 import { standardHint } from "@/lib/standard-model-hints";
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
-import { formatCurrency } from "@/lib/utils";
+import {formatCurrency, formatChartCurrency} from "@/lib/utils";
 import api from "@/lib/api";
 import { offerSmartResultsAfterCalculate } from "@/lib/smart-results";
 import { saveModelResults, clearModelResults } from "@/lib/model-link";
@@ -23,9 +24,9 @@ import {
 } from "@/lib/breakeven-model";
 
 const INPUT_FIELDS: { key: keyof BreakEvenMonthInputs; label: string; prefix: string }[] = [
-  { key: "pricePerUnit", label: "Price Per Unit", prefix: "$" },
-  { key: "variableCostPerUnit", label: "Variable Cost Per Unit", prefix: "$" },
-  { key: "fixedCostMonthly", label: "Fixed Cost (Monthly)", prefix: "$" },
+  { key: "pricePerUnit", label: "Price Per Unit", prefix: "₹" },
+  { key: "variableCostPerUnit", label: "Variable Cost Per Unit", prefix: "₹" },
+  { key: "fixedCostMonthly", label: "Fixed Cost (Monthly)", prefix: "₹" },
   { key: "unitsSoldForProjection", label: "Units Sold (for projection)", prefix: "#" },
 ];
 
@@ -96,9 +97,7 @@ export default function StdBreakEvenPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-8">
-      <Link href="/models?tier=standard" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
-        <ArrowLeft className="h-4 w-4" /> Back to Models
-      </Link>
+      <ModelBackLink modelSlug="std-break-even" label="Back to Models" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors" />
 
       <div className="flex items-start justify-between gap-4 mb-6">
         <div className="flex items-start gap-4">
@@ -274,7 +273,7 @@ export default function StdBreakEvenPage() {
                 tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
                 grid: { top: 15, right: 15, bottom: 30, left: 55 },
                 xAxis: { type: "category", data: MONTHS_ORDER, axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
-                yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
+                yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => formatChartCurrency(v) }, splitLine: { lineStyle: { color: "#222" } } },
                 series: [{
                   type: "bar",
                   data: MONTHS_ORDER.map(m => {
@@ -300,7 +299,7 @@ export default function StdBreakEvenPage() {
                   legend: { data: ["Revenue", "Total Cost"], textStyle: { color: "#aaa", fontSize: 10 }, top: 0 },
                   grid: { top: 30, right: 15, bottom: 25, left: 55 },
                   xAxis: { type: "category", name: "Units", nameTextStyle: { color: "#888", fontSize: 9 }, data: cur.projection.map(r => r.units.toLocaleString()), axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
-                  yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
+                  yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => formatChartCurrency(v) }, splitLine: { lineStyle: { color: "#222" } } },
                   series: [
                     { name: "Revenue", type: "line", data: cur.projection.map(r => r.revenue), smooth: true, lineStyle: { color: "#34d399", width: 2 }, itemStyle: { color: "#34d399" }, symbol: "circle", symbolSize: 4 },
                     { name: "Total Cost", type: "line", data: cur.projection.map(r => r.totalCost), smooth: true, lineStyle: { color: "#ef4444", width: 2 }, itemStyle: { color: "#ef4444" }, symbol: "circle", symbolSize: 4 },
@@ -320,7 +319,7 @@ export default function StdBreakEvenPage() {
                   tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
                   grid: { top: 15, right: 15, bottom: 35, left: 55 },
                   xAxis: { type: "category", data: ["Price/Unit", "Var Cost", "Contribution", "Fixed", "Profit"], axisLabel: { color: "#888", fontSize: 9 }, axisLine: { lineStyle: { color: "#333" } } },
-                  yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => `$${v.toLocaleString()}` }, splitLine: { lineStyle: { color: "#222" } } },
+                  yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => formatChartCurrency(v) }, splitLine: { lineStyle: { color: "#222" } } },
                   series: [{
                     type: "bar", barWidth: 28,
                     data: [
@@ -330,7 +329,7 @@ export default function StdBreakEvenPage() {
                       { value: cur.fixedCostMonthly, itemStyle: { color: "#f59e0b", borderRadius: [4, 4, 0, 0] } },
                       { value: cur.profitAtUnits, itemStyle: { color: cur.profitAtUnits >= 0 ? "#34d399" : "#ef4444", borderRadius: [4, 4, 0, 0] } },
                     ],
-                    label: { show: true, position: "top", color: "#aaa", fontSize: 9, formatter: (p: any) => `$${p.value.toLocaleString()}` },
+                    label: { show: true, position: "top", color: "#aaa", fontSize: 9, formatter: (p: any) => formatChartCurrency(p.value) },
                   }],
                 }}
               />

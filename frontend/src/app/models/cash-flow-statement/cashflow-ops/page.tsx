@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import dynamic from "next/dynamic";
-import Link from "next/link";
+import Link from "next/link"
+import { ModelBackLink } from "@/components/model-back-link";
 import {
   ArrowLeft, Calculator, Save, RotateCcw, ChevronDown, ChevronUp,
   ArrowRightLeft, CheckCircle,
@@ -13,12 +14,13 @@ import api from "@/lib/api";
 import { useSavedModel } from "@/lib/use-saved-model";
 import { offerSmartResultsAfterCalculate } from "@/lib/smart-results";
 import { FieldHint } from "@/components/FieldHint";
-import { FIELD_HINTS } from "@/lib/field-hints";
+import { HintLabel } from "@/components/HintLabel";
+import { useModelHints } from "@/hooks/use-model-hints";
 import {
   CF_OPS_MONTHS,
   CF_OPS_INPUT_FIELDS,
+  CF_OPS_OUTPUT_FIELDS,
   calculateCFOps,
-  computeCFOpsMonth,
   createEmptyCFOpsInputs,
   autoFillFromCommonUtility,
   type CFOpsResults,
@@ -30,9 +32,9 @@ type TabView = "input" | "monthly" | "charts";
 
 export default function CashflowOpsPage() {
   const { user, hydrate } = useAuth();
+  const { hint } = useModelHints("cashflow-ops");
   const [activeMonth, setActiveMonth] = useState<string>("Apr");
   const [monthsData, setMonthsData] = useState<Record<string, Record<string, number>>>({});
-  const [openingCash, setOpeningCash] = useState(0);
   const [results, setResults] = useState<CFOpsResults | null>(null);
   const [activeTab, setActiveTab] = useState<TabView>("input");
   const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({});
@@ -41,9 +43,8 @@ export default function CashflowOpsPage() {
     modelSlug: "cashflow-ops",
     onLoad: (data: Record<string, unknown>) => {
       if (data.monthsData) setMonthsData(data.monthsData as Record<string, Record<string, number>>);
-      if (typeof data.openingCash === "number") setOpeningCash(data.openingCash);
     },
-    getState: useCallback(() => ({ monthsData, openingCash }), [monthsData, openingCash]),
+    getState: useCallback(() => ({ monthsData }), [monthsData]),
   });
 
   useEffect(() => { hydrate(); }, [hydrate]);
@@ -79,9 +80,9 @@ export default function CashflowOpsPage() {
 
   const handleCalculate = useCallback(() => {
     if (Object.keys(monthsData).length === 0) return;
-    const result = calculateCFOps(monthsData, openingCash);
+    const result = calculateCFOps(monthsData);
     setResults(result);
-    offerSmartResultsAfterCalculate("cashflow-ops", { monthsData, openingCash }, result, {
+    offerSmartResultsAfterCalculate("cashflow-ops", { monthsData }, result, {
       modelName: "Cash Flow Statement — Operations",
       tier: "standalone",
     });
@@ -90,7 +91,7 @@ export default function CashflowOpsPage() {
     // Also save to localStorage for Consolidated CFO to access
     localStorage.setItem('cashflowOps', JSON.stringify(result));
     persistState();
-  }, [monthsData, openingCash]);
+  }, [monthsData]);
 
   const handleReset = () => {
     setMonthsData({});
@@ -114,11 +115,10 @@ export default function CashflowOpsPage() {
     try {
       await api.post("/calculations", {
         modelSlug: "cashflow-ops",
-        inputs: { openingCash, monthsData },
+        inputs: { monthsData },
         outputs: {
           monthlyData: results.monthlyData,
           monthsAdded: results.monthsAdded,
-          openingCash: results.openingCash,
         },
       });
       await persistState();
@@ -139,32 +139,10 @@ export default function CashflowOpsPage() {
 
   const currentInputs = monthsData[activeMonth] || createEmptyCFOpsInputs();
 
-  // Compute opening balance for the active month
-  // For the first month (Apr) it's the user-entered openingCash
-  // For subsequent months it's the previous month's closing balance
-  const getOpeningBalanceForMonth = (month: string): number => {
-    const idx = CF_OPS_MONTHS.indexOf(month as typeof CF_OPS_MONTHS[number]);
-    if (idx === 0) return openingCash;
-    let running = openingCash;
-    for (let i = 0; i < idx; i++) {
-      const m = CF_OPS_MONTHS[i];
-      const data = monthsData[m];
-      if (!data) break;
-      const { endingCash } = computeCFOpsMonth(data, running);
-      running = endingCash;
-    }
-    return running;
-  };
-
-  const activeOpeningBalance = getOpeningBalanceForMonth(activeMonth);
-  const isFirstMonth = CF_OPS_MONTHS.indexOf(activeMonth as typeof CF_OPS_MONTHS[number]) === 0;
-
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
-      <Link href="/models/cash-flow-statement" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors">
-        <ArrowLeft className="h-4 w-4" /> Back to Cash Flow
-      </Link>
+      <ModelBackLink modelSlug="cashflow-ops" fallbackHref="/models/cash-flow-statement" label="Back to Cash Flow" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors" />
 
       <div className="flex items-start justify-between gap-4 mb-6">
         <div className="flex items-start gap-4">
@@ -250,41 +228,6 @@ export default function CashflowOpsPage() {
               </button>
             </div>
 
-            {/* Opening Cash */}
-            <div className="mb-5 rounded-lg bg-background/50 p-4 border border-border/50">
-              <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-                Opening Cash Balance ({activeMonth} 1st)
-              </label>
-              <div className="relative max-w-xs">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">$</span>
-                {isFirstMonth ? (
-                  <input
-                    type="number"
-                    value={openingCash || ""}
-                    onChange={(e) => { setOpeningCash(parseFloat(e.target.value) || 0); markDirty(); }}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        document.querySelector<HTMLInputElement>('[data-field-index="0"]')?.focus();
-                      }
-                    }}
-                    placeholder="0"
-                    className="w-full rounded-lg border border-border bg-input pl-7 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-                  />
-                ) : (
-                  <input
-                    type="number"
-                    value={activeOpeningBalance}
-                    readOnly
-                    className="w-full rounded-lg border border-border bg-muted/50 pl-7 pr-3 py-2 text-sm text-muted-foreground cursor-not-allowed"
-                  />
-                )}
-              </div>
-              {!isFirstMonth && (
-                <p className="text-xs text-muted-foreground mt-1">Auto-carried from previous month&apos;s closing balance</p>
-              )}
-            </div>
-
             {/* Input Categories */}
             {Object.entries(categories).map(([category, fields]) => (
               <div key={category} className="mb-4">
@@ -304,10 +247,10 @@ export default function CashflowOpsPage() {
                       <div key={field.key}>
                         <label className="flex items-center text-xs text-muted-foreground mb-1">
                           {field.label}
-                          {FIELD_HINTS[field.key as string] && <FieldHint hint={FIELD_HINTS[field.key as string]} />}
+                          {hint(field.key as string) && <FieldHint hint={hint(field.key as string)!} />}
                         </label>
                         <div className="relative">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">$</span>
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">₹</span>
                           <input
                             type="number"
                             data-field-index={fieldIndex}
@@ -351,10 +294,6 @@ export default function CashflowOpsPage() {
       {/* ============ MONTHLY VIEW TAB ============ */}
       {activeTab === "monthly" && results && (
         <div className="rounded-2xl border border-border bg-card overflow-hidden">
-          <div className="px-4 py-3 border-b border-border bg-background/50 text-sm">
-            <span className="text-muted-foreground">Opening Cash: </span>
-            <span className="font-semibold">{formatCurrency(results.openingCash)}</span>
-          </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -366,18 +305,10 @@ export default function CashflowOpsPage() {
                 </tr>
               </thead>
               <tbody>
-                {[
-                  { key: "Total Cash inflow", label: "Total Cash Inflow" },
-                  { key: "Total Outflows", label: "Total Outflows" },
-                  { key: "Net Cash Flow from Operating Activities (CFO)", label: "Net CFO", bold: true },
-                  { key: "Cash Flow from Investing Activities (CFI)", label: "Net CFI" },
-                  { key: "Cash Flow from Financing Activities (CFF)", label: "Net CFF" },
-                  { key: "Net Cash Flow", label: "Net Cash Flow", bold: true },
-                  { key: "Closing Balance", label: "Closing Balance", bold: true },
-                ].map((row) => (
+                {CF_OPS_OUTPUT_FIELDS.map((row) => (
                   <tr key={row.key} className={`border-b border-border/30 ${row.bold ? "bg-background/30" : ""}`}>
                     <td className={`px-4 py-2.5 sticky left-0 bg-card ${row.bold ? "font-semibold" : "text-muted-foreground"}`}>
-                      {row.label}
+                      <HintLabel hint={hint(row.key)} className={row.bold ? "font-semibold" : ""}>{row.label}</HintLabel>
                     </td>
                     {results.monthsAdded.map((m) => {
                       const val = results.monthlyData[m]?.[row.key];
@@ -400,21 +331,20 @@ export default function CashflowOpsPage() {
       {/* ============ CHARTS TAB ============ */}
       {activeTab === "charts" && results && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* CFO/CFI/CFF Lines */}
+          {/* Inflow vs Outflow */}
           <div className="rounded-2xl border border-border bg-card p-5">
-            <h3 className="font-semibold text-sm mb-3">Monthly CFO, CFI & CFF</h3>
+            <h3 className="font-semibold text-sm mb-3">Cash Inflow vs Outflow</h3>
             <ReactECharts
               style={{ height: 260 }}
               option={{
                 tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
-                legend: { data: ["CFO", "CFI", "CFF"], textStyle: { color: "#aaa", fontSize: 10 }, top: 0 },
+                legend: { data: ["Inflow", "Outflow"], textStyle: { color: "#aaa", fontSize: 10 }, top: 0 },
                 grid: { top: 30, right: 15, bottom: 30, left: 55 },
                 xAxis: { type: "category", data: results.monthsAdded, axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
-                yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
+                yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000 ? `₹${(v/1000).toFixed(0)}k` : `₹${v}` }, splitLine: { lineStyle: { color: "#222" } } },
                 series: [
-                  { name: "CFO", type: "line", smooth: true, data: results.monthsAdded.map(m => results.monthlyData[m]?.["Net Cash Flow from Operating Activities (CFO)"] || 0), lineStyle: { color: "#22d3ee", width: 2 }, itemStyle: { color: "#22d3ee" }, symbol: "circle", symbolSize: 4 },
-                  { name: "CFI", type: "line", smooth: true, data: results.monthsAdded.map(m => results.monthlyData[m]?.["Cash Flow from Investing Activities (CFI)"] || 0), lineStyle: { color: "#a78bfa", width: 2 }, itemStyle: { color: "#a78bfa" }, symbol: "circle", symbolSize: 4 },
-                  { name: "CFF", type: "line", smooth: true, data: results.monthsAdded.map(m => results.monthlyData[m]?.["Cash Flow from Financing Activities (CFF)"] || 0), lineStyle: { color: "#f59e0b", width: 2 }, itemStyle: { color: "#f59e0b" }, symbol: "circle", symbolSize: 4 },
+                  { name: "Inflow", type: "bar", data: results.monthsAdded.map(m => results.monthlyData[m]?.["Total Cash inflow"] || 0), itemStyle: { color: "#34d399", borderRadius: [4, 4, 0, 0] } },
+                  { name: "Outflow", type: "bar", data: results.monthsAdded.map(m => results.monthlyData[m]?.["Total Outflows"] || 0), itemStyle: { color: "#ef4444", borderRadius: [4, 4, 0, 0] } },
                 ],
               }}
             />
@@ -429,7 +359,7 @@ export default function CashflowOpsPage() {
                 tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
                 grid: { top: 15, right: 15, bottom: 30, left: 55 },
                 xAxis: { type: "category", data: results.monthsAdded, axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
-                yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
+                yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000 ? `₹${(v/1000).toFixed(0)}k` : `₹${v}` }, splitLine: { lineStyle: { color: "#222" } } },
                 series: [{
                   type: "line", smooth: true,
                   data: results.monthsAdded.map(m => results.monthlyData[m]?.["Closing Balance"] || 0),
@@ -451,11 +381,11 @@ export default function CashflowOpsPage() {
                 tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
                 grid: { top: 15, right: 15, bottom: 30, left: 55 },
                 xAxis: { type: "category", data: results.monthsAdded, axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
-                yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => `$${(v/1000).toFixed(0)}k` }, splitLine: { lineStyle: { color: "#222" } } },
+                yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => `₹${(v/1000).toFixed(0)}k` }, splitLine: { lineStyle: { color: "#222" } } },
                 series: [{
                   type: "bar",
                   data: results.monthsAdded.map(m => {
-                    const val = results.monthlyData[m]?.["Net Cash Flow"] || 0;
+                    const val = results.monthlyData[m]?.["Net Cash Flow (Inflow - Outflow)"] || 0;
                     return { value: val, itemStyle: { color: val >= 0 ? "#34d399" : "#ef4444", borderRadius: [4, 4, 0, 0] } };
                   }),
                 }],

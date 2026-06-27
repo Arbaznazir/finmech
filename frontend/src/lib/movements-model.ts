@@ -26,17 +26,17 @@ export interface MovementsMonthInputs {
 
 export const INPUT_FIELDS: { key: string; label: string; category: string; prefix: string }[] = [
   // Revenue & COGS — auto-filled from Common Utility
-  { key: "Revenue", label: "Revenue", category: "Income (from Common Utility)", prefix: "$" },
-  { key: "COGS", label: "COGS", category: "Income (from Common Utility)", prefix: "$" },
+  { key: "Revenue", label: "Revenue", category: "Income (from Common Utility)", prefix: "₹" },
+  { key: "COGS", label: "COGS", category: "Income (from Common Utility)", prefix: "₹" },
   // Working Capital
-  { key: "Trade Receivables (Opening)", label: "Trade Receivables (Opening)", category: "Trade Receivables", prefix: "$" },
-  { key: "Trade Receivables (Closing)", label: "Trade Receivables (Closing)", category: "Trade Receivables", prefix: "$" },
-  { key: "Inventory (Opening)", label: "Inventory (Opening)", category: "Inventory", prefix: "$" },
-  { key: "Inventory (Closing)", label: "Inventory (Closing)", category: "Inventory", prefix: "$" },
-  { key: "Trade Payables (Opening)", label: "Trade Payables (Opening)", category: "Trade Payables", prefix: "$" },
-  { key: "Trade Payables (Closing)", label: "Trade Payables (Closing)", category: "Trade Payables", prefix: "$" },
+  { key: "Trade Receivables (Opening)", label: "Trade Receivables (Opening)", category: "Trade Receivables", prefix: "₹" },
+  { key: "Trade Receivables (Closing)", label: "Trade Receivables (Closing)", category: "Trade Receivables", prefix: "₹" },
+  { key: "Inventory (Opening)", label: "Inventory (Opening)", category: "Inventory", prefix: "₹" },
+  { key: "Inventory (Closing)", label: "Inventory (Closing)", category: "Inventory", prefix: "₹" },
+  { key: "Trade Payables (Opening)", label: "Trade Payables (Opening)", category: "Trade Payables", prefix: "₹" },
+  { key: "Trade Payables (Closing)", label: "Trade Payables (Closing)", category: "Trade Payables", prefix: "₹" },
   // CapEx
-  { key: "CapEx", label: "Capital Expenditure", category: "Investing", prefix: "$" },
+  { key: "CapEx", label: "Capital Expenditure", category: "Investing", prefix: "₹" },
 ];
 
 export function createEmptyInputs(): MovementsMonthInputs {

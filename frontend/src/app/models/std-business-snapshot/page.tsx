@@ -2,14 +2,15 @@
 
 import { useState, useEffect, useCallback } from "react";
 import dynamic from "next/dynamic";
-import Link from "next/link";
+import Link from "next/link"
+import { ModelBackLink } from "@/components/model-back-link";
 import { ArrowLeft, LayoutDashboard, Save, RotateCcw, RefreshCw } from "lucide-react";
 import { FieldHint } from "@/components/FieldHint";
 import { HintLabel } from "@/components/HintLabel";
 import { standardHint } from "@/lib/standard-model-hints";
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
-import { formatCurrency } from "@/lib/utils";
+import {formatCurrency, formatChartCurrency} from "@/lib/utils";
 import api from "@/lib/api";
 import { loadModelResults, saveModelResults, clearModelResults } from "@/lib/model-link";
 import { useSavedModel } from "@/lib/use-saved-model";
@@ -191,18 +192,18 @@ export default function StdBusinessSnapshotPage() {
   };
 
   const fields: { key: keyof SnapshotInputs; label: string; prefix: string; type?: string }[] = [
-    { key: "monthlyRevenue", label: "Monthly Revenue", prefix: "$" },
+    { key: "monthlyRevenue", label: "Monthly Revenue", prefix: "₹" },
     { key: "grossMargin", label: "Gross Margin %", prefix: "%" },
     { key: "netMargin", label: "Net Margin %", prefix: "%" },
-    { key: "cashBalance", label: "Cash Balance", prefix: "$" },
-    { key: "burnRate", label: "Monthly Burn", prefix: "$" },
+    { key: "cashBalance", label: "Cash Balance", prefix: "₹" },
+    { key: "burnRate", label: "Monthly Burn", prefix: "₹" },
     { key: "totalCustomers", label: "Total Customers", prefix: "#" },
-    { key: "ltv", label: "LTV", prefix: "$" },
-    { key: "cac", label: "CAC", prefix: "$" },
-    { key: "receivables", label: "Trade Receivables", prefix: "$" },
-    { key: "inventory", label: "Inventory", prefix: "$" },
-    { key: "payables", label: "Trade Payables", prefix: "$" },
-    { key: "changeInWC", label: "Δ Working Capital", prefix: "$" },
+    { key: "ltv", label: "LTV", prefix: "₹" },
+    { key: "cac", label: "CAC", prefix: "₹" },
+    { key: "receivables", label: "Trade Receivables", prefix: "₹" },
+    { key: "inventory", label: "Inventory", prefix: "₹" },
+    { key: "payables", label: "Trade Payables", prefix: "₹" },
+    { key: "changeInWC", label: "Δ Working Capital", prefix: "₹" },
   ];
 
   const ragColor = (status: string) =>
@@ -212,9 +213,7 @@ export default function StdBusinessSnapshotPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-8">
-      <Link href="/models?tier=standard" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
-        <ArrowLeft className="h-4 w-4" /> Back to Models
-      </Link>
+      <ModelBackLink modelSlug="std-business-snapshot" label="Back to Models" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors" />
 
       <div className="flex items-start justify-between gap-4 mb-8">
         <div className="flex items-start gap-4">
@@ -409,7 +408,7 @@ export default function StdBusinessSnapshotPage() {
                     { value: inputs.ltv, itemStyle: { color: "#a78bfa", borderRadius: [0, 4, 4, 0] } },
                     { value: inputs.cac, itemStyle: { color: "#f59e0b", borderRadius: [0, 4, 4, 0] } },
                   ],
-                  label: { show: true, position: "right", color: "#aaa", fontSize: 9, formatter: (p: any) => `$${p.value.toLocaleString()}` },
+                  label: { show: true, position: "right", color: "#aaa", fontSize: 9, formatter: (p: any) => formatChartCurrency(p.value) },
                 }],
               }}
             />

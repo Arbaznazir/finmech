@@ -9,6 +9,7 @@ import { Clock, Trash2, ExternalLink, ChevronLeft, ChevronRight, FileText, FileS
 import { useAuth } from "@/lib/store";
 import api from "@/lib/api";
 import { TIER_INFO } from "@/lib/models-data";
+import { modelHref } from "@/lib/model-navigation";
 import {
   exportCalculationPDF,
   formatVal,
@@ -17,6 +18,8 @@ import {
   isMonthlyData,
   CHART_GROUPS,
 } from "@/lib/calculation-pdf";
+import { evaluateSmartResultPoints, type SmartResultRule } from "@/lib/smart-result-evaluator";
+import { formatChartCurrency } from "@/lib/utils";
 
 interface Calculation {
   id: string;
@@ -35,8 +38,22 @@ interface Pagination {
   pages: number;
 }
 
-function exportPDF(calc: Calculation) {
-  exportCalculationPDF(calc);
+async function exportPDF(calc: Calculation) {
+  let smartResultPoints;
+  try {
+    const { data } = await api.get("/smart-result-points", {
+      params: { modelSlug: calc.modelSlug },
+    });
+    if (data.success && Array.isArray(data.points)) {
+      smartResultPoints = evaluateSmartResultPoints(
+        calc.outputs,
+        data.points as SmartResultRule[]
+      );
+    }
+  } catch {
+    // PDF still exports without admin smart points
+  }
+  exportCalculationPDF({ ...calc, smartResultPoints });
 }
 
 function exportCSV(calc: Calculation) {
@@ -127,7 +144,7 @@ function HistoryCharts({ outputs, inputs, modelSlug }: { outputs: Record<string,
     const months = FISCAL_MONTHS;
 
     const result: { title: string; option: object; tall?: boolean }[] = [];
-    const FMT = (v: number) => v >= 1000 ? `${(v/1000).toFixed(0)}k` : String(Math.round(v));
+    const FMT = formatChartCurrency;
     const TIP = { trigger: "axis" as const, backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 10 } };
     const isCommonUtil = modelSlug.includes("common-utility");
 
@@ -176,7 +193,7 @@ function HistoryCharts({ outputs, inputs, modelSlug }: { outputs: Record<string,
         return isFinite(r) ? Math.min(r, 36) : 36;
       });
       const TIP = { trigger: "axis" as const, backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 10 } };
-      const FMT2 = (v: number) => v >= 1000 ? `${(v/1000).toFixed(0)}k` : String(Math.round(v));
+      const FMT2 = formatChartCurrency;
       if (cashVals.some((v) => v !== 0)) result.push({
         title: "Cumulative Cash Position",
         option: {
@@ -1114,7 +1131,7 @@ export default function HistoryPage() {
                         <FileSpreadsheet className="h-4 w-4" />
                       </button>
                       <Link
-                        href={`/models/${calc.modelSlug}`}
+                        href={modelHref(calc.modelSlug, "history")}
                         onClick={(e) => e.stopPropagation()}
                         className="rounded-lg p-2 hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
                         title="Open model"

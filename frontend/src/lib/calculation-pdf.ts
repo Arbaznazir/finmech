@@ -17,6 +17,9 @@ import {
   formatStandardModelOutputsHTML,
   getStandardModelHeroCards,
 } from "@/lib/standard-model-pdf";
+import { formatCurrency } from "@/lib/utils";
+import { renderAdminSmartResultPointsHTML } from "@/lib/smart-result-evaluator";
+import type { MatchedSmartResultPoint } from "@/lib/smart-result-evaluator";
 
 export interface CalculationExport {
   id?: string;
@@ -25,6 +28,7 @@ export interface CalculationExport {
   tier: string;
   inputs: Record<string, unknown>;
   outputs: Record<string, unknown>;
+  smartResultPoints?: MatchedSmartResultPoint[];
   createdAt: string;
 }
 
@@ -42,9 +46,9 @@ export function isMonthlyData(obj: Record<string, unknown>): boolean {
 export function formatVal(v: unknown): string {
   if (v === null || v === undefined) return "—";
   if (typeof v === "number") {
-    if (Math.abs(v) >= 1000) return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(v);
+    if (Math.abs(v) >= 1000) return formatCurrency(v);
     if (v % 1 !== 0) return v.toFixed(2);
-    return v.toLocaleString();
+    return v.toLocaleString("en-IN");
   }
   if (typeof v === "string") return v;
   if (isPlainObject(v)) return JSON.stringify(v);
@@ -157,7 +161,7 @@ function svgBarChart(labels: string[], values: number[], color: string, title: s
     const x = padL + i * gap + (gap - bw) / 2;
     const y = padT + chartH - bh;
     const lbl = labels[i] || "";
-    const valStr = v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(Math.round(v));
+    const valStr = v >= 1000 ? `₹${(v / 1000).toFixed(0)}k` : `₹${Math.round(v).toLocaleString("en-IN")}`;
     return `
       <rect x="${x}" y="${y}" width="${bw}" height="${bh}" fill="${color}" rx="3"/>
       <text x="${x + bw / 2}" y="${y - 4}" text-anchor="middle" font-size="8" fill="#555">${valStr}</text>
@@ -287,7 +291,7 @@ function generateAnalysis(calc: CalculationExport): string {
     const lifetime = Number(out.customerLifetimeMonths) || 0;
     lines.push(p(`This model calculated a <strong>monthly revenue of ${formatVal(monthly)}</strong> and <strong>annual revenue of ${formatVal(annual)}</strong>, driven by ${units.toLocaleString()} units sold per month at ${formatVal(price)} per unit.`));
     lines.push(p(`With a customer lifetime of ${lifetime} months, each customer contributes approximately <strong>${formatVal(monthly > 0 && units > 0 ? (price * lifetime) : 0)}</strong> over their lifetime.`));
-    if (annual > 1000000) lines.push(p(`<strong>⚠ Strong revenue signal:</strong> Annual revenue exceeds $1M — ensure your cost structure scales accordingly.`));
+    if (annual > 1000000) lines.push(p(`<strong>⚠ Strong revenue signal:</strong> Annual revenue exceeds ₹10 lakh — ensure your cost structure scales accordingly.`));
     if (lifetime < 6) lines.push(p(`<strong>⚠ Short customer lifetime (${lifetime} mo):</strong> Focus on retention — even a 2x improvement in lifetime significantly increases LTV.`));
     if (lifetime >= 12) lines.push(p(`<strong>✓ Healthy retention:</strong> A ${lifetime}-month lifetime suggests solid product-market fit and customer stickiness.`));
   } else if (slug.includes("break-even") || slug === "break-even-basic") {
@@ -369,7 +373,7 @@ function generateAnalysis(calc: CalculationExport): string {
   const paras   = lines.filter((l) => l.startsWith("<p")).join("");
   return `
     <div style="margin-top:28px;padding:16px 20px;background:#f8f9ff;border-left:4px solid #6d28d9;border-radius:4px;page-break-inside:avoid">
-      <h3 style="margin:0 0 12px;font-size:13px;color:#6d28d9;text-transform:uppercase;letter-spacing:1px">Analysis &amp; Interpretation</h3>
+      <h3 style="margin:0 0 12px;font-size:13px;color:#6d28d9;text-transform:uppercase;letter-spacing:1px">Smart Results</h3>
       ${paras}
       ${bullets ? `<ul style="margin:8px 0 0 16px;padding:0">${bullets}</ul>` : ""}
     </div>`;
@@ -843,6 +847,7 @@ export function exportCalculationPDF(calc: CalculationExport) {
   const PURPLE = "#6d28d9";
   const TEAL   = "#0d9488";
   const AMBER  = "#d97706";
+  const logoUrl = `${window.location.origin}/brand/logo-horizontal.png`;
 
   // Tier accent colour
   const tierColor = calc.tier === "investor" ? AMBER : calc.tier === "standard" ? PURPLE : calc.tier === "standalone" ? TEAL : "#16a34a";
@@ -990,7 +995,8 @@ export function exportCalculationPDF(calc: CalculationExport) {
   }
 
   const chartsHTML   = generateCharts(calc);
-  const analysisHTML = generateAnalysis(calc);
+  const adminSmartHTML = renderAdminSmartResultPointsHTML(calc.smartResultPoints);
+  const analysisHTML = adminSmartHTML + generateAnalysis(calc);
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -1034,16 +1040,9 @@ export function exportCalculationPDF(calc: CalculationExport) {
       border-radius: 50%;
     }
     .cover-brand {
-      display: flex; align-items: center; gap: 12px; position: relative; z-index: 1;
+      display: flex; align-items: center; position: relative; z-index: 1;
     }
-    .cover-logo {
-      width: 40px; height: 40px; background: ${tierColor};
-      border-radius: 10px; display: flex; align-items: center; justify-content: center;
-      font-size: 20px; font-weight: 900; color: #fff;
-    }
-    .cover-brand-name {
-      font-size: 20px; font-weight: 800; letter-spacing: -0.5px; color: #fff;
-    }
+    .cover-brand img { height: 36px; width: auto; display: block; }
     .cover-center { position: relative; z-index: 1; flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 60px 0 40px; }
     .cover-tag {
       display: inline-block; background: ${tierColor}33; border: 1px solid ${tierColor}66;
@@ -1129,8 +1128,7 @@ export function exportCalculationPDF(calc: CalculationExport) {
   <!-- ══════════ COVER PAGE ══════════ -->
   <div class="cover">
     <div class="cover-brand">
-      <div class="cover-logo">F</div>
-      <div class="cover-brand-name">FinMech</div>
+      <img src="${logoUrl}" alt="FinMech — Smart tools. Smart finance" />
     </div>
 
     <div class="cover-center">
@@ -1205,8 +1203,8 @@ export function exportCalculationPDF(calc: CalculationExport) {
       '<div style="margin-top:28px;padding:16px 20px;background:#f8f9ff;border-left:4px solid #6d28d9;border-radius:4px;page-break-inside:avoid">',
       '<div class="analysis-box no-break">'
     ).replace(
-      '<h3 style="margin:0 0 12px;font-size:13px;color:#6d28d9;text-transform:uppercase;letter-spacing:1px">Analysis &amp; Interpretation</h3>',
-      '<div class="analysis-title">🔍 Analysis &amp; Interpretation</div>'
+      '<h3 style="margin:0 0 12px;font-size:13px;color:#6d28d9;text-transform:uppercase;letter-spacing:1px">Smart Results</h3>',
+      '<div class="analysis-title">Smart Results</div>'
     )}
 
     <div class="footer">

@@ -32,18 +32,18 @@ export interface CashFlowMonthInputs {
 
 export const INPUT_FIELDS: { key: string; label: string; category: string; prefix: string; autoFill?: boolean }[] = [
   // Operating — auto-filled
-  { key: "Net Profit (PAT)", label: "Net Profit (PAT)", category: "Operating (Auto-filled)", prefix: "$", autoFill: true },
-  { key: "Depreciation & Amortization", label: "Depreciation & Amortization", category: "Operating (Auto-filled)", prefix: "$", autoFill: true },
-  { key: "Change in Receivables", label: "Δ Receivables", category: "Working Capital Changes (Auto-filled)", prefix: "$", autoFill: true },
-  { key: "Change in Inventory", label: "Δ Inventory", category: "Working Capital Changes (Auto-filled)", prefix: "$", autoFill: true },
-  { key: "Change in Payables", label: "Δ Payables", category: "Working Capital Changes (Auto-filled)", prefix: "$", autoFill: true },
+  { key: "Net Profit (PAT)", label: "Net Profit (PAT)", category: "Operating (Auto-filled)", prefix: "₹", autoFill: true },
+  { key: "Depreciation & Amortization", label: "Depreciation & Amortization", category: "Operating (Auto-filled)", prefix: "₹", autoFill: true },
+  { key: "Change in Receivables", label: "Δ Receivables", category: "Working Capital Changes (Auto-filled)", prefix: "₹", autoFill: true },
+  { key: "Change in Inventory", label: "Δ Inventory", category: "Working Capital Changes (Auto-filled)", prefix: "₹", autoFill: true },
+  { key: "Change in Payables", label: "Δ Payables", category: "Working Capital Changes (Auto-filled)", prefix: "₹", autoFill: true },
   // Investing — auto-filled
-  { key: "CapEx", label: "Capital Expenditure", category: "Investing (Auto-filled)", prefix: "$", autoFill: true },
+  { key: "CapEx", label: "Capital Expenditure", category: "Investing (Auto-filled)", prefix: "₹", autoFill: true },
   // Financing — manual
-  { key: "Equity Infusion", label: "Equity Infusion", category: "Financing", prefix: "$" },
-  { key: "Debt Raised", label: "Debt Raised", category: "Financing", prefix: "$" },
-  { key: "Debt Repayment", label: "Debt Repayment", category: "Financing", prefix: "$" },
-  { key: "Dividends Paid", label: "Dividends Paid", category: "Financing", prefix: "$" },
+  { key: "Equity Infusion", label: "Equity Infusion", category: "Financing", prefix: "₹" },
+  { key: "Debt Raised", label: "Debt Raised", category: "Financing", prefix: "₹" },
+  { key: "Debt Repayment", label: "Debt Repayment", category: "Financing", prefix: "₹" },
+  { key: "Dividends Paid", label: "Dividends Paid", category: "Financing", prefix: "₹" },
 ];
 
 export function createEmptyInputs(): CashFlowMonthInputs {

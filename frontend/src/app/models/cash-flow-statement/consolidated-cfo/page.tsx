@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import dynamic from "next/dynamic";
-import Link from "next/link";
+import Link from "next/link"
+import { ModelBackLink } from "@/components/model-back-link";
 import {
   ArrowLeft, TrendingUp, Save, RotateCcw, CheckCircle, AlertTriangle, XCircle,
 } from "lucide-react";
@@ -12,75 +13,85 @@ import api from "@/lib/api";
 import { useSavedModel } from "@/lib/use-saved-model";
 import { offerSmartResultsAfterCalculate } from "@/lib/smart-results";
 import { loadSavedState } from "@/lib/saved-state";
+import { HintLabel } from "@/components/HintLabel";
+import { useModelHints } from "@/hooks/use-model-hints";
 import {
   CONSOLIDATED_MONTHS,
+  CONSOLIDATED_INPUT_FIELDS,
   calculateConsolidatedCFO,
-  type RAGClassification,
+  createEmptyConsolidatedInputs,
+  cfsBandCardClass,
+  cfsBandLabel,
+  cfsBandTextClass,
+  type CfsPatBand,
   type ConsolidatedCFOResults,
+  type ConsolidatedMonthInputs,
 } from "@/lib/consolidated-cfo-model";
+import type { CFOpsResults } from "@/lib/cashflow-ops-model";
 
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 
-function classColor(c: RAGClassification): string {
-  if (c === "Strong") return "text-emerald-400";
-  if (c === "Acceptable") return "text-amber-400";
-  if (c === "Weak") return "text-orange-400";
-  return "text-red-500";
+function bandIcon(band: CfsPatBand, size: "sm" | "lg" = "lg") {
+  const cls = size === "sm" ? "h-5 w-5" : "h-8 w-8";
+  if (band === "green") return <CheckCircle className={`${cls} text-success`} />;
+  if (band === "amber") return <AlertTriangle className={`${cls} text-amber-400`} />;
+  if (band === "weak-amber") return <AlertTriangle className={`${cls} text-orange-400`} />;
+  return <XCircle className={`${cls} text-danger`} />;
 }
 
-function classBg(c: RAGClassification): string {
-  if (c === "Strong") return "bg-emerald-500/10 border-emerald-500/30";
-  if (c === "Acceptable") return "bg-amber-500/10 border-amber-500/30";
-  if (c === "Weak") return "bg-orange-500/10 border-orange-500/30";
-  return "bg-red-500/10 border-red-500/30";
-}
-
-function classIcon(c: RAGClassification) {
-  if (c === "Strong") return <CheckCircle className="h-5 w-5 text-emerald-400" />;
-  if (c === "Acceptable") return <AlertTriangle className="h-5 w-5 text-amber-400" />;
-  if (c === "Weak") return <AlertTriangle className="h-5 w-5 text-orange-400" />;
-  return <XCircle className="h-5 w-5 text-red-500" />;
-}
+type TabView = "input" | "summary";
 
 export default function ConsolidatedCFOPage() {
   const { user, hydrate } = useAuth();
+  const { hint } = useModelHints("consolidated-cfo");
   const [results, setResults] = useState<ConsolidatedCFOResults | null>(null);
-  const [hasData, setHasData] = useState(false);
+  const [hasOpsData, setHasOpsData] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabView>("input");
+  const [activeMonth, setActiveMonth] = useState<string>("Apr");
+  const [beginningCash, setBeginningCash] = useState(0);
+  const [monthsData, setMonthsData] = useState<Record<string, ConsolidatedMonthInputs>>({});
 
   const { save: persistState, reset: clearPersisted, saving, saved, markDirty } = useSavedModel({
     modelSlug: "consolidated-cfo",
-    onLoad: () => {},
-    getState: useCallback(() => ({}), []),
+    onLoad: (data: Record<string, unknown>) => {
+      if (data.monthsData) setMonthsData(data.monthsData as Record<string, ConsolidatedMonthInputs>);
+      if (typeof data.beginningCash === "number") setBeginningCash(data.beginningCash);
+    },
+    getState: useCallback(() => ({ monthsData, beginningCash }), [monthsData, beginningCash]),
   });
 
   useEffect(() => { hydrate(); }, [hydrate]);
 
-  const refreshData = useCallback(async () => {
-    // 1. Try localStorage first (written when Calculate is clicked in Cashflow Ops)
-    const local = JSON.parse(localStorage.getItem('cashflowOps') || '{}');
-    if (local?.monthlyData && Object.keys(local.monthlyData).length > 0) {
-      const result = calculateConsolidatedCFO(local, local.openingCash || 0);
-      setResults(result);
-      setHasData(true);
+  const runCalculation = useCallback(async (ops: CFOpsResults | null, inputs: Record<string, ConsolidatedMonthInputs>) => {
+    if (!ops?.monthlyData || Object.keys(ops.monthlyData).length === 0) {
+      setHasOpsData(false);
+      setResults(null);
       return;
     }
-    // 2. Fallback: load raw cashflow-ops inputs from backend and recalculate
-    const { calculateCFOps } = await import('@/lib/cashflow-ops-model');
-    const opsState = await loadSavedState<Record<string, unknown>>('cashflow-ops');
+    const isState = await loadSavedState<Record<string, unknown>>("income-statement");
+    const result = calculateConsolidatedCFO(ops, inputs, beginningCash, isState);
+    setResults(result);
+    setHasOpsData(true);
+    setActiveTab("summary");
+  }, [beginningCash]);
+
+  const refreshData = useCallback(async () => {
+    const local = JSON.parse(localStorage.getItem("cashflowOps") || "{}") as CFOpsResults;
+    if (local?.monthlyData && Object.keys(local.monthlyData).length > 0) {
+      await runCalculation(local, monthsData);
+      return;
+    }
+    const { calculateCFOps } = await import("@/lib/cashflow-ops-model");
+    const opsState = await loadSavedState<Record<string, unknown>>("cashflow-ops");
     if (opsState?.monthsData && Object.keys(opsState.monthsData as object).length > 0) {
-      const result = calculateCFOps(
-        opsState.monthsData as Record<string, Record<string, number>>,
-        (opsState.openingCash as number) || 0
-      );
-      localStorage.setItem('cashflowOps', JSON.stringify(result));
-      const consolidated = calculateConsolidatedCFO(result as unknown as Parameters<typeof calculateConsolidatedCFO>[0], result.openingCash || 0);
-      setResults(consolidated);
-      setHasData(true);
+      const ops = calculateCFOps(opsState.monthsData as Record<string, Record<string, number>>);
+      localStorage.setItem("cashflowOps", JSON.stringify(ops));
+      await runCalculation(ops, monthsData);
     } else {
-      setHasData(false);
+      setHasOpsData(false);
       setResults(null);
     }
-  }, []);
+  }, [monthsData, runCalculation]);
 
   // Load on mount
   useEffect(() => { refreshData(); }, [refreshData]);
@@ -91,7 +102,7 @@ export default function ConsolidatedCFOPage() {
       monthlyData: results.monthlyData,
       monthsAdded: results.monthsAdded,
       summary: results.summary,
-      openingCash: results.openingCash,
+      openingCash: results.beginningCash,
     };
     try {
       await api.post("/calculations", {
@@ -109,23 +120,29 @@ export default function ConsolidatedCFOPage() {
     }
   };
 
-  const handleRefresh = async () => {
-    await refreshData();
+  const handleCalculate = () => { refreshData(); markDirty(); };
+
+  const handleInputChange = (key: keyof ConsolidatedMonthInputs, value: string) => {
+    setMonthsData((prev) => ({
+      ...prev,
+      [activeMonth]: {
+        ...(prev[activeMonth] || createEmptyConsolidatedInputs()),
+        [key]: parseFloat(value) || 0,
+      },
+    }));
     markDirty();
   };
 
   const handleReset = () => {
     setResults(null);
-    setHasData(false);
+    setHasOpsData(false);
     clearPersisted();
   };
 
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
-      <Link href="/models/cash-flow-statement" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors">
-        <ArrowLeft className="h-4 w-4" /> Back to Cash Flow
-      </Link>
+      <ModelBackLink modelSlug="consolidated-cfo" fallbackHref="/models/cash-flow-statement" label="Back to Cash Flow" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors" />
 
       <div className="flex items-start justify-between gap-4 mb-6">
         <div className="flex items-start gap-4">
@@ -158,16 +175,85 @@ export default function ConsolidatedCFOPage() {
             </button>
           )}
           <button
-            onClick={handleRefresh}
+            onClick={handleCalculate}
             className="inline-flex items-center gap-1.5 rounded-lg border border-border px-4 py-2 text-sm hover:bg-muted transition-colors"
           >
-            <RotateCcw className="h-4 w-4" /> Refresh
+            <RotateCcw className="h-4 w-4" /> Calculate
           </button>
         </div>
       </div>
 
-      {/* No Data State */}
-      {!hasData && (
+      <div className="flex gap-1 mb-6 rounded-xl bg-card border border-border p-1">
+        {(["input", "summary"] as TabView[]).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`rounded-lg px-4 py-2 text-sm font-medium capitalize transition-colors ${
+              activeTab === tab ? "bg-primary text-primary-foreground" : "hover:bg-muted text-muted-foreground"
+            }`}
+          >
+            {tab === "input" ? "Investing & Financing" : "Summary & RAG"}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === "input" && (
+        <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-6">
+          <div className="rounded-2xl border border-border bg-card p-4">
+            <h3 className="font-semibold text-sm mb-3">Month</h3>
+            <div className="grid grid-cols-3 lg:grid-cols-1 gap-1.5">
+              {CONSOLIDATED_MONTHS.map((month) => (
+                <button
+                  key={month}
+                  onClick={() => setActiveMonth(month)}
+                  className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                    activeMonth === month ? "bg-primary text-primary-foreground" : "hover:bg-muted"
+                  }`}
+                >
+                  {month}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="rounded-2xl border border-border bg-card p-6">
+            <h2 className="font-semibold mb-4">Inputs for <span className="text-primary">{activeMonth}</span></h2>
+            <div className="mb-4">
+              <label className="text-xs text-muted-foreground mb-1 block">
+                <HintLabel hint={hint("beginningCash")}>Beginning Cash (April 1st)</HintLabel>
+              </label>
+              <input
+                type="number"
+                value={beginningCash || ""}
+                onChange={(e) => { setBeginningCash(parseFloat(e.target.value) || 0); markDirty(); }}
+                className="w-full max-w-xs rounded-lg border border-border bg-input px-3 py-2 text-sm"
+              />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {CONSOLIDATED_INPUT_FIELDS.map((field) => (
+                <div key={field.key}>
+                  <label className="text-xs text-muted-foreground mb-1 block">
+                    <HintLabel hint={hint(field.key)}>{field.label}</HintLabel>
+                  </label>
+                  <input
+                    type="number"
+                    value={monthsData[activeMonth]?.[field.key] || ""}
+                    onChange={(e) => handleInputChange(field.key, e.target.value)}
+                    className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm"
+                  />
+                </div>
+              ))}
+            </div>
+            <button
+              onClick={handleCalculate}
+              className="mt-6 w-full rounded-lg bg-primary py-2.5 text-sm font-semibold text-primary-foreground hover:bg-accent"
+            >
+              Calculate Consolidated CFS
+            </button>
+          </div>
+        </div>
+      )}
+
+      {!hasOpsData && activeTab === "summary" && (
         <div className="rounded-2xl border border-border bg-card p-12 text-center">
           <TrendingUp className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
           <h3 className="font-semibold mb-2">No Data Available</h3>
@@ -184,29 +270,56 @@ export default function ConsolidatedCFOPage() {
       )}
 
       {/* Results View */}
-      {hasData && results && (
+      {hasOpsData && results && activeTab === "summary" && (
         <div className="space-y-6">
           {/* Summary Cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="rounded-2xl border border-border bg-card p-5">
-              <p className="text-xs text-muted-foreground uppercase mb-1">Opening Cash</p>
-              <p className="text-2xl font-bold">{formatCurrency(results.openingCash)}</p>
+              <p className="text-xs text-muted-foreground uppercase mb-1">
+                <HintLabel hint={hint("beginningCash")}>Opening Cash</HintLabel>
+              </p>
+              <p className="text-2xl font-bold">{formatCurrency(results.beginningCash)}</p>
             </div>
             <div className="rounded-2xl border border-border bg-card p-5">
-              <p className="text-xs text-muted-foreground uppercase mb-1">Total Net Cash Flow</p>
+              <p className="text-xs text-muted-foreground uppercase mb-1">
+                <HintLabel hint={hint("totalNetCashFlow")}>Total Net Cash Flow</HintLabel>
+              </p>
               <p className={`text-2xl font-bold ${results.summary.totalNetCashFlow >= 0 ? "text-emerald-400" : "text-red-500"}`}>
                 {formatCurrency(results.summary.totalNetCashFlow)}
               </p>
             </div>
             <div className="rounded-2xl border border-border bg-card p-5">
-              <p className="text-xs text-muted-foreground uppercase mb-1">Final Ending Cash</p>
+              <p className="text-xs text-muted-foreground uppercase mb-1">
+                <HintLabel hint={hint("finalEndingCash")}>Final Ending Cash</HintLabel>
+              </p>
               <p className="text-2xl font-bold">{formatCurrency(results.summary.finalEndingCash)}</p>
             </div>
-            <div className={`rounded-2xl border p-5 ${classBg(results.summary.overallClassification)}`}>
-              <p className="text-xs uppercase mb-1 opacity-70">Overall Classification</p>
-              <p className={`text-2xl font-bold ${classColor(results.summary.overallClassification)}`}>
-                {results.summary.overallClassification}
+            <div className={`rounded-2xl border p-5 ${cfsBandCardClass(results.summary.overallPatBand)}`}>
+              <p className="text-xs uppercase mb-1 opacity-70">
+                <HintLabel hint={hint("overallClassification")}>CFO/PAT Band</HintLabel>
               </p>
+              <p className={`text-2xl font-bold ${cfsBandTextClass(results.summary.overallPatBand)}`}>
+                {cfsBandLabel(results.summary.overallPatBand)}
+              </p>
+              <p className="text-xs text-muted-foreground mt-2">{results.summary.overallInsight}</p>
+            </div>
+          </div>
+
+          {/* Ratio Summary */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="rounded-2xl border border-border bg-card p-5">
+              <p className="text-xs text-muted-foreground uppercase mb-1">
+                <HintLabel hint={hint("avgCfoPat")}>Avg CFO/PAT</HintLabel>
+              </p>
+              <p className={`text-2xl font-bold ${cfsBandTextClass(results.summary.overallPatBand)}`}>
+                {results.summary.avgCfoPat.toFixed(2)}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-border bg-card p-5">
+              <p className="text-xs text-muted-foreground uppercase mb-1">
+                <HintLabel hint={hint("avgCfoEbitda")}>Avg CFO/EBITDA</HintLabel>
+              </p>
+              <p className="text-2xl font-bold">{results.summary.avgCfoEbitda.toFixed(2)}</p>
             </div>
           </div>
 
@@ -214,7 +327,9 @@ export default function ConsolidatedCFOPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* CFO/PAT Trend */}
             <div className="rounded-2xl border border-border bg-card p-5">
-              <h3 className="font-semibold text-sm mb-3">CFO/PAT Ratio Trend</h3>
+              <h3 className="font-semibold text-sm mb-3">
+                <HintLabel hint={hint("cfoPat")}>CFO/PAT Ratio Trend</HintLabel>
+              </h3>
               <ReactECharts
                 style={{ height: 260 }}
                 option={{
@@ -252,14 +367,16 @@ export default function ConsolidatedCFOPage() {
 
             {/* Ending Cash Trend */}
             <div className="rounded-2xl border border-border bg-card p-5">
-              <h3 className="font-semibold text-sm mb-3">Ending Cash Trend</h3>
+              <h3 className="font-semibold text-sm mb-3">
+                <HintLabel hint={hint("endingCash")}>Ending Cash Trend</HintLabel>
+              </h3>
               <ReactECharts
                 style={{ height: 260 }}
                 option={{
                   tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
                   grid: { top: 15, right: 15, bottom: 30, left: 55 },
                   xAxis: { type: "category", data: results.monthsAdded, axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
-                  yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
+                  yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000 ? `₹${(v/1000).toFixed(0)}k` : `₹${v}` }, splitLine: { lineStyle: { color: "#222" } } },
                   series: [{
                     type: "line", smooth: true,
                     data: results.monthsAdded.map(m => results.monthlyData[m]?.endingCash || 0),
@@ -281,18 +398,24 @@ export default function ConsolidatedCFOPage() {
                 const data = results.monthlyData[month];
                 if (!data) return null;
                 return (
-                  <div key={month} className={`rounded-xl px-4 py-4 border ${classBg(data.classification)}`}>
+                  <div key={month} className={`rounded-xl px-4 py-4 border ${cfsBandCardClass(data.patBand)}`}>
                     <div className="flex items-center justify-between mb-3">
                       <span className="font-semibold">{month}</span>
-                      {classIcon(data.classification)}
+                      {bandIcon(data.patBand, "sm")}
                     </div>
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">CFO/PAT</span>
-                        <span className={classColor(data.classification)}>{data.cfoPat.toFixed(2)}</span>
+                        <span className="text-muted-foreground">
+                          <HintLabel hint={hint("cfoPat")}>CFO/PAT</HintLabel>
+                        </span>
+                        <span className={cfsBandTextClass(data.patBand)}>
+                          {data.cfoPat !== null ? data.cfoPat.toFixed(2) : "—"}
+                        </span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">Ending Cash</span>
+                        <span className="text-muted-foreground">
+                          <HintLabel hint={hint("endingCash")}>Ending Cash</HintLabel>
+                        </span>
                         <span>{formatCurrency(data.endingCash)}</span>
                       </div>
                       <p className="text-xs mt-2 pt-2 border-t border-white/10">{data.insight}</p>
@@ -310,28 +433,28 @@ export default function ConsolidatedCFOPage() {
               <div className="flex items-start gap-3">
                 <span className="w-3 h-3 rounded-full bg-emerald-500 mt-1 shrink-0" />
                 <div>
-                  <p className="font-semibold text-emerald-400">Strong</p>
+                  <p className="font-semibold text-success">🟢 Green</p>
                   <p className="text-muted-foreground text-xs">CFO/PAT &gt; 1.2</p>
                 </div>
               </div>
               <div className="flex items-start gap-3">
                 <span className="w-3 h-3 rounded-full bg-amber-400 mt-1 shrink-0" />
                 <div>
-                  <p className="font-semibold text-amber-400">Acceptable</p>
+                  <p className="font-semibold text-amber-400">🟡 Amber</p>
                   <p className="text-muted-foreground text-xs">CFO/PAT 0.8 – 1.2</p>
                 </div>
               </div>
               <div className="flex items-start gap-3">
                 <span className="w-3 h-3 rounded-full bg-orange-400 mt-1 shrink-0" />
                 <div>
-                  <p className="font-semibold text-orange-400">Weak</p>
+                  <p className="font-semibold text-orange-400">🟠 Weak Amber</p>
                   <p className="text-muted-foreground text-xs">CFO/PAT 0 – 0.8</p>
                 </div>
               </div>
               <div className="flex items-start gap-3">
-                <span className="w-3 h-3 rounded-full bg-red-500 mt-1 shrink-0" />
+                <span className="w-3 h-3 rounded-full bg-danger mt-1 shrink-0" />
                 <div>
-                  <p className="font-semibold text-red-500">Red</p>
+                  <p className="font-semibold text-danger">🔴 Red</p>
                   <p className="text-muted-foreground text-xs">CFO/PAT &lt; 0</p>
                 </div>
               </div>
@@ -350,7 +473,7 @@ export default function ConsolidatedCFOPage() {
         </div>
       )}
 
-      {!user && hasData && (
+      {!user && hasOpsData && (
         <div className="mt-8 rounded-2xl bg-primary/5 border border-primary/20 p-6 text-center">
           <p className="text-muted-foreground mb-3">Sign up to save your Consolidated CFO analysis</p>
           <Link href="/signup" className="inline-block rounded-lg bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-accent transition-colors">

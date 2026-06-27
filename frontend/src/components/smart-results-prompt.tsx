@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { FileText, Sparkles, X } from "lucide-react";
 import { exportCalculationPDF } from "@/lib/calculation-pdf";
+import { useSmartResultPoints } from "@/hooks/use-smart-result-points";
+import type { MatchedSmartResultPoint } from "@/lib/smart-result-evaluator";
 import {
   SMART_RESULTS_EVENT,
   toCalculationExport,
@@ -14,6 +16,8 @@ const PROMPT_DELAY_MS = 3000;
 export function SmartResultsPrompt() {
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState<SmartResultsPayload | null>(null);
+  const [matchedPoints, setMatchedPoints] = useState<MatchedSmartResultPoint[]>([]);
+  const { fetchAndEvaluate } = useSmartResultPoints();
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -24,6 +28,7 @@ export function SmartResultsPrompt() {
       if (timerRef.current) clearTimeout(timerRef.current);
       setOpen(false);
       setPending(detail);
+      setMatchedPoints([]);
 
       timerRef.current = setTimeout(() => {
         setOpen(true);
@@ -37,17 +42,37 @@ export function SmartResultsPrompt() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!pending?.outputs) return;
+    let cancelled = false;
+
+    fetchAndEvaluate(pending.modelSlug, pending.outputs).then((points) => {
+      if (!cancelled) setMatchedPoints(points);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [pending, fetchAndEvaluate]);
+
   const handleYes = () => {
     if (pending) {
-      exportCalculationPDF(toCalculationExport(pending));
+      exportCalculationPDF(
+        toCalculationExport({
+          ...pending,
+          smartResultPoints: matchedPoints.length ? matchedPoints : pending.smartResultPoints,
+        })
+      );
     }
     setOpen(false);
     setPending(null);
+    setMatchedPoints([]);
   };
 
   const handleCancel = () => {
     setOpen(false);
     setPending(null);
+    setMatchedPoints([]);
   };
 
   if (!open || !pending) return null;

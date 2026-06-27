@@ -14,7 +14,22 @@ import paymentRoutes from './routes/payments.js';
 import { handleRazorpayWebhook } from './routes/payments-webhook.js';
 import adminRoutes from './routes/admin.js';
 import pricingRoutes from './routes/pricing.js';
+import modelHintsRoutes from './routes/model-hints.js';
+import tierHintsRoutes from './routes/tier-hints.js';
+import faqsRoutes from './routes/faqs.js';
+import smartResultPointsRoutes from './routes/smart-result-points.js';
 import { getRazorpayStatus } from './lib/razorpay.js';
+import prisma from './lib/prisma.js';
+
+const REQUIRED_PRISMA_MODELS = ['faq', 'smartResultPoint'];
+for (const model of REQUIRED_PRISMA_MODELS) {
+  if (!prisma[model]) {
+    console.error(
+      `Prisma client missing model "${model}". Run: cd backend && npx prisma generate && restart the server.`
+    );
+    process.exit(1);
+  }
+}
 
 const app = express();
 
@@ -53,6 +68,10 @@ app.use('/api/saved-models', savedModelRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/pricing', pricingRoutes);
+app.use('/api/model-hints', modelHintsRoutes);
+app.use('/api/tier-hints', tierHintsRoutes);
+app.use('/api/faqs', faqsRoutes);
+app.use('/api/smart-result-points', smartResultPointsRoutes);
 
 app.get('/api/health', (req, res) => {
   const razorpay = getRazorpayStatus();

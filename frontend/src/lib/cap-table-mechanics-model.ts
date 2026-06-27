@@ -63,6 +63,8 @@ export interface WaterfallItem {
   stakeholder: string;
   ownership: number;
   payout: number;
+  investment?: number;
+  irrMultiple?: number;
 }
 
 export interface ExitSimulationResults {
@@ -93,7 +95,10 @@ export interface ExitResult {
   waterfall: Record<string, {
     ownershipPct: number;
     payout: number;
+    investment?: number;
+    irrMultiple?: number;
   }>;
+  investorIRR?: Record<string, { investment: number; payout: number; multiple: number }>;
 }
 
 export class CapTableMechanicsModel {
@@ -128,47 +133,58 @@ export class CapTableMechanicsModel {
 
   // ============ Cap Table Format: Original + Post-Dilution ============
   calculateOriginalAndDilution(inputs: CapTableFormatInputs): CapTableFormatResults {
-    const { authorizedCapital, faceValue, preMoneyValuation, promoters, angelInvestment, vcInvestment } = inputs;
+    const { faceValue, preMoneyValuation, promoters, angelInvestment, vcInvestment } = inputs;
 
+    const totalPromoterInvestment = promoters.reduce((sum, p) => sum + p.investment, 0);
     const totalPromoterShares = promoters.reduce((sum, p) => sum + p.shares, 0);
-    const totalInvestment = promoters.reduce((sum, p) => sum + p.investment, 0);
 
-    // Calculate ownership percentages for original cap table
-    const promotersWithOwnership = promoters.map(p => ({
+    const promotersWithOwnership = promoters.map((p) => ({
       ...p,
-      ownershipPct: Number(((p.shares / totalPromoterShares) * 100).toFixed(2))
+      ownershipPct: totalPromoterInvestment > 0
+        ? (p.investment / totalPromoterInvestment) * 100
+        : 0,
     }));
 
-    // Post-dilution calculations
-    const pricePerShare = preMoneyValuation / totalPromoterShares;
-    const newAngelShares = Math.round(angelInvestment / pricePerShare);
-    const newVCShares = Math.round(vcInvestment / pricePerShare);
-    const totalSharesPost = totalPromoterShares + newAngelShares + newVCShares;
-    const postMoneyValuation = preMoneyValuation + angelInvestment + vcInvestment;
+    const postMoneyInvestments = [
+      ...promoters.map((p) => ({ name: p.name, investment: p.investment, role: "Founder" as const })),
+      { name: "Angel Investor", investment: angelInvestment, role: "Investor" as const },
+      { name: "VC Investor", investment: vcInvestment, role: "Investor" as const },
+    ];
+    const totalPostInvestment = postMoneyInvestments.reduce((sum, p) => sum + p.investment, 0);
+    const postMoneyValuation = totalPostInvestment;
 
-    // Calculate post-dilution ownership
-    const promotersPostDilution = promotersWithOwnership.map(p => ({
+    const angelShares = faceValue > 0 ? angelInvestment / faceValue : 0;
+    const vcShares = faceValue > 0 ? vcInvestment / faceValue : 0;
+    const totalSharesPost =
+      promoters.reduce((sum, p) => sum + (faceValue > 0 ? p.investment / faceValue : 0), 0) +
+      angelShares +
+      vcShares;
+
+    const promotersPostDilution = promoters.map((p) => ({
       ...p,
-      ownershipPct: Number(((p.shares / totalSharesPost) * 100).toFixed(2))
+      shares: faceValue > 0 ? p.investment / faceValue : 0,
+      ownershipPct: totalPostInvestment > 0 ? (p.investment / totalPostInvestment) * 100 : 0,
     }));
 
     return {
       original: {
         totalPromoterShares,
         preMoneyValuation,
-        totalInvestment,
-        promoters: promotersWithOwnership
+        totalInvestment: totalPromoterInvestment,
+        promoters: promotersWithOwnership,
       },
       postDilution: {
         postMoneyValuation,
-        angelShares: newAngelShares,
-        vcShares: newVCShares,
+        angelShares,
+        vcShares,
         totalShares: totalSharesPost,
-        promoterOwnershipPct: Number(((totalPromoterShares / totalSharesPost) * 100).toFixed(2)),
-        angelOwnershipPct: Number(((newAngelShares / totalSharesPost) * 100).toFixed(2)),
-        vcOwnershipPct: Number(((newVCShares / totalSharesPost) * 100).toFixed(2)),
-        promoters: promotersPostDilution
-      }
+        promoterOwnershipPct: totalPostInvestment > 0
+          ? (totalPromoterInvestment / totalPostInvestment) * 100
+          : 0,
+        angelOwnershipPct: totalPostInvestment > 0 ? (angelInvestment / totalPostInvestment) * 100 : 0,
+        vcOwnershipPct: totalPostInvestment > 0 ? (vcInvestment / totalPostInvestment) * 100 : 0,
+        promoters: promotersPostDilution,
+      },
     };
   }
 
@@ -241,7 +257,7 @@ export class CapTableMechanicsModel {
     const newTotalShares = this.currentTotalShares + newShares;
 
     const newOwnership: Record<string, number> = {};
-    Object.keys(this.shareClasses).forEach(key => {
+    Object.keys(this.shareClasses).forEach((key) => {
       newOwnership[key] = this.shareClasses[key].shares / newTotalShares;
     });
     newOwnership[roundName] = newShares / newTotalShares;
@@ -255,10 +271,10 @@ export class CapTableMechanicsModel {
       preMoney,
       investment,
       postMoney,
-      pricePerShare: Number(pricePerShare.toFixed(2)),
-      newShares: Number(newShares.toFixed(2)),
-      totalShares: Number(newTotalShares.toFixed(2)),
-      ownership: { ...newOwnership }
+      pricePerShare,
+      newShares,
+      totalShares: newTotalShares,
+      ownership: { ...newOwnership },
     };
 
     this.rounds.push(roundData);
@@ -271,11 +287,25 @@ export class CapTableMechanicsModel {
     const final = this.rounds[this.rounds.length - 1];
     const ownership = final.ownership;
 
-    const waterfall: Record<string, { ownershipPct: number; payout: number }> = {};
-    Object.keys(ownership).forEach(key => {
+    const waterfall: ExitResult["waterfall"] = {};
+    const investorIRR: NonNullable<ExitResult["investorIRR"]> = {};
+
+    Object.keys(ownership).forEach((key) => {
+      const payout = exitValue * ownership[key];
       waterfall[key] = {
-        ownershipPct: Number((ownership[key] * 100).toFixed(2)),
-        payout: Number((exitValue * ownership[key]).toFixed(2))
+        ownershipPct: ownership[key] * 100,
+        payout,
+      };
+    });
+
+    this.rounds.forEach((round) => {
+      const multiple = round.investment > 0 ? waterfall[round.roundName].payout / round.investment : 0;
+      waterfall[round.roundName].investment = round.investment;
+      waterfall[round.roundName].irrMultiple = multiple;
+      investorIRR[round.roundName] = {
+        investment: round.investment,
+        payout: waterfall[round.roundName].payout,
+        multiple,
       };
     });
 
@@ -283,7 +313,8 @@ export class CapTableMechanicsModel {
       exitValue,
       totalShares: final.totalShares,
       ownership,
-      waterfall
+      waterfall,
+      investorIRR,
     };
   }
 
@@ -316,4 +347,23 @@ export class CapTableMechanicsModel {
 // ============ Factory Functions ============
 export function createCapTableModel() {
   return new CapTableMechanicsModel();
+}
+
+export const EXCEL_CAP_TABLE_FORMAT_DEFAULTS: CapTableFormatInputs = {
+  authorizedCapital: 1_000_000,
+  faceValue: 2,
+  preMoneyValuation: 1_000_000,
+  promoters: [
+    { name: "Promoter 1", shares: 250_000, investment: 500_000 },
+    { name: "Promoter 2", shares: 125_000, investment: 250_000 },
+    { name: "Promoter 3", shares: 150_000, investment: 300_000 },
+    { name: "Promoter 4", shares: 75_000, investment: 150_000 },
+    { name: "Promoter 5", shares: 75_000, investment: 150_000 },
+  ],
+  angelInvestment: 1_000_000,
+  vcInvestment: 1_200_000,
+};
+
+export function calculateCapTableFormat(inputs: CapTableFormatInputs): CapTableFormatResults {
+  return new CapTableMechanicsModel().calculateOriginalAndDilution(inputs);
 }

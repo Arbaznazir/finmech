@@ -2,16 +2,17 @@
 
 import { useState, useEffect, useCallback } from "react";
 import dynamic from "next/dynamic";
-import Link from "next/link";
+import Link from "next/link"
+import { ModelBackLink } from "@/components/model-back-link";
 import { ArrowLeft, BarChart3, Save, RotateCcw, CheckCircle, AlertTriangle, XCircle } from "lucide-react";
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
-import api from "@/lib/api";
+import { checklistStatusToRag, ragCardClasses, ragTextClass } from "@/lib/utils";
 import { useSavedModel } from "@/lib/use-saved-model";
 import { offerSmartResultsAfterCalculate } from "@/lib/smart-results";
 import { FieldHint } from "@/components/FieldHint";
 import { HintLabel } from "@/components/HintLabel";
-import { freeHint } from "@/lib/free-model-hints";
+import { useModelHints } from "@/hooks/use-model-hints";
 import {
   QUESTIONS,
   SECTIONS,
@@ -19,6 +20,7 @@ import {
   type ChecklistResponse,
   type ChecklistResults,
 } from "@/lib/checklist-model";
+import { checklistAdvisoryComment } from "@/lib/free-excel-content";
 
 const RESPONSE_OPTIONS: { value: ChecklistResponse; label: string; color: string }[] = [
   { value: "Yes", label: "Yes", color: "bg-success/10 text-success border-success/30 hover:bg-success/20" },
@@ -28,6 +30,7 @@ const RESPONSE_OPTIONS: { value: ChecklistResponse; label: string; color: string
 
 export default function KnowYourNumbersPage() {
   const { user, hydrate } = useAuth();
+  const { hint } = useModelHints("know-your-numbers");
   const [answers, setAnswers] = useState<Record<string, ChecklistResponse>>({});
   const [results, setResults] = useState<ChecklistResults | null>(null);
   const { save: persistState, reset: clearPersisted, saving, saved, markDirty } = useSavedModel({
@@ -67,9 +70,7 @@ export default function KnowYourNumbersPage() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-8">
-      <Link href="/models?tier=free" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
-        <ArrowLeft className="h-4 w-4" /> Back to Models
-      </Link>
+      <ModelBackLink modelSlug="know-your-numbers" label="Back to Models" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors" />
 
       <div className="flex items-start justify-between gap-4 mb-8">
         <div className="flex items-start gap-4">
@@ -111,7 +112,7 @@ export default function KnowYourNumbersPage() {
                     <div key={q.id} className="rounded-lg bg-background/50 border border-border/50 p-4">
                       <p className="text-sm mb-3 flex items-start gap-1">
                         <span className="flex-1">{q.text}</span>
-                        {freeHint(q.id) && <FieldHint hint={freeHint(q.id)!} />}
+                        {hint(q.id) && <FieldHint hint={hint(q.id)!} />}
                       </p>
                       <div className="flex gap-2">
                         {RESPONSE_OPTIONS.map((opt) => (
@@ -151,33 +152,23 @@ export default function KnowYourNumbersPage() {
       )}
 
       {/* Results */}
-      {results && (
+      {results && (() => {
+        const rag = checklistStatusToRag(results.readinessStatus);
+        return (
         <div className="space-y-6">
-          {/* Hero status */}
-          <div className={`rounded-2xl border-2 p-8 text-center ${
-            results.statusColor === "green" ? "border-success/30 bg-success/5" :
-            results.statusColor === "amber" ? "border-amber-400/30 bg-amber-400/5" :
-            "border-danger/30 bg-danger/5"
-          }`}>
-            {results.statusColor === "green" && <CheckCircle className="h-12 w-12 text-success mx-auto mb-3" />}
-            {results.statusColor === "amber" && <AlertTriangle className="h-12 w-12 text-amber-400 mx-auto mb-3" />}
-            {results.statusColor === "red" && <XCircle className="h-12 w-12 text-danger mx-auto mb-3" />}
+          {/* Hero status — FINANCE-READY=green, GROWTH RISK=amber, SURVIVAL RISK=red */}
+          <div className={`rounded-2xl border-2 p-8 text-center ${ragCardClasses(rag)}`}>
+            {rag === "GREEN" && <CheckCircle className="h-12 w-12 text-success mx-auto mb-3" />}
+            {rag === "AMBER" && <AlertTriangle className="h-12 w-12 text-amber-400 mx-auto mb-3" />}
+            {rag === "RED" && <XCircle className="h-12 w-12 text-danger mx-auto mb-3" />}
             <p className="text-xs text-muted-foreground mb-1 flex items-center justify-center">
-              <HintLabel hint={freeHint("readinessPercentage")}>Readiness Score</HintLabel>
+              <HintLabel hint={hint("readinessPercentage")}>Readiness Score</HintLabel>
             </p>
-            <p className={`text-3xl font-bold mb-1 ${
-              results.statusColor === "green" ? "text-success" :
-              results.statusColor === "amber" ? "text-amber-400" :
-              "text-danger"
-            }`}>
-              {results.readinessPercentage.toFixed(0)}%
+            <p className={`text-3xl font-bold mb-1 ${ragTextClass(rag)}`}>
+              {results.readinessPercentage.toFixed(2)}%
             </p>
-            <p className={`text-lg font-semibold flex items-center justify-center gap-1 ${
-              results.statusColor === "green" ? "text-success" :
-              results.statusColor === "amber" ? "text-amber-400" :
-              "text-danger"
-            }`}>
-              <HintLabel hint={freeHint("readinessStatus")}>{results.readinessStatus}</HintLabel>
+            <p className={`text-lg font-semibold flex items-center justify-center gap-1 ${ragTextClass(rag)}`}>
+              <HintLabel hint={hint("readinessStatus")}>{results.readinessStatus}</HintLabel>
             </p>
             <p className="text-sm text-muted-foreground mt-2 max-w-md mx-auto">
               {results.advisorySummary}
@@ -252,17 +243,39 @@ export default function KnowYourNumbersPage() {
             />
           </div>
 
+          {/* Excel advisory comments */}
+          <div className="rounded-2xl border border-border bg-card p-6 output-panel">
+            <h2 className="font-semibold mb-4">Advisory Comments</h2>
+            <div className="space-y-3">
+              {QUESTIONS.map((q) => {
+                const ans = answers[q.id];
+                if (!ans) return null;
+                const rawScore = ans === "Yes" ? 2 : ans === "Partial" ? 1 : 0;
+                const comment = checklistAdvisoryComment(rawScore);
+                const color =
+                  rawScore === 2 ? "text-success" : rawScore === 1 ? "text-amber-400" : "text-danger";
+                return (
+                  <div key={q.id} className="rounded-lg border border-border/50 p-3">
+                    <p className="text-xs text-muted-foreground mb-1">{q.section}</p>
+                    <p className="text-sm mb-1">{q.text}</p>
+                    <p className={`text-xs font-semibold ${color}`}>{comment}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
           {/* Summary */}
           <div className="grid grid-cols-2 gap-4">
             <div className="rounded-xl bg-background/50 border border-border/50 p-4 text-center">
               <p className="text-xs text-muted-foreground mb-1 flex items-center justify-center">
-                <HintLabel hint={freeHint("totalScore")}>Total Score</HintLabel>
+                <HintLabel hint={hint("totalScore")}>Total Score</HintLabel>
               </p>
               <p className="text-2xl font-bold">{results.totalScore}</p>
             </div>
             <div className="rounded-xl bg-background/50 border border-border/50 p-4 text-center">
               <p className="text-xs text-muted-foreground mb-1 flex items-center justify-center">
-                <HintLabel hint={freeHint("maxPossible")}>Max Possible</HintLabel>
+                <HintLabel hint={hint("maxPossible")}>Max Possible</HintLabel>
               </p>
               <p className="text-2xl font-bold">{results.maxPossible}</p>
             </div>
@@ -280,7 +293,7 @@ export default function KnowYourNumbersPage() {
             </button>
           </div>
         </div>
-      )}
+      );})()}
 
       {!user && results && (
         <div className="mt-8 rounded-2xl bg-primary/5 border border-primary/20 p-6 text-center">

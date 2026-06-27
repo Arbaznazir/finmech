@@ -1,6 +1,10 @@
 import axios from "axios";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://api.finmech.co/api";
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL ||
+  (process.env.NODE_ENV === "development"
+    ? "http://localhost:5001/api"
+    : "https://api.finmech.co/api");
 
 const api = axios.create({
   baseURL: API_URL,

@@ -29,10 +29,10 @@ export const INPUT_FIELDS: { key: string; label: string; category: string; prefi
   { key: "New Customers Acquired", label: "New Customers Acquired", category: "Customers", prefix: "#" },
   { key: "Customers Churned", label: "Customers Churned", category: "Customers", prefix: "#" },
   // Revenue & Costs
-  { key: "ARPU (Monthly)", label: "ARPU (Monthly)", category: "Revenue & Costs", prefix: "$" },
-  { key: "Variable Cost per Customer", label: "Variable Cost / Customer", category: "Revenue & Costs", prefix: "$" },
-  { key: "Marketing Spend", label: "Marketing Spend", category: "Revenue & Costs", prefix: "$" },
-  { key: "Fixed Costs", label: "Fixed Costs", category: "Revenue & Costs", prefix: "$" },
+  { key: "ARPU (Monthly)", label: "ARPU (Monthly)", category: "Revenue & Costs", prefix: "₹" },
+  { key: "Variable Cost per Customer", label: "Variable Cost / Customer", category: "Revenue & Costs", prefix: "₹" },
+  { key: "Marketing Spend", label: "Marketing Spend", category: "Revenue & Costs", prefix: "₹" },
+  { key: "Fixed Costs", label: "Fixed Costs", category: "Revenue & Costs", prefix: "₹" },
 ];
 
 export function createEmptyInputs(): Record<string, number> {

@@ -4,10 +4,45 @@
 // ratios & GREEN/AMBER/RED classification
 // ========================================================
 
+import { BURN_CLASSIFICATION_MESSAGES } from "@/lib/excel-model-content";
+import { ragTextClass } from "@/lib/utils";
+
 export const MONTHS_ORDER = [
-  "April", "May", "June", "July", "Aug", "Sep",
+  "April", "May", "June", "Jul", "Aug", "Sep",
   "Oct", "Nov", "Dec", "Jan", "Feb", "Mar",
 ] as const;
+
+/** Legacy saved state may use "July" — map to Excel month key "Jul". */
+const MONTH_ALIASES: Record<string, MonthName> = {
+  July: "Jul",
+  Jul: "Jul",
+};
+
+function normalizeMonthsData(
+  monthsData: Record<string, Record<string, number>>,
+): Record<string, Record<string, number>> {
+  const out: Record<string, Record<string, number>> = {};
+  for (const [month, inputs] of Object.entries(monthsData)) {
+    const key = (MONTH_ALIASES[month] ?? month) as MonthName;
+    if (MONTHS_ORDER.includes(key)) out[key] = inputs;
+  }
+  return out;
+}
+
+/** null = infinite runway (JSON-safe; Infinity serializes to null). */
+export function isInfiniteRunway(runway: number | null | undefined): boolean {
+  return runway === null || runway === undefined || !Number.isFinite(runway);
+}
+
+export function formatRunway(runway: number | null | undefined): string {
+  if (isInfiniteRunway(runway)) return "∞";
+  return `${Math.round((runway as number) * 10) / 10} mo`;
+}
+
+function computeRunway(cumulativeCash: number, avgNetBurn: number): number | null {
+  if (avgNetBurn <= 0) return null;
+  return cumulativeCash / avgNetBurn;
+}
 
 export type MonthName = (typeof MONTHS_ORDER)[number];
 
@@ -23,7 +58,7 @@ export const INPUT_FIELDS: { key: string; label: string; category: string }[] = 
   { key: "Fixed Expenses", label: "Fixed Expenses", category: "Expenses" },
   { key: "Variable Expenses", label: "Variable Expenses", category: "Expenses" },
   { key: "Recurring Revenue", label: "Recurring Revenue", category: "Revenue" },
-  { key: "Miscll. revenue", label: "Miscellaneous Revenue", category: "Revenue" },
+  { key: "Miscll. revenue", label: "Miscll. revenue", category: "Revenue" },
 ];
 
 export function createEmptyInputs(): BurnMonthInputs {
@@ -47,7 +82,7 @@ export interface ComputedBurnMonth extends BurnMonthInputs {
   "Recurring Revenue ratio": number;
   "Variable Cost Ratio": number;
   "Fixed expenses Ratio": number;
-  "Runway (months)": number;
+  "Runway (months)": number | null;
   "CLASSIFICATION": string;
 }
 
@@ -56,7 +91,7 @@ export type Classification = "GREEN" | "AMBER" | "RED";
 export interface MonthStatus {
   month: string;
   classification: Classification;
-  runway: number;
+  runway: number | null;
   netBurn: number;
   cumulativeCash: number;
 }
@@ -64,6 +99,7 @@ export interface MonthStatus {
 export interface BurnRunwayInsights {
   overall: string;
   overallColor: string;
+  classification: Classification | null;
   guidance: string[];
   healthScore: number; // 0-100
   runwayTrend: "improving" | "stable" | "declining" | "critical";
@@ -80,16 +116,40 @@ export interface BurnRunwayResults {
 
 // ================== CLASSIFICATION LOGIC ==================
 
-function getClassification(m: Record<string, number>): Classification {
-  const recurringRatio = m["Recurring Revenue ratio"] || 0;
-  const netBurnRatio = m["Net Burn Ratio"] || 0;
-  const runway = m["Runway (months)"] || 0;
+function getClassification(m: Record<string, number | null | string>): Classification {
+  const recurringRatio = Number(m["Recurring Revenue ratio"]) || 0;
+  const netBurn = Number(m["Net Burn"]) || 0;
+  const variableCostRatio = Number(m["Variable Cost Ratio"]) || 0;
+  const netProfit = Number(m["Net Profit/Loss"]) || 0;
+  const runway = m["Runway (months)"] as number | null;
+  const runwayMonths = isInfiniteRunway(runway) ? Infinity : Number(runway);
 
-  if (recurringRatio >= 0.70 && runway >= 12 && netBurnRatio <= 0.30) {
+  // Excel Budget!R4 formula
+  if (
+    recurringRatio > 0.7 &&
+    (netProfit > 0 || netBurn < 0.15) &&
+    (runwayMonths > 12 || runwayMonths === Infinity) &&
+    variableCostRatio < 0.5
+  ) {
     return "GREEN";
-  } else if (recurringRatio >= 0.40 && runway >= 6 && netBurnRatio <= 0.60) {
+  }
+
+  const netBurnRatio = Number(m["Net Burn Ratio"]) || 0;
+  const fixedExpenses = Number(m["Fixed Expenses"]) || 0;
+
+  // Excel Budget!R4 — AMBER branch uses K (Net Burn abs), M (Net Burn Ratio), B (Fixed Expenses)
+  if (
+    recurringRatio > 0.14 &&
+    recurringRatio < 0.7 &&
+    netProfit < 0 &&
+    netBurn < 0.3 &&
+    runwayMonths > 6 &&
+    netBurnRatio < 12 &&
+    fixedExpenses > 0.3
+  ) {
     return "AMBER";
   }
+
   return "RED";
 }
 
@@ -99,53 +159,49 @@ export function calculateBurnRunway(
   monthsData: Record<string, Record<string, number>>,
   openingCash: number
 ): BurnRunwayResults {
+  const normalized = normalizeMonthsData(monthsData);
   const computed: Record<string, ComputedBurnMonth> = {};
   const addedMonths: string[] = [];
   let cumulativeCash = openingCash;
 
-  MONTHS_ORDER.forEach((month, globalIdx) => {
-    if (!monthsData[month]) return;
+  MONTHS_ORDER.forEach((month) => {
+    if (!normalized[month]) return;
 
-    const m = { ...monthsData[month] } as any;
+    const m = { ...normalized[month] } as Record<string, number | string>;
     addedMonths.push(month);
 
     // Core calculations
-    m["Total Expenses"] = (m["Fixed Expenses"] || 0) + (m["Variable Expenses"] || 0);
-    m["Total Revenue"] = (m["Recurring Revenue"] || 0) + (m["Miscll. revenue"] || 0);
-    m["Net Profit/Loss"] = m["Total Revenue"] - m["Total Expenses"];
+    m["Total Expenses"] = (Number(m["Fixed Expenses"]) || 0) + (Number(m["Variable Expenses"]) || 0);
+    m["Total Revenue"] = (Number(m["Recurring Revenue"]) || 0) + (Number(m["Miscll. revenue"]) || 0);
+    m["Net Profit/Loss"] = Number(m["Total Revenue"]) - Number(m["Total Expenses"]);
 
     // Cumulative Cash
-    cumulativeCash += m["Net Profit/Loss"];
+    cumulativeCash += Number(m["Net Profit/Loss"]);
     m["Cumulative Cash"] = cumulativeCash;
 
     // Burn Metrics
-    m["Gross Burn"] = m["Total Expenses"];
-    m["Net Burn"] = Math.max(0, m["Total Expenses"] - m["Total Revenue"]);
+    m["Gross Burn"] = Number(m["Total Expenses"]);
+    m["Net Burn"] = Math.max(0, Number(m["Total Expenses"]) - Number(m["Total Revenue"]));
 
-    // Avg Net Burn (to date)
+    // Avg Net Burn (to date) — Excel: AVERAGE(K$4:Kn)
     const monthsSoFar = addedMonths.length;
-    const totalNetBurnSoFar = addedMonths.reduce(
-      (sum, mName) => sum + ((computed[mName]?.["Net Burn"] ?? 0) + (mName === month ? m["Net Burn"] : 0)),
-      0
-    );
-    // Simpler: recalculate from all computed months + current
     let runningNetBurn = 0;
     addedMonths.forEach((mn) => {
-      if (mn === month) runningNetBurn += m["Net Burn"];
-      else runningNetBurn += computed[mn]["Net Burn"];
+      if (mn === month) runningNetBurn += Number(m["Net Burn"]);
+      else runningNetBurn += Number(computed[mn]["Net Burn"]);
     });
     m["Avg Net Burn (to date)"] = runningNetBurn / monthsSoFar;
 
-    // Ratios
-    const totalRev = m["Total Revenue"];
-    m["Net Burn Ratio"] = totalRev > 0 ? m["Net Burn"] / totalRev : 0;
-    m["Recurring Revenue ratio"] = totalRev > 0 ? (m["Recurring Revenue"] || 0) / totalRev : 0;
-    m["Variable Cost Ratio"] = totalRev > 0 ? (m["Variable Expenses"] || 0) / totalRev : 0;
-    m["Fixed expenses Ratio"] = totalRev > 0 ? (m["Fixed Expenses"] || 0) / totalRev : 0;
+    // Ratios — Excel: IF(G=0,1,K/G) for net burn ratio
+    const totalRev = Number(m["Total Revenue"]);
+    m["Net Burn Ratio"] = totalRev > 0 ? Number(m["Net Burn"]) / totalRev : 1;
+    m["Recurring Revenue ratio"] = totalRev > 0 ? (Number(m["Recurring Revenue"]) || 0) / totalRev : 0;
+    m["Variable Cost Ratio"] = totalRev > 0 ? (Number(m["Variable Expenses"]) || 0) / totalRev : 0;
+    m["Fixed expenses Ratio"] = totalRev > 0 ? (Number(m["Fixed Expenses"]) || 0) / totalRev : 0;
 
-    // Runway
-    const avgNetBurn = m["Avg Net Burn (to date)"];
-    m["Runway (months)"] = avgNetBurn > 0 ? m["Cumulative Cash"] / avgNetBurn : Infinity;
+    // Runway — Excel: IF(L=0,"infinite",I/L); null = infinite (JSON-safe)
+    const avgNetBurn = Number(m["Avg Net Burn (to date)"]);
+    m["Runway (months)"] = computeRunway(Number(m["Cumulative Cash"]), avgNetBurn);
 
     // Classification
     m["CLASSIFICATION"] = getClassification(m);
@@ -183,9 +239,10 @@ function generateInsights(
   // Check if any data entered
   if (addedMonths.length === 0) {
     return {
-      overall: "Enter your monthly data to see burn & runway analysis.",
+      overall: "",
       overallColor: "text-muted-foreground",
-      guidance: ["Start by entering opening cash and monthly revenue/expense data."],
+      classification: null,
+      guidance: [],
       healthScore: 0,
       runwayTrend: "stable",
       cashOutlook: "adequate",
@@ -197,142 +254,73 @@ function generateInsights(
   const latest = computed[latestMonth];
   const latestStatus = status[status.length - 1];
 
-  // Cash position analysis
+  // Cash position analysis (health score only)
   const finalCash = latest["Cumulative Cash"];
   if (finalCash < 0) {
     healthScore -= 40;
     cashOutlook = "deficit";
-    guidance.push("🚨 Cash Deficit — You've burned through your opening cash. Immediate fundraising or cost-cutting required.");
   } else if (finalCash < openingCash * 0.2) {
     healthScore -= 25;
     cashOutlook = "constrained";
-    guidance.push("⚠️ Low Cash Reserve — Less than 20% of opening cash remains. Plan fundraising now.");
   } else if (finalCash > openingCash * 1.5) {
     cashOutlook = "surplus";
-    guidance.push("✓ Cash Surplus — You've grown your cash position. Consider reinvestment or expansion.");
   }
 
-  // Runway analysis
+  // Runway analysis (health score only)
   const runway = latestStatus.runway;
-  if (runway === Infinity) {
+  if (isInfiniteRunway(runway)) {
     healthScore = Math.min(100, healthScore + 10);
-    guidance.push("✓ Infinite Runway — Revenue covers all expenses. You're self-sustaining!");
     runwayTrend = "improving";
-  } else if (runway < 3) {
+  } else if (runway != null && runway < 3) {
     healthScore -= 35;
     runwayTrend = "critical";
-    guidance.push("🚨 Critical Runway (< 3 months) — You're running on fumes. Emergency action needed.");
-  } else if (runway < 6) {
+  } else if (runway != null && runway < 6) {
     healthScore -= 20;
     runwayTrend = "declining";
-    guidance.push("⚠️ Low Runway (< 6 months) — Start fundraising or reduce burn immediately.");
-  } else if (runway < 12) {
+  } else if (runway != null && runway < 12) {
     healthScore -= 5;
-    guidance.push("⚠️ Moderate Runway (6-12 months) — Monitor closely and plan ahead.");
-  } else {
-    guidance.push("✓ Healthy Runway (> 12 months) — Good financial buffer for operations.");
   }
 
-  // Trend analysis - compare first half to second half
+  // Trend analysis
   if (addedMonths.length >= 3) {
     const midPoint = Math.floor(addedMonths.length / 2);
     const firstHalf = addedMonths.slice(0, midPoint);
     const secondHalf = addedMonths.slice(midPoint);
-    
+
     const firstHalfBurn = firstHalf.reduce((sum, m) => sum + computed[m]["Net Burn"], 0) / firstHalf.length;
     const secondHalfBurn = secondHalf.reduce((sum, m) => sum + computed[m]["Net Burn"], 0) / secondHalf.length;
-    
+
     if (secondHalfBurn < firstHalfBurn * 0.8) {
-      guidance.push("✓ Improving Trend — Net burn is decreasing. You're moving toward profitability.");
       if (runwayTrend !== "critical") runwayTrend = "improving";
     } else if (secondHalfBurn > firstHalfBurn * 1.2) {
       healthScore -= 15;
-      guidance.push("⚠️ Worsening Trend — Net burn is increasing. Review expense growth.");
       if (runwayTrend !== "critical") runwayTrend = "declining";
     }
   }
 
-  // Recurring Revenue analysis
   const recurringRatio = latest["Recurring Revenue ratio"] || 0;
-  if (recurringRatio >= 0.7) {
-    guidance.push("✓ High Recurring Revenue (>70%) — Predictable revenue stream reduces cash risk.");
-  } else if (recurringRatio < 0.3) {
-    healthScore -= 10;
-    guidance.push("⚠️ Low Recurring Revenue (<30%) — Heavy reliance on variable income creates uncertainty.");
-  }
+  if (recurringRatio < 0.3) healthScore -= 10;
 
-  // Net Burn Ratio analysis
   const netBurnRatio = latest["Net Burn Ratio"] || 0;
-  if (netBurnRatio > 1) {
-    healthScore -= 20;
-    guidance.push("🚨 High Net Burn Ratio — Expenses exceed revenue by over 100%. Unsustainable.");
-  } else if (netBurnRatio > 0.5) {
-    healthScore -= 10;
-    guidance.push("⚠️ Elevated Net Burn Ratio — Expenses significantly exceed revenue.");
-  } else if (netBurnRatio < 0.1 && latest["Net Burn"] > 0) {
-    guidance.push("✓ Controlled Burn — Low net burn ratio indicates efficient operations.");
-  }
+  if (netBurnRatio > 1) healthScore -= 20;
+  else if (netBurnRatio > 0.5) healthScore -= 10;
 
-  // Fixed vs Variable expense analysis
-  const fixedRatio = latest["Fixed expenses Ratio"] || 0;
-  const variableRatio = latest["Variable Cost Ratio"] || 0;
-  if (fixedRatio > 0.8 && latest["Total Revenue"] > 0) {
-    guidance.push("📊 High Fixed Cost Structure — Limited flexibility. Consider converting fixed to variable costs.");
-  } else if (variableRatio > fixedRatio && latest["Total Revenue"] > 0) {
-    guidance.push("✓ Flexible Cost Structure — Variable costs dominate, providing operational flexibility.");
-  }
-
-  // Classification breakdown
-  const greenMonths = status.filter(s => s.classification === "GREEN").length;
-  const amberMonths = status.filter(s => s.classification === "AMBER").length;
   const redMonths = status.filter(s => s.classification === "RED").length;
-  const totalMonths = status.length;
+  if (redMonths > status.length * 0.5) healthScore -= 15;
 
-  if (redMonths > totalMonths * 0.5) {
-    healthScore -= 15;
-    guidance.push(`⚠️ Mostly RED Months (${redMonths}/${totalMonths}) — Financial health is poor overall.`);
-  } else if (greenMonths > totalMonths * 0.6) {
-    guidance.push(`✓ Mostly GREEN Months (${greenMonths}/${totalMonths}) — Consistent financial health.`);
-  }
+  // Excel classification commentary (latest month)
+  const classification = latestStatus.classification;
+  const excelMsgs = BURN_CLASSIFICATION_MESSAGES[classification];
 
-  // Cash flow volatility
-  if (addedMonths.length >= 3) {
-    const cashFlows = addedMonths.map(m => computed[m]["Net Profit/Loss"]);
-    const avgCashFlow = cashFlows.reduce((a, b) => a + b, 0) / cashFlows.length;
-    const variance = cashFlows.reduce((sum, cf) => sum + Math.pow(cf - avgCashFlow, 2), 0) / cashFlows.length;
-    const volatility = Math.sqrt(variance);
-    
-    if (volatility > Math.abs(avgCashFlow) * 2) {
-      guidance.push("⚠️ High Cash Flow Volatility — Unpredictable swings make planning difficult.");
-    }
-  }
+  overall = excelMsgs.overall;
+  overallColor = ragTextClass(classification);
 
-  // Determine overall status
-  if (healthScore >= 80) {
-    overall = "Excellent burn management! Strong runway and healthy cash position.";
-    overallColor = "text-success";
-  } else if (healthScore >= 60) {
-    overall = "Moderate financial health. Monitor runway and optimize burn rate.";
-    overallColor = "text-amber-400";
-  } else if (healthScore >= 40) {
-    overall = "Financial stress detected. Take action to extend runway.";
-    overallColor = "text-orange-400";
-  } else {
-    overall = "Critical financial situation. Immediate intervention required.";
-    overallColor = "text-danger";
-  }
-
-  // Add health score to guidance
-  guidance.unshift(`📊 Burn Health Score: ${Math.max(0, healthScore)}/100`);
-
-  // Default guidance
-  if (guidance.length <= 1) {
-    guidance.push("📊 Continue tracking monthly to monitor runway trends.");
-  }
+  guidance.push(...excelMsgs.guidance);
 
   return {
     overall,
     overallColor,
+    classification,
     guidance,
     healthScore: Math.max(0, healthScore),
     runwayTrend,
@@ -350,9 +338,9 @@ export const OUTPUT_FIELDS: { key: string; label: string; format: "currency" | "
   { key: "Net Burn", label: "Net Burn", format: "currency" },
   { key: "Avg Net Burn (to date)", label: "Avg Net Burn (to date)", format: "currency" },
   { key: "Net Burn Ratio", label: "Net Burn Ratio", format: "ratio" },
-  { key: "Recurring Revenue ratio", label: "Recurring Revenue Ratio", format: "ratio" },
+  { key: "Recurring Revenue ratio", label: "Recurring Revenue ratio", format: "ratio" },
   { key: "Variable Cost Ratio", label: "Variable Cost Ratio", format: "ratio" },
-  { key: "Fixed expenses Ratio", label: "Fixed Expenses Ratio", format: "ratio" },
+  { key: "Fixed expenses Ratio", label: "Fixed expenses Ratio", format: "ratio" },
   { key: "Runway (months)", label: "Runway (months)", format: "months" },
   { key: "CLASSIFICATION", label: "Classification", format: "classification" },
 ];

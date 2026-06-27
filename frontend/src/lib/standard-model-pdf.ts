@@ -174,16 +174,19 @@ function analyzeStdBurnRunway(out: Record<string, unknown>, inp: Record<string, 
   const months = md ? monthKeys(md) : [];
 
   const netBurn = last ? num(last["Net Burn"]) : 0;
-  const runway = last ? num(last["Runway (months)"]) : 0;
+  const runwayRaw = last ? last["Runway (months)"] : null;
+  const runwayInfinite = runwayRaw === null || runwayRaw === undefined || !Number.isFinite(Number(runwayRaw));
+  const runway = runwayInfinite ? null : Number(runwayRaw);
+  const runwayLabel = runwayInfinite ? "∞" : runway!.toFixed(1);
   const cumCash = last ? num(last["Cumulative Cash"]) : openingCash;
   const recurring = last ? num(last["Recurring Revenue ratio"]) : 0;
 
-  const exec = p(`<strong>Executive summary:</strong> Standard Burn &amp; Runway (fed by Common Utility): opening cash <strong>${fmt(openingCash)}</strong>, latest net burn <strong>${fmt(netBurn)}/mo</strong>, runway <strong>${runway.toFixed(1)} months</strong>, cumulative cash <strong>${fmt(cumCash)}</strong>. Recurring revenue ratio: <strong>${pctVal(recurring)}</strong>. Outlook: <strong>${ins?.cashOutlook ?? "—"}</strong>.`);
+  const exec = p(`<strong>Executive summary:</strong> Standard Burn &amp; Runway (fed by Common Utility): opening cash <strong>${fmt(openingCash)}</strong>, latest net burn <strong>${fmt(netBurn)}/mo</strong>, runway <strong>${runwayLabel} months</strong>, cumulative cash <strong>${fmt(cumCash)}</strong>. Recurring revenue ratio: <strong>${pctVal(recurring)}</strong>. Outlook: <strong>${ins?.cashOutlook ?? "—"}</strong>.`);
 
   const results = metricTable([
     { label: "Opening Cash", value: fmt(openingCash) },
     { label: "Net Burn (Latest)", value: fmt(netBurn) },
-    { label: "Runway (Months)", value: runway.toFixed(1), note: runway < 6 ? "Critical" : runway < 12 ? "Watch" : "OK" },
+    { label: "Runway (Months)", value: runwayLabel, note: runwayInfinite ? "Self-sustaining" : runway! < 6 ? "Critical" : runway! < 12 ? "Watch" : "OK" },
     { label: "Cumulative Cash", value: fmt(cumCash) },
     { label: "Recurring Revenue Ratio", value: pctVal(recurring) },
     { label: "Classification", value: last ? String(last["CLASSIFICATION"]) : "—" },
@@ -192,8 +195,8 @@ function analyzeStdBurnRunway(out: Record<string, unknown>, inp: Record<string, 
   ], STANDARD_ACCENT);
 
   const risks: string[] = [];
-  if (runway < 6) risks.push("Critical runway — emergency fundraise or cost cuts required.");
-  else if (runway < 12) risks.push("Under 12 months — begin Standard tier fundraise planning.");
+  if (!runwayInfinite && runway! < 6) risks.push("Critical runway — emergency fundraise or cost cuts required.");
+  else if (!runwayInfinite && runway! < 12) risks.push("Under 12 months — begin Standard tier fundraise planning.");
   if (md) {
     const t = trendAcrossMonths(md, "Net Burn");
     if (t.change > 0) risks.push("Net burn increasing — audit expense growth vs hub revenue.");
@@ -500,8 +503,10 @@ export function getStandardModelHeroCards(calc: CalculationExport): Row[] {
     ];
   }
   if (slug === "std-burn-runway") {
+    const rw = last?.["Runway (months)"];
+    const rwInfinite = rw === null || rw === undefined || !Number.isFinite(Number(rw));
     return [
-      { label: "Runway", value: `${num(last?.["Runway (months)"]).toFixed(1)} mo` },
+      { label: "Runway", value: rwInfinite ? "∞" : `${Number(rw).toFixed(1)} mo` },
       { label: "Net Burn", value: fmt(last?.["Net Burn"]) },
       { label: "Cash", value: fmt(last?.["Cumulative Cash"]) },
       { label: "RAG", value: String(last?.["CLASSIFICATION"] ?? "—") },

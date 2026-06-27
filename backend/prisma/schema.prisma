@@ -116,3 +116,49 @@ model ModelPrice {
   isActive        Boolean  @default(true)
   updatedAt       DateTime @updatedAt
 }
+
+// Admin-editable (i) field guide copy per model field
+model ModelFieldHint {
+  id         String   @id @default(uuid())
+  modelSlug  String
+  fieldKey   String
+  what       String
+  why        String
+  how        String?
+  updatedAt  DateTime @updatedAt
+
+  @@unique([modelSlug, fieldKey])
+  @@index([modelSlug])
+}
+
+// Admin-managed FAQs — global, tier gallery, or per-model
+model Faq {
+  id          String   @id @default(uuid())
+  scope       String   // global | tier | model
+  tierSlug    String?  // free | standalone | standard | investor
+  modelSlug   String?
+  question    String
+  answer      String
+  sortOrder   Int      @default(0)
+  isPublished Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([scope, tierSlug, modelSlug, sortOrder])
+}
+
+// Admin rules: conditional Smart Results bullets in model PDFs
+model SmartResultPoint {
+  id          String   @id @default(uuid())
+  modelSlug   String
+  message     String
+  color       String   @default("#16a34a")
+  conditions  String   // JSON: [{ field, op, value, value2? }]
+  combineMode String   @default("all") // all = AND, any = OR
+  sortOrder   Int      @default(0)
+  isPublished Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([modelSlug, sortOrder])
+}

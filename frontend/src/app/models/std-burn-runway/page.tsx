@@ -2,14 +2,15 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import dynamic from "next/dynamic";
-import Link from "next/link";
+import Link from "next/link"
+import { ModelBackLink } from "@/components/model-back-link";
 import { ArrowLeft, Flame, Save, RotateCcw } from "lucide-react";
 import { FieldHint } from "@/components/FieldHint";
 import { HintLabel } from "@/components/HintLabel";
 import { standardHint } from "@/lib/standard-model-hints";
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
-import { formatCurrency } from "@/lib/utils";
+import {formatCurrency, formatChartCurrency} from "@/lib/utils";
 import api from "@/lib/api";
 import { offerSmartResultsAfterCalculate } from "@/lib/smart-results";
 import { loadModelResults, saveModelResults, clearModelResults } from "@/lib/model-link";
@@ -20,6 +21,8 @@ import {
   OUTPUT_FIELDS,
   calculateBurnRunway,
   createEmptyInputs,
+  formatRunway,
+  isInfiniteRunway,
   type MonthName,
 } from "@/lib/burn-runway-model";
 
@@ -137,9 +140,7 @@ export default function StdBurnRunwayPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-8">
-      <Link href="/models?tier=standard" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
-        <ArrowLeft className="h-4 w-4" /> Back to Models
-      </Link>
+      <ModelBackLink modelSlug="std-burn-runway" label="Back to Models" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors" />
 
       <div className="flex items-start justify-between gap-4 mb-6">
         <div className="flex items-start gap-4">
@@ -171,7 +172,7 @@ export default function StdBurnRunwayPage() {
         <div className="rounded-2xl border border-border bg-card p-5 mb-6">
           <label className="flex items-center text-xs text-muted-foreground mb-1">Opening Cash Balance (Year Start)<FieldHint hint={{ what: "Cash and bank balance at the start of the financial year.", why: "Runway = Cumulative Cash ÷ Avg Net Burn. Your starting cash sets how long you can operate.", how: "From your bank statement on 1st April or start of the financial year." }} /></label>
           <div className="relative max-w-xs">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">$</span>
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">₹</span>
             <input type="number" value={openingCash || ""}
               onChange={(e) => { setOpeningCash(parseFloat(e.target.value) || 0); markDirty(); }}
               placeholder="100000"
@@ -230,7 +231,7 @@ export default function StdBurnRunwayPage() {
                   {isLocked && <span className="ml-1 text-[10px] text-primary/70">(auto-filled)</span>}
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">$</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">₹</span>
                   <input type="number" data-field={field.key}
                     value={monthData[activeMonth][field.key] || ""}
                     onChange={(e) => handleChange(field.key, e.target.value)}
@@ -285,7 +286,7 @@ export default function StdBurnRunwayPage() {
                 tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
                 grid: { top: 15, right: 15, bottom: 30, left: 55 },
                 xAxis: { type: "category", data: results.status.map(s => s.month), axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
-                yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
+                yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => formatChartCurrency(v) }, splitLine: { lineStyle: { color: "#222" } } },
                 series: [{
                   type: "line", smooth: true,
                   data: results.status.map(s => s.cumulativeCash),
@@ -307,7 +308,7 @@ export default function StdBurnRunwayPage() {
                 tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
                 grid: { top: 15, right: 15, bottom: 30, left: 55 },
                 xAxis: { type: "category", data: results.status.map(s => s.month), axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
-                yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
+                yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => formatChartCurrency(v) }, splitLine: { lineStyle: { color: "#222" } } },
                 series: [{
                   type: "bar",
                   data: results.status.map(s => ({
@@ -322,7 +323,7 @@ export default function StdBurnRunwayPage() {
           {/* Runway Gauge (latest month) */}
           {(() => {
             const last = results.status[results.status.length - 1];
-            const rwy = last.runway === Infinity ? 24 : Math.min(24, last.runway);
+            const rwy = isInfiniteRunway(last.runway) ? 24 : Math.min(24, last.runway as number);
             return (
               <div className="rounded-2xl border border-border bg-card p-5 output-panel">
                 <h3 className="font-semibold text-sm mb-3">Current Runway</h3>
@@ -336,7 +337,7 @@ export default function StdBurnRunwayPage() {
                       axisTick: { show: false },
                       splitLine: { show: false },
                       axisLabel: { color: "#888", fontSize: 9, distance: 25 },
-                      detail: { valueAnimation: true, formatter: last.runway === Infinity ? "∞" : "{value} mo", color: "#e0e0e0", fontSize: 18, offsetCenter: [0, "70%"] },
+                      detail: { valueAnimation: true, formatter: isInfiniteRunway(last.runway) ? "∞" : "{value} mo", color: "#e0e0e0", fontSize: 18, offsetCenter: [0, "70%"] },
                       data: [{ value: Math.round(rwy * 10) / 10 }],
                     }],
                   }}

@@ -2,20 +2,15 @@
 
 import { useState, useEffect, useCallback } from "react";
 import dynamic from "next/dynamic";
-import Link from "next/link";
+import Link from "next/link"
+import { ModelBackLink } from "@/components/model-back-link";
 import {
   ArrowLeft, Calculator, Save, RotateCcw,
   ChevronDown, ChevronUp, Info, Gem,
 } from "lucide-react";
 import { FieldHint } from "@/components/FieldHint";
 import { HintLabel } from "@/components/HintLabel";
-import { standaloneHint } from "@/lib/standalone-model-hints";
-const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
-import { useAuth } from "@/lib/store";
-import { formatCurrency } from "@/lib/utils";
-import api from "@/lib/api";
-import { useSavedModel } from "@/lib/use-saved-model";
-import { offerSmartResultsAfterCalculate } from "@/lib/smart-results";
+import { useModelHints } from "@/hooks/use-model-hints";
 import {
   INPUT_FIELDS,
   calculateDCF,
@@ -24,8 +19,16 @@ import {
   type DCFResults,
 } from "@/lib/dcf-model";
 
+const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
+import { useAuth } from "@/lib/store";
+import {formatCurrency, formatChartCurrency} from "@/lib/utils";
+import api from "@/lib/api";
+import { useSavedModel } from "@/lib/use-saved-model";
+import { offerSmartResultsAfterCalculate } from "@/lib/smart-results";
+
 export default function DCFValuationPage() {
   const { user, hydrate } = useAuth();
+  const { hint } = useModelHints("dcf-valuation");
   const [inputs, setInputs] = useState<DCFInputs>(createDefaultInputs());
   const [results, setResults] = useState<DCFResults | null>(null);
   const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({});
@@ -87,9 +90,7 @@ export default function DCFValuationPage() {
   return (
     <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
-      <Link href="/models?tier=standalone" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
-        <ArrowLeft className="h-4 w-4" /> Back to Models
-      </Link>
+      <ModelBackLink modelSlug="dcf-valuation" label="Back to Models" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors" />
 
       <div className="flex items-start justify-between gap-4 mb-8">
         <div className="flex items-start gap-4">
@@ -139,10 +140,10 @@ export default function DCFValuationPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 px-1">
                   {fields.map((field) => (
                     <div key={field.key} className={field.type === "currency" ? "sm:col-span-2" : ""}>
-                      <label className="flex items-center text-xs text-muted-foreground mb-1">{field.label}{standaloneHint(field.key) && <FieldHint hint={standaloneHint(field.key)!} />}</label>
+                      <label className="flex items-center text-xs text-muted-foreground mb-1">{field.label}{hint(field.key) && <FieldHint hint={hint(field.key)!} />}</label>
                       <div className="relative">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-                          {field.type === "currency" ? "$" : field.type === "percent" ? "%" : "#"}
+                          {field.type === "currency" ? "₹" : field.type === "percent" ? "%" : "#"}
                         </span>
                         <input
                           type="number"
@@ -197,25 +198,27 @@ export default function DCFValuationPage() {
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 <div className="rounded-xl bg-muted border border-border p-3 output-panel text-center">
                   <p className="text-xs text-muted-foreground mb-1 flex items-center justify-center">
-                    <HintLabel hint={standaloneHint("costOfEquity")}>Cost of Equity</HintLabel>
+                    <HintLabel hint={hint("costOfEquity")}>Cost of Equity</HintLabel>
                   </p>
-                  <p className="text-lg font-bold">{fmtPct(results.costOfEquity)}</p>
+                  <p className="text-lg font-bold">{fmtPct(results.wacc.costOfEquity)}</p>
                 </div>
                 <div className="rounded-xl bg-muted border border-border p-3 output-panel text-center">
                   <p className="text-xs text-muted-foreground mb-1 flex items-center justify-center">
-                    <HintLabel hint={standaloneHint("afterTaxCostOfDebt")}>After-Tax Cost of Debt</HintLabel>
+                    <HintLabel hint={hint("afterTaxCostOfDebt")}>After-Tax Cost of Debt</HintLabel>
                   </p>
-                  <p className="text-lg font-bold">{fmtPct(results.afterTaxCostOfDebt)}</p>
+                  <p className="text-lg font-bold">{fmtPct(results.wacc.afterTaxCostOfDebt)}</p>
                 </div>
                 <div className="rounded-xl bg-muted border border-border p-3 output-panel text-center">
-                  <p className="text-xs text-muted-foreground mb-1">Equity Weight</p>
-                  <p className="text-lg font-bold">{fmtPct(results.equityWeight)}</p>
+                  <p className="text-xs text-muted-foreground mb-1 flex items-center justify-center">
+                    <HintLabel hint={hint("equityWeight")}>Equity Weight</HintLabel>
+                  </p>
+                  <p className="text-lg font-bold">{fmtPct(results.wacc.equityWeight)}</p>
                 </div>
                 <div className="rounded-xl bg-primary/10 border border-primary/30 p-3 text-center">
                   <p className="text-xs text-primary mb-1 flex items-center justify-center">
-                    <HintLabel hint={standaloneHint("wacc")} className="text-primary">WACC</HintLabel>
+                    <HintLabel hint={hint("wacc")} className="text-primary">WACC</HintLabel>
                   </p>
-                  <p className="text-xl font-bold text-primary">{fmtPct(results.wacc)}</p>
+                  <p className="text-xl font-bold text-primary">{fmtPct(results.wacc.wacc)}</p>
                 </div>
               </div>
             </div>
@@ -230,7 +233,7 @@ export default function DCFValuationPage() {
                   <thead>
                     <tr className="border-b border-border bg-background/50">
                       <th className="text-left px-4 py-3 font-semibold text-muted-foreground sticky left-0 bg-background/50 min-w-[140px]">Line Item</th>
-                      {results.projection.map((row) => (
+                      {results.years.map((row) => (
                         <th key={row.year} className="text-right px-4 py-3 font-semibold text-muted-foreground min-w-[120px]">{row.year}</th>
                       ))}
                     </tr>
@@ -249,9 +252,9 @@ export default function DCFValuationPage() {
                     ] as const).map((field) => (
                       <tr key={field.key} className={`border-b border-border/30 ${field.bold ? "bg-background/30" : ""}`}>
                         <td className={`px-4 py-2.5 sticky left-0 bg-card ${field.bold ? "font-semibold bg-background/30" : "text-muted-foreground"}`}>
-                          <HintLabel hint={standaloneHint(field.key === "pvOfFCFF" ? "pvOfFCFF" : field.key)}>{field.label}</HintLabel>
+                          <HintLabel hint={hint(field.key === "pvOfFCFF" ? "pvOfFCFF" : field.key)}>{field.label}</HintLabel>
                         </td>
-                        {results.projection.map((row) => {
+                        {results.years.map((row) => {
                           const val = row[field.key];
                           return (
                             <td key={row.year} className={`text-right px-4 py-2.5 ${field.bold ? "font-semibold" : ""} ${val < 0 ? "text-danger" : ""}`}>
@@ -271,16 +274,16 @@ export default function DCFValuationPage() {
               <h2 className="font-semibold mb-5">Valuation Summary</h2>
               <div className="space-y-3">
                 {([
-                  { label: "Sum of PV of FCFF", key: "totalPVOfFCFF", value: results.totalPVOfFCFF, bold: false },
+                  { label: "Sum of PV of FCFF", key: "totalPVofFCFF", value: results.totalPVofFCFF, bold: false },
                   { label: "Terminal Value", key: "terminalValue", value: results.terminalValue, bold: false },
                   { label: "PV of Terminal Value", key: "pvOfTerminalValue", value: results.pvOfTerminalValue, bold: false },
                   { label: "Enterprise Value", key: "enterpriseValue", value: results.enterpriseValue, bold: true },
-                  { label: "Less: Market Value of Debt", key: "marketValueOfDebt", value: -inputs.marketValueOfDebt, bold: false },
+                  { label: "Less: Market Value of Debt", key: "debt", value: -inputs.debt, bold: false },
                   { label: "Equity Value", key: "equityValue", value: results.equityValue, bold: true },
                 ]).map((row) => (
                   <div key={row.label} className={`flex items-center justify-between rounded-lg px-4 py-3 ${row.bold ? "bg-primary/5 border border-primary/20" : "bg-background/50 border border-border/50"}`}>
                     <span className={`text-sm inline-flex items-center ${row.bold ? "font-semibold" : "text-muted-foreground"}`}>
-                      <HintLabel hint={standaloneHint(row.key)}>{row.label}</HintLabel>
+                      <HintLabel hint={hint(row.key)}>{row.label}</HintLabel>
                     </span>
                     <span className={`text-sm font-semibold ${row.value < 0 ? "text-danger" : row.bold ? "text-primary" : ""}`}>
                       {formatCurrency(row.value)}
@@ -291,20 +294,50 @@ export default function DCFValuationPage() {
             </div>
 
             {/* Big Number */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
               <div className="rounded-2xl border-2 border-primary/30 bg-primary/5 p-6 text-center output-panel-primary">
                 <p className="text-sm text-muted-foreground mb-2 flex items-center justify-center">
-                  <HintLabel hint={standaloneHint("enterpriseValue")}>Enterprise Value</HintLabel>
+                  <HintLabel hint={hint("enterpriseValue")}>Enterprise Value</HintLabel>
                 </p>
                 <p className="text-3xl font-bold text-primary">{formatCurrency(results.enterpriseValue)}</p>
               </div>
               <div className={`rounded-2xl border-2 p-6 text-center ${results.equityValue >= 0 ? "border-success/30 bg-success/5" : "border-danger/30 bg-danger/5"}`}>
                 <p className="text-sm text-muted-foreground mb-2 flex items-center justify-center">
-                  <HintLabel hint={standaloneHint("equityValue")}>Equity Value</HintLabel>
+                  <HintLabel hint={hint("equityValue")}>Equity Value</HintLabel>
                 </p>
                 <p className={`text-3xl font-bold ${results.equityValue >= 0 ? "text-success" : "text-danger"}`}>
                   {formatCurrency(results.equityValue)}
                 </p>
+              </div>
+              <div className="rounded-2xl border-2 border-blue-400/30 bg-blue-400/5 p-6 text-center sm:col-span-1 col-span-2">
+                <p className="text-sm text-muted-foreground mb-2 flex items-center justify-center">
+                  <HintLabel hint={hint("valuePerShare")}>Value per Share</HintLabel>
+                </p>
+                <p className="text-3xl font-bold text-blue-400">{formatCurrency(results.valuePerShare)}</p>
+              </div>
+            </div>
+
+            {/* Scenario insights */}
+            <div className="rounded-2xl border border-border bg-card p-6 space-y-4">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="inline-flex items-center rounded px-2 py-0.5 text-xs font-medium uppercase bg-blue-400/10 text-blue-400">
+                  <HintLabel hint={hint("revenueGrowthScenario")}>{results.insights.scenarioLabel}</HintLabel>
+                </span>
+                <span className="text-xs text-muted-foreground inline-flex items-center">
+                  <HintLabel hint={hint("ebitdaMarginScenario")}>EBITDA margin scenario: {results.ebitdaMarginScenario}</HintLabel>
+                </span>
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold mb-2 inline-flex items-center">
+                  <HintLabel hint={hint("interpretation")}>Interpretation</HintLabel>
+                </h3>
+                <p className="text-sm text-muted-foreground whitespace-pre-line">{results.insights.interpretation}</p>
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold mb-2 inline-flex items-center">
+                  <HintLabel hint={hint("mentoring")}>Mentoring Perspective</HintLabel>
+                </h3>
+                <p className="text-sm text-muted-foreground whitespace-pre-line">{results.insights.mentoring}</p>
               </div>
             </div>
           </div>
@@ -327,11 +360,11 @@ export default function DCFValuationPage() {
                 tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
                 legend: { data: ["FCFF", "PV of FCFF"], textStyle: { color: "#aaa", fontSize: 10 }, top: 0 },
                 grid: { top: 30, right: 15, bottom: 25, left: 55 },
-                xAxis: { type: "category", data: results.projection.map(p => p.year), axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
-                yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000000 ? `$${(v/1000000).toFixed(1)}M` : v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
+                xAxis: { type: "category", data: results.years.map(p => p.year), axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
+                yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => formatChartCurrency(v) }, splitLine: { lineStyle: { color: "#222" } } },
                 series: [
-                  { name: "FCFF", type: "bar", data: results.projection.map(p => p.fcff), itemStyle: { color: "#60a5fa", borderRadius: [4, 4, 0, 0] } },
-                  { name: "PV of FCFF", type: "bar", data: results.projection.map(p => p.pvOfFCFF), itemStyle: { color: "#a78bfa", borderRadius: [4, 4, 0, 0] } },
+                  { name: "FCFF", type: "bar", data: results.years.map(p => p.fcff), itemStyle: { color: "#60a5fa", borderRadius: [4, 4, 0, 0] } },
+                  { name: "PV of FCFF", type: "bar", data: results.years.map(p => p.pvOfFCFF), itemStyle: { color: "#a78bfa", borderRadius: [4, 4, 0, 0] } },
                 ],
               }}
             />
@@ -346,11 +379,11 @@ export default function DCFValuationPage() {
                 tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
                 legend: { data: ["Revenue", "EBITDA"], textStyle: { color: "#aaa", fontSize: 10 }, top: 0 },
                 grid: { top: 30, right: 15, bottom: 25, left: 55 },
-                xAxis: { type: "category", data: results.projection.map(p => p.year), axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
-                yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000000 ? `$${(v/1000000).toFixed(1)}M` : `$${(v/1000).toFixed(0)}k` }, splitLine: { lineStyle: { color: "#222" } } },
+                xAxis: { type: "category", data: results.years.map(p => p.year), axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
+                yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => formatChartCurrency(v) }, splitLine: { lineStyle: { color: "#222" } } },
                 series: [
-                  { name: "Revenue", type: "line", data: results.projection.map(p => p.revenue), smooth: true, lineStyle: { color: "#60a5fa", width: 2 }, itemStyle: { color: "#60a5fa" }, symbol: "circle", symbolSize: 5 },
-                  { name: "EBITDA", type: "line", data: results.projection.map(p => p.ebitda), smooth: true, lineStyle: { color: "#34d399", width: 2 }, itemStyle: { color: "#34d399" }, symbol: "circle", symbolSize: 5 },
+                  { name: "Revenue", type: "line", data: results.years.map(p => p.revenue), smooth: true, lineStyle: { color: "#60a5fa", width: 2 }, itemStyle: { color: "#60a5fa" }, symbol: "circle", symbolSize: 5 },
+                  { name: "EBITDA", type: "line", data: results.years.map(p => p.ebitda), smooth: true, lineStyle: { color: "#34d399", width: 2 }, itemStyle: { color: "#34d399" }, symbol: "circle", symbolSize: 5 },
                 ],
               }}
             />
@@ -365,16 +398,16 @@ export default function DCFValuationPage() {
                 tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
                 grid: { top: 15, right: 15, bottom: 35, left: 55 },
                 xAxis: { type: "category", data: ["PV of FCFFs", "PV of TV", "Enterprise Value", "Equity Value"], axisLabel: { color: "#888", fontSize: 9 }, axisLine: { lineStyle: { color: "#333" } } },
-                yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000000 ? `$${(v/1000000).toFixed(1)}M` : `$${(v/1000).toFixed(0)}k` }, splitLine: { lineStyle: { color: "#222" } } },
+                yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => formatChartCurrency(v) }, splitLine: { lineStyle: { color: "#222" } } },
                 series: [{
                   type: "bar", barWidth: 32,
                   data: [
-                    { value: results.totalPVOfFCFF, itemStyle: { color: "#60a5fa", borderRadius: [4, 4, 0, 0] } },
+                    { value: results.totalPVofFCFF, itemStyle: { color: "#60a5fa", borderRadius: [4, 4, 0, 0] } },
                     { value: results.pvOfTerminalValue, itemStyle: { color: "#a78bfa", borderRadius: [4, 4, 0, 0] } },
                     { value: results.enterpriseValue, itemStyle: { color: "#22d3ee", borderRadius: [4, 4, 0, 0] } },
                     { value: results.equityValue, itemStyle: { color: "#34d399", borderRadius: [4, 4, 0, 0] } },
                   ],
-                  label: { show: true, position: "top", color: "#aaa", fontSize: 9, formatter: (p: any) => p.value >= 1000000 ? `$${(p.value/1000000).toFixed(1)}M` : `$${(p.value/1000).toFixed(0)}k` },
+                  label: { show: true, position: "top", color: "#aaa", fontSize: 9, formatter: (p: any) => formatChartCurrency(p.value) },
                 }],
               }}
             />
@@ -391,7 +424,7 @@ export default function DCFValuationPage() {
                   type: "pie", radius: ["40%", "68%"], center: ["50%", "50%"],
                   label: { color: "#ccc", fontSize: 10, formatter: "{b}\n{d}%" },
                   data: [
-                    { value: Math.abs(results.totalPVOfFCFF), name: "PV of FCFFs", itemStyle: { color: "#60a5fa" } },
+                    { value: Math.abs(results.totalPVofFCFF), name: "PV of FCFFs", itemStyle: { color: "#60a5fa" } },
                     { value: Math.abs(results.pvOfTerminalValue), name: "PV of Terminal Value", itemStyle: { color: "#a78bfa" } },
                   ].filter(d => d.value > 0),
                 }],

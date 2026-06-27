@@ -1,4 +1,5 @@
 import { MODELS, type FinModel } from "@/lib/models-data";
+import { hasPurchasedStandalone } from "@/lib/pricing-catalog";
 
 export function parsePurchasedModels(raw?: string | null): string[] {
   if (!raw) return [];
@@ -19,6 +20,7 @@ export function canAccessModel(
 
   const purchased = parsePurchasedModels(user.purchasedModels);
   if (purchased.includes(model.slug)) return true;
+  if (hasPurchasedStandalone(purchased, model.slug)) return true;
 
   const plan = user.plan || "free";
   if (plan === "investor") return true;

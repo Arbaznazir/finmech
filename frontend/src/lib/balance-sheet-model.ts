@@ -4,6 +4,9 @@
 // Ratios, balance check, status logic
 // ========================================================
 
+import { BS_SCENARIO_MESSAGES, BS_TALLY_MESSAGES } from "@/lib/excel-model-content";
+import { ragTextClass } from "@/lib/utils";
+
 export const MONTHS_ORDER = [
   "Apr", "May", "Jun", "Jul", "Aug", "Sep",
   "Oct", "Nov", "Dec", "Jan", "Feb", "Mar",
@@ -53,13 +56,13 @@ export const INPUT_FIELDS: { key: string; label: string; category: string }[] = 
   { key: "Property, Plant & Equipment (Net)", label: "Property, Plant & Equipment (Net)", category: "Non-Current Assets" },
   { key: "Capital Work in Progress", label: "Capital Work in Progress", category: "Non-Current Assets" },
   { key: "Investments (Long-Term)", label: "Investments (Long-Term)", category: "Non-Current Assets" },
-  { key: "Lease Assets (if applicable)", label: "Lease Assets", category: "Non-Current Assets" },
+  { key: "Lease Assets (if applicable)", label: "Lease Assets (if applicable) ", category: "Non-Current Assets" },
   { key: "Other Non-Current Assets", label: "Other Non-Current Assets", category: "Non-Current Assets" },
   { key: "Deferred Tax Assets", label: "Deferred Tax Assets", category: "Non-Current Assets" },
   { key: "Intangible Assets", label: "Intangible Assets", category: "Non-Current Assets" },
-  { key: "Intangible Assets Under Development", label: "Intangible Assets Under Dev.", category: "Non-Current Assets" },
+  { key: "Intangible Assets Under Development", label: "Intangible Assets Under Development ", category: "Non-Current Assets" },
   // Current Assets
-  { key: "Cash & Cash Equivalents (Cash at bank included)", label: "Cash & Cash Equivalents", category: "Current Assets" },
+  { key: "Cash & Cash Equivalents (Cash at bank included)", label: "Cash & Cash Equivalents (Cash at bank included)", category: "Current Assets" },
   { key: "Trade Receivables (Debtors)", label: "Trade Receivables (Debtors)", category: "Current Assets" },
   { key: "Inventory / Stock", label: "Inventory / Stock", category: "Current Assets" },
   { key: "Short-term Financial Assets", label: "Short-term Financial Assets", category: "Current Assets" },
@@ -77,7 +80,7 @@ export const INPUT_FIELDS: { key: string; label: string; category: string }[] = 
   // Current Liabilities
   { key: "Trade Payables (Creditors)", label: "Trade Payables (Creditors)", category: "Current Liabilities" },
   { key: "Short-Term Loans & Borrowings", label: "Short-Term Loans & Borrowings", category: "Current Liabilities" },
-  { key: "Accrued Expenses / Outstanding Expenses", label: "Accrued Expenses / Outstanding", category: "Current Liabilities" },
+  { key: "Accrued Expenses / Outstanding Expenses", label: "Accrued Expenses / Outstanding Expenses", category: "Current Liabilities" },
   { key: "Tax/GST Payable", label: "Tax/GST Payable", category: "Current Liabilities" },
   { key: "Current Maturity of Long-term Debt", label: "Current Maturity of Long-term Debt", category: "Current Liabilities" },
   { key: "Employee Payables", label: "Employee Payables", category: "Current Liabilities" },
@@ -118,6 +121,7 @@ export interface MonthStatus {
 export interface BalanceSheetInsights {
   overall: string;
   overallColor: string;
+  primaryClassification: "GREEN" | "AMBER" | "RED" | null;
   guidance: string[];
   healthScore: number; // 0-100
 }
@@ -126,12 +130,36 @@ export interface BalanceSheetResults {
   monthlyData: Record<string, ComputedBSMonth>;
   quarters: Record<string, Record<string, number>>;
   annual: Record<string, number>;
+  historical: ComputedBSMonth | null;
   status: MonthStatus[];
   monthsAdded: string[];
   insights: BalanceSheetInsights;
 }
 
-// ================== CALCULATION ENGINE ==================
+function balanceSheetPrimaryClassification(
+  wc: number,
+  cr: number,
+  qr: number,
+  de: number,
+  pr: number,
+): "GREEN" | "AMBER" | "RED" {
+  if (wc > 0 && cr >= 1.5 && qr >= 1 && de <= 1 && pr >= 0.5) return "GREEN";
+  if (
+    wc > 0 &&
+    cr >= 1 &&
+    cr < 1.5 &&
+    qr >= 0.5 &&
+    qr < 1 &&
+    de > 1 &&
+    de <= 2 &&
+    pr > 0.4 &&
+    pr <= 0.5
+  ) {
+    return "AMBER";
+  }
+  if (wc <= 0 || cr < 1 || qr < 0.5 || de > 2 || pr <= 0.4) return "RED";
+  return "AMBER";
+}
 
 function computeMonth(m: Record<string, number>): ComputedBSMonth {
   const c = { ...m } as any;
@@ -183,21 +211,27 @@ function computeMonth(m: Record<string, number>): ComputedBSMonth {
 
   c["TOTAL LIABILITIES"] = c["Total Equity"] + c["Total Non-Current Liability"] + c["Total Current Liability"];
 
-  // BALANCE CHECK
-  c["BALANCE CHECK"] = c["TOTAL ASSETS"] - c["TOTAL LIABILITIES"];
+  // BALANCE CHECK (Excel ROUND to whole number)
+  c["BALANCE CHECK"] = Math.round(c["TOTAL ASSETS"] - c["TOTAL LIABILITIES"]);
 
-  // RATIOS
+  // RATIOS — Excel formulas rows 40–44
+  const cash = m["Cash & Cash Equivalents (Cash at bank included)"] || 0;
+  const receivables = m["Trade Receivables (Debtors)"] || 0;
   const ca = c["Total Current Assets"];
   const cl = c["Total Current Liability"];
-  const inv = m["Inventory / Stock"] || 0;
   const equity = c["Total Equity"];
-  const debt = c["Total Non-Current Liability"] + c["Total Current Liability"];
+  const longTermDebt = m["Long-Term Borrowings"] || 0;
+  const shortTermDebt = m["Short-Term Loans & Borrowings"] || 0;
+  const dta = m["Deferred Tax Assets"] || 0;
+  const intangible = m["Intangible Assets"] || 0;
+  const intangibleDev = m["Intangible Assets Under Development"] || 0;
+  const denomProp = c["TOTAL ASSETS"] - dta - intangible - intangibleDev;
 
   c["Working Capital"] = ca - cl;
   c["Current Ratio"] = cl > 0 ? ca / cl : 0;
-  c["Quick Ratio"] = cl > 0 ? (ca - inv) / cl : 0;
-  c["Debt/Equity Ratio"] = equity > 0 ? debt / equity : 0;
-  c["Proprietary Ratio"] = c["TOTAL ASSETS"] > 0 ? equity / c["TOTAL ASSETS"] : 0;
+  c["Quick Ratio"] = cl > 0 ? (cash + receivables) / cl : 0;
+  c["Debt/Equity Ratio"] = equity > 0 ? (longTermDebt + shortTermDebt) / equity : 0;
+  c["Proprietary Ratio"] = denomProp > 0 ? equity / denomProp : 0;
 
   return c as ComputedBSMonth;
 }
@@ -222,6 +256,7 @@ function sumMonths(
 export function calculateBalanceSheet(
   monthsData: Record<string, Record<string, number>>,
   cumulativeNetProfits?: Record<string, number>,
+  historicalInputs?: Record<string, number> | null,
 ): BalanceSheetResults {
   const computed: Record<string, ComputedBSMonth> = {};
   const addedMonths: string[] = [];
@@ -259,7 +294,11 @@ export function calculateBalanceSheet(
   // Generate comprehensive insights
   const insights = generateInsights(computed, addedMonths, annual, status);
 
-  return { monthlyData: computed, quarters, annual, status, monthsAdded: addedMonths, insights };
+  const hasHistorical =
+    !!historicalInputs && Object.values(historicalInputs).some((v) => Number(v) !== 0);
+  const historical = hasHistorical ? computeMonth(historicalInputs!) : null;
+
+  return { monthlyData: computed, quarters, annual, historical, status, monthsAdded: addedMonths, insights };
 }
 
 function generateInsights(
@@ -276,141 +315,68 @@ function generateInsights(
   // Check if any data entered
   if (addedMonths.length === 0) {
     return {
-      overall: "Enter your balance sheet data to see financial health analysis.",
+      overall: "",
       overallColor: "text-muted-foreground",
-      guidance: ["Start by entering asset and liability data for at least one month."],
+      primaryClassification: null,
+      guidance: [],
       healthScore: 0,
     };
   }
 
-  // Balance check issues
+  // Balance check — Excel tally messages (row 39)
   const unbalancedMonths = status.filter(s => s.status === "RED").length;
   if (unbalancedMonths > 0) {
     healthScore -= unbalancedMonths * 15;
-    guidance.push(`⚠️ ${unbalancedMonths} month(s) have balance sheet errors — Assets ≠ Liabilities + Equity.`);
+    guidance.push(BS_TALLY_MESSAGES.unbalanced);
+  } else {
+    guidance.push(BS_TALLY_MESSAGES.balanced);
   }
 
-  // Current Ratio analysis
+  // Ratio analysis (health score only)
   const avgCurrentRatio = status.length > 0
     ? status.reduce((sum, s) => sum + s.currentRatio, 0) / status.length
     : 0;
 
-  if (avgCurrentRatio < 1) {
-    healthScore -= 20;
-    guidance.push("⚠️ Current Ratio below 1 — insufficient current assets to cover short-term liabilities.");
-  } else if (avgCurrentRatio < 1.5) {
-    healthScore -= 10;
-    guidance.push("⚠️ Current Ratio between 1-1.5 — limited liquidity buffer for emergencies.");
-  } else if (avgCurrentRatio >= 2) {
-    guidance.push("✓ Strong Current Ratio (>2) — excellent short-term liquidity position.");
-  } else {
-    guidance.push("✓ Adequate Current Ratio (>1.5) — reasonable liquidity buffer.");
-  }
+  if (avgCurrentRatio < 1) healthScore -= 20;
+  else if (avgCurrentRatio < 1.5) healthScore -= 10;
 
-  // Working Capital analysis
   const totalWorkingCapital = annual["Working Capital"] || 0;
   const totalCurrentAssets = annual["Total Current Assets"] || 0;
   const workingCapitalRatio = totalCurrentAssets > 0 ? totalWorkingCapital / totalCurrentAssets : 0;
 
-  if (totalWorkingCapital < 0) {
-    healthScore -= 25;
-    guidance.push("🚨 Negative Working Capital — critical cash flow risk! Immediate action required.");
-  } else if (workingCapitalRatio < 0.2) {
-    healthScore -= 10;
-    guidance.push("⚠️ Low Working Capital — consider improving receivables collection or reducing payables.");
-  }
+  if (totalWorkingCapital < 0) healthScore -= 25;
+  else if (workingCapitalRatio < 0.2) healthScore -= 10;
 
-  // Debt/Equity analysis
   const debtEquity = annual["Debt/Equity Ratio"] || 0;
-  if (debtEquity > 3) {
-    healthScore -= 20;
-    guidance.push("⚠️ High Debt/Equity Ratio (>3) — heavily leveraged. Consider debt reduction.");
-  } else if (debtEquity > 1.5) {
-    healthScore -= 10;
-    guidance.push("⚠️ Elevated Debt/Equity Ratio (>1.5) — monitor debt servicing capacity.");
-  } else if (debtEquity <= 1 && debtEquity > 0) {
-    guidance.push("✓ Conservative Debt/Equity Ratio (≤1) — balanced capital structure.");
-  }
+  if (debtEquity > 3) healthScore -= 20;
+  else if (debtEquity > 1.5) healthScore -= 10;
 
-  // Proprietary Ratio (Equity/Assets)
   const proprietaryRatio = annual["Proprietary Ratio"] || 0;
-  if (proprietaryRatio < 0.3) {
-    healthScore -= 15;
-    guidance.push("⚠️ Low Proprietary Ratio (<30%) — heavy reliance on external funding.");
-  } else if (proprietaryRatio > 0.6) {
-    guidance.push("✓ High Proprietary Ratio (>60%) — strong owner equity position.");
-  }
+  if (proprietaryRatio < 0.3) healthScore -= 15;
 
-  // Quick Ratio (excluding inventory)
   const avgQuickRatio = addedMonths.length > 0
     ? addedMonths.reduce((sum, m) => sum + computed[m]["Quick Ratio"], 0) / addedMonths.length
     : 0;
+  if (avgQuickRatio < 0.8) healthScore -= 10;
 
-  if (avgQuickRatio < 0.8) {
-    healthScore -= 10;
-    guidance.push("⚠️ Quick Ratio below 0.8 — limited liquid assets excluding inventory.");
-  } else if (avgQuickRatio >= 1) {
-    guidance.push("✓ Quick Ratio ≥1 — can meet short-term obligations without selling inventory.");
-  }
+  // Excel primary classification (row 45) on latest month
+  const latestMonth = addedMonths[addedMonths.length - 1];
+  const latest = computed[latestMonth];
+  const scenario = balanceSheetPrimaryClassification(
+    latest["Working Capital"],
+    latest["Current Ratio"],
+    latest["Quick Ratio"],
+    latest["Debt/Equity Ratio"],
+    latest["Proprietary Ratio"],
+  );
+  const excel = BS_SCENARIO_MESSAGES[scenario];
 
-  // Asset composition insights
-  const nonCurrentAssets = annual["Total Non-Current Assets"] || 0;
-  const currentAssets = annual["Total Current Assets"] || 0;
-  const totalAssets = annual["TOTAL ASSETS"] || 0;
+  overall = excel.overall;
+  overallColor = ragTextClass(scenario);
 
-  if (totalAssets > 0) {
-    const nonCurrentRatio = nonCurrentAssets / totalAssets;
-    if (nonCurrentRatio > 0.8) {
-      guidance.push("📊 Asset-heavy business — high fixed assets may indicate capital-intensive operations.");
-    } else if (nonCurrentRatio < 0.2) {
-      guidance.push("📊 Asset-light business — low fixed assets, likely service/trading oriented.");
-    }
-  }
+  guidance.push(excel.action);
 
-  // Cash position
-  const totalCash = annual["Cash & Cash Equivalents (Cash at bank included)"] || 0;
-  const currentLiabilities = annual["Total Current Liability"] || 0;
-  const cashToCLRatio = currentLiabilities > 0 ? totalCash / currentLiabilities : 0;
-
-  if (cashToCLRatio < 0.1 && totalCash > 0) {
-    guidance.push("⚠️ Low cash position relative to current liabilities — potential liquidity crunch.");
-  } else if (cashToCLRatio > 0.5) {
-    guidance.push("✓ Strong cash buffer — well positioned for short-term obligations.");
-  }
-
-  // Inventory analysis
-  const inventory = annual["Inventory / Stock"] || 0;
-  const receivables = annual["Trade Receivables (Debtors)"] || 0;
-  const inventoryToReceivables = receivables > 0 ? inventory / receivables : 0;
-
-  if (inventoryToReceivables > 2) {
-    guidance.push("⚠️ High inventory relative to receivables — check for slow-moving stock.");
-  }
-
-  // Determine overall status
-  if (healthScore >= 80) {
-    overall = "Strong financial health! Your balance sheet shows solid fundamentals.";
-    overallColor = "text-success";
-  } else if (healthScore >= 60) {
-    overall = "Moderate financial health. Some areas need attention.";
-    overallColor = "text-amber-400";
-  } else if (healthScore >= 40) {
-    overall = "Financial health concerns detected. Review highlighted issues.";
-    overallColor = "text-orange-400";
-  } else {
-    overall = "Significant financial health issues. Immediate corrective action recommended.";
-    overallColor = "text-danger";
-  }
-
-  // Add health score to guidance
-  guidance.unshift(`📊 Financial Health Score: ${Math.max(0, healthScore)}/100`);
-
-  // Default guidance if nothing specific
-  if (guidance.length <= 1) {
-    guidance.push("📊 Continue monitoring monthly to track financial health improvements.");
-  }
-
-  return { overall, overallColor, guidance, healthScore: Math.max(0, healthScore) };
+  return { overall, overallColor, primaryClassification: scenario, guidance, healthScore: Math.max(0, healthScore) };
 }
 
 // Output fields for display tables
@@ -421,11 +387,11 @@ export const OUTPUT_FIELDS: { key: string; label: string; format: "currency" | "
   { key: "TOTAL ASSETS", label: "TOTAL ASSETS", format: "currency", section: "Assets" },
   // Equity & Liabilities
   { key: "Total Equity", label: "Total Equity", format: "currency", section: "Equity & Liabilities" },
-  { key: "Total Non-Current Liability", label: "Total Non-Current Liabilities", format: "currency", section: "Equity & Liabilities" },
-  { key: "Total Current Liability", label: "Total Current Liabilities", format: "currency", section: "Equity & Liabilities" },
-  { key: "TOTAL LIABILITIES", label: "TOTAL EQUITY & LIABILITIES", format: "currency", section: "Equity & Liabilities" },
+  { key: "Total Non-Current Liability", label: "Total Non-Current Liability", format: "currency", section: "Equity & Liabilities" },
+  { key: "Total Current Liability", label: "Total Current Liability", format: "currency", section: "Equity & Liabilities" },
+  { key: "TOTAL LIABILITIES", label: "TOTAL LIABILITIES", format: "currency", section: "Equity & Liabilities" },
   // Check & Ratios
-  { key: "BALANCE CHECK", label: "Balance Check (should be 0)", format: "check", section: "Verification & Ratios" },
+  { key: "BALANCE CHECK", label: "BALANCE CHECK", format: "check", section: "Verification & Ratios" },
   { key: "Working Capital", label: "Working Capital", format: "currency", section: "Verification & Ratios" },
   { key: "Current Ratio", label: "Current Ratio", format: "ratio", section: "Verification & Ratios" },
   { key: "Quick Ratio", label: "Quick Ratio", format: "ratio", section: "Verification & Ratios" },

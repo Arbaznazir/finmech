@@ -10,10 +10,10 @@ export const STANDARD_MODEL_HINTS: Record<string, HintDef> = {
   // ── Common Utility (aliases + hub-specific) ──
   operationalRecurring: tip(
     "Recurring revenue from subscriptions, retainers, or repeat customers.",
-    "Most valuable type of revenue — feeds all linked Standard models."
+    "Most valuable type of revenue ,  feeds all linked Standard models."
   ),
   operationalVariable: tip(
-    "One-time or non-recurring revenue — project fees, interest income, etc.",
+    "One-time or non-recurring revenue ,  project fees, interest income, etc.",
     "Separated from recurring revenue for quality-of-earnings analysis."
   ),
   grossRevenue: tip(
@@ -25,29 +25,29 @@ export const STANDARD_MODEL_HINTS: Record<string, HintDef> = {
     "Manufacturing, freight, and other variable production costs combined."
   ),
   totalFixedCosts: tip(
-    "Costs that don't change with sales volume — salaries, rent, software, etc.",
+    "Costs that don't change with sales volume ,  salaries, rent, software, etc.",
     "Pushed to Break-even and Burn models from this hub."
   ),
   totalVariableCosts: tip(
-    "Costs that increase directly with revenue — COGS plus variable operating expenses.",
+    "Costs that increase directly with revenue ,  COGS plus variable operating expenses.",
     "Used by linked models for contribution and burn calculations."
   ),
   "Total Fixed Costs": tip(
-    "Costs that don't change with sales volume — salaries, rent, software, etc.",
+    "Costs that don't change with sales volume ,  salaries, rent, software, etc.",
     "Pushed to Break-even and Burn models from this hub."
   ),
   "Total variable Costs": tip(
-    "Costs that increase directly with revenue — COGS plus variable operating expenses.",
+    "Costs that increase directly with revenue ,  COGS plus variable operating expenses.",
     "Used by linked models for contribution and burn calculations."
   ),
   "Total OPEX": tip(
-    "Total operating expenses — salaries, rent, marketing, and all overhead.",
+    "Total operating expenses ,  salaries, rent, marketing, and all overhead.",
     "Subtracted from gross profit to reach EBITDA."
   ),
 
   // ── Business Snapshot (inputs) ──
   monthlyRevenue: tip(
-    "Monthly revenue — reflects current sales momentum and market traction.",
+    "Monthly revenue ,  reflects current sales momentum and market traction.",
     "Healthy, growing revenue shows demand traction and effective go-to-market."
   ),
   revenueGrowth: tip(
@@ -72,7 +72,7 @@ export const STANDARD_MODEL_HINTS: Record<string, HintDef> = {
   ),
   burnRate: tip(
     "Net cash loss per month after revenue.",
-    "Lower and controlled burn is better — key input for runway."
+    "Lower and controlled burn is better ,  key input for runway."
   ),
   burn: tip(
     "Net cash loss per month.",
@@ -83,32 +83,32 @@ export const STANDARD_MODEL_HINTS: Record<string, HintDef> = {
     "Used alongside LTV and CAC for unit economics health."
   ),
   ltv: tip(
-    "Lifetime Value — total revenue expected from one customer.",
+    "Lifetime Value ,  total revenue expected from one customer.",
     "Compared to CAC to assess sustainable growth."
   ),
   cac: tip(
-    "Customer Acquisition Cost — spend to acquire one new customer.",
-    "Should be recoverable via LTV within 12–18 months."
+    "Customer Acquisition Cost ,  spend to acquire one new customer.",
+    "Should be recoverable via LTV within 12, 18 months."
   ),
   receivables: tip(
     "Money owed by customers (trade debtors).",
-    "High receivables tie up cash — affects working capital health."
+    "High receivables tie up cash ,  affects working capital health."
   ),
   inventory: tip(
     "Value of stock held.",
-    "Part of working capital — excess inventory locks up cash."
+    "Part of working capital ,  excess inventory locks up cash."
   ),
   payables: tip(
     "Money owed to suppliers (trade creditors).",
-    "Offsets working capital need — longer payables can improve cash flow."
+    "Offsets working capital need ,  longer payables can improve cash flow."
   ),
   changeInWC: tip(
-    "Change in working capital — receivables + inventory − payables.",
+    "Change in working capital ,  receivables + inventory − payables.",
     "Positive change means more cash is tied up in operations."
   ),
   ccc: tip(
-    "Cash Conversion Cycle — days to convert inventory and receivables back into cash.",
-    "Lower is better — shows how efficiently you manage working capital."
+    "Cash Conversion Cycle ,  days to convert inventory and receivables back into cash.",
+    "Lower is better ,  shows how efficiently you manage working capital."
   ),
   contributionMargin: tip(
     "How much each rupee of revenue contributes after variable costs.",
@@ -117,15 +117,15 @@ export const STANDARD_MODEL_HINTS: Record<string, HintDef> = {
 
   // ── Business Snapshot (results) ──
   healthScore: tip(
-    "Overall Business Health Index — average of revenue, margin, runway, and LTV/CAC scores.",
-    "75%+ = Healthy, 50–74% = Caution, below 50% = Critical."
+    "Overall Business Health Index ,  average of revenue, margin, runway, and LTV/CAC scores.",
+    "75%+ = Healthy, 50, 74% = Caution, below 50% = Critical."
   ),
   finalScore: tip(
     "Overall Business Health Index (average of all dimension scores).",
-    "85+ = Healthy, 50–70 = Needs Improvement, below 50 = At Risk."
+    "85+ = Healthy, 50, 70 = Needs Improvement, below 50 = At Risk."
   ),
   healthLabel: tip(
-    "Health band — HEALTHY, CAUTION, or CRITICAL.",
+    "Health band ,  HEALTHY, CAUTION, or CRITICAL.",
     "Summarises whether the business can operate sustainably at current metrics."
   ),
   runway: tip(
@@ -134,7 +134,7 @@ export const STANDARD_MODEL_HINTS: Record<string, HintDef> = {
   ),
   ltcCacRatio: tip(
     "LTV divided by CAC.",
-    "3×+ is healthy — below 1× means you lose money on each customer acquired."
+    "3×+ is healthy ,  below 1× means you lose money on each customer acquired."
   ),
   revenueStatus: tip(
     "RAG status for monthly revenue level.",
@@ -146,11 +146,11 @@ export const STANDARD_MODEL_HINTS: Record<string, HintDef> = {
   ),
   runwayStatus: tip(
     "RAG status based on cash runway months.",
-    "GREEN = 12+ months; AMBER = 6–12 months; RED = under 6 months."
+    "GREEN = 12+ months; AMBER = 6, 12 months; RED = under 6 months."
   ),
   ltcCacStatus: tip(
     "RAG status for LTV/CAC ratio.",
-    "GREEN = 3×+; AMBER = 1–3×; RED = below 1×."
+    "GREEN = 3×+; AMBER = 1, 3×; RED = below 1×."
   ),
   growthScore: tip(
     "Score based on revenue growth momentum and consistency.",
@@ -170,7 +170,7 @@ export const STANDARD_MODEL_HINTS: Record<string, HintDef> = {
   ),
   insights: tip(
     "Actionable recommendations based on your RAG scores.",
-    "Prioritise RED items first — they pose the greatest business risk."
+    "Prioritise RED items first ,  they pose the greatest business risk."
   ),
 
   // ── Working Capital Movements ──
@@ -179,7 +179,7 @@ export const STANDARD_MODEL_HINTS: Record<string, HintDef> = {
     "Compared to closing balance to calculate change in receivables."
   ),
   "Trade Receivables (Closing)": tip(
-    "Receivables balance at month end — money customers still owe you.",
+    "Receivables balance at month end ,  money customers still owe you.",
     "Increase means more cash is tied up waiting for payment."
   ),
   "Inventory (Opening)": tip(
@@ -195,12 +195,12 @@ export const STANDARD_MODEL_HINTS: Record<string, HintDef> = {
     "Opening balance for calculating payables movement."
   ),
   "Trade Payables (Closing)": tip(
-    "Payables balance at month end — money you owe suppliers.",
+    "Payables balance at month end ,  money you owe suppliers.",
     "Increase can temporarily improve cash flow."
   ),
   "Change in Receivables": tip(
     "Increase or decrease in receivables during the month.",
-    "Increase reduces cash — customers are paying slower."
+    "Increase reduces cash ,  customers are paying slower."
   ),
   "Change in Inventory": tip(
     "Increase or decrease in inventory during the month.",
@@ -208,7 +208,7 @@ export const STANDARD_MODEL_HINTS: Record<string, HintDef> = {
   ),
   "Change in Payables": tip(
     "Increase or decrease in payables during the month.",
-    "Increase preserves cash — you are delaying supplier payments."
+    "Increase preserves cash ,  you are delaying supplier payments."
   ),
   "Working Capital (Closing)": tip(
     "Receivables + inventory − payables at month end.",
@@ -239,8 +239,50 @@ export const STANDARD_MODEL_HINTS: Record<string, HintDef> = {
     "Higher DPO = longer payment terms (more cash retained)."
   ),
   "Cash Conversion Cycle": tip(
-    "DSO + DIO − DPO — days to convert investments back into cash.",
+    "DSO + DIO − DPO ,  days to convert investments back into cash.",
     "Lower CCC = healthier working capital management."
+  ),
+
+  // ── Unit Economics Basic (results) ──
+  "CAC": tip(
+    "Customer Acquisition Cost ,  marketing spend ÷ new customers acquired.",
+    "Should be recoverable via LTV within 12, 18 months."
+  ),
+  "LTV": tip(
+    "Lifetime Value ,  expected total revenue from one customer (ARPU ÷ monthly churn).",
+    "3×+ LTV/CAC is the investor benchmark."
+  ),
+  "ARPU": tip(
+    "Average Revenue Per User ,  monthly revenue ÷ average active customers.",
+    "Higher ARPU improves LTV and shortens CAC payback."
+  ),
+  "Churn Rate %": tip(
+    "Percentage of beginning customers who churned this month.",
+    "Below 5% is healthy; above 10% is a retention red flag."
+  ),
+  "CAC Payback Period (Months)": tip(
+    "Months to recover acquisition cost from customer revenue (CAC ÷ ARPU).",
+    "Under 12 months is preferred by most investors."
+  ),
+  "Growth Rate %": tip(
+    "Month-on-month customer base growth percentage.",
+    "Above 20% supports GREEN status on the KPI dashboard."
+  ),
+  "Total Customers": tip(
+    "End-of-month active customers (beginning + new − churned).",
+    "Carried forward as next month's beginning balance."
+  ),
+  "Total Active Customers (Monthly)": tip(
+    "Average of beginning and ending customers for the month.",
+    "Denominator used in the ARPU calculation."
+  ),
+  "KPI Summary Dashboard": tip(
+    "Overall RAG from LTV/CAC, churn %, and growth % ,  worst metric sets the colour.",
+    "GREEN = strong unit economics; RED = fix LTV/CAC, churn, or growth before scaling spend."
+  ),
+  ltvCacRatio: tip(
+    "LTV divided by CAC for the month.",
+    "3×+ is healthy; below 1× means you lose money on each new customer."
   ),
 
   // ── Standard Break-even (results) ──

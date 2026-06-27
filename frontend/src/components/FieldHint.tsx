@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Info } from "lucide-react";
 
 interface FieldHintProps {
@@ -9,62 +10,102 @@ interface FieldHintProps {
     why: string;
     how?: string;
   };
+  title?: string;
+  stopPropagation?: boolean;
 }
 
-export function FieldHint({ hint }: FieldHintProps) {
+export function FieldHint({ hint, title = "Field Guide", stopPropagation = false }: FieldHintProps) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const [coords, setCoords] = useState({ top: 0, left: 0 });
+  const ref = useRef<HTMLSpanElement>(null);
+  const popupRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) return;
     const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      if (
+        ref.current?.contains(target) ||
+        popupRef.current?.contains(target)
+      ) {
+        return;
+      }
+      setOpen(false);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [open]);
 
-  return (
-    <div className="relative inline-flex items-center" ref={ref}>
-      <button
-        type="button"
+  const show = () => {
+    if (ref.current) {
+      const rect = ref.current.getBoundingClientRect();
+      setCoords({ top: rect.top - 4, left: rect.left + 20 });
+    }
+    setOpen(true);
+  };
+
+  const popup =
+    open &&
+    typeof document !== "undefined" &&
+    createPortal(
+      <div
+        ref={popupRef}
+        className="fixed z-[9999] w-72 rounded-xl border border-amber-400/30 bg-zinc-900 shadow-2xl p-3.5 text-xs"
+        style={{ top: coords.top, left: coords.left }}
         onMouseEnter={() => setOpen(true)}
         onMouseLeave={() => setOpen(false)}
-        onClick={() => setOpen((v) => !v)}
-        className="ml-1.5 rounded-full text-muted-foreground hover:text-amber-400 transition-colors focus:outline-none"
+      >
+        <div className="flex items-center gap-1.5 mb-2">
+          <Info className="h-3 w-3 text-amber-400 shrink-0" />
+          <span className="font-semibold text-amber-400 uppercase tracking-wide text-[10px]">{title}</span>
+        </div>
+        <div className="space-y-1.5">
+          <div>
+            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">What it is</span>
+            <p className="text-foreground/90 mt-0.5">{hint.what}</p>
+          </div>
+          <div>
+            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Why we need it</span>
+            <p className="text-foreground/90 mt-0.5">{hint.why}</p>
+          </div>
+          {hint.how && (
+            <div>
+              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">How to find it</span>
+              <p className="text-foreground/90 mt-0.5">{hint.how}</p>
+            </div>
+          )}
+        </div>
+        <div className="absolute -left-1.5 top-3 h-3 w-3 rotate-45 border-l border-b border-amber-400/30 bg-zinc-900" />
+      </div>,
+      document.body
+    );
+
+  return (
+    <span className="relative inline-flex items-center" ref={ref}>
+      <span
+        role="button"
+        tabIndex={0}
+        onMouseEnter={show}
+        onMouseLeave={() => setOpen(false)}
+        onClick={(e) => {
+          if (stopPropagation) e.stopPropagation();
+          if (open) setOpen(false);
+          else show();
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            if (stopPropagation) e.stopPropagation();
+            if (open) setOpen(false);
+            else show();
+          }
+        }}
+        className="ml-1.5 rounded-full text-muted-foreground hover:text-amber-400 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50 cursor-pointer"
         aria-label="Field explanation"
       >
         <Info className="h-3 w-3" />
-      </button>
-      {open && (
-        <div
-          className="absolute z-50 left-5 -top-1 w-72 rounded-xl border border-amber-400/30 bg-zinc-900 shadow-2xl p-3.5 text-xs"
-          onMouseEnter={() => setOpen(true)}
-          onMouseLeave={() => setOpen(false)}
-        >
-          <div className="flex items-center gap-1.5 mb-2">
-            <Info className="h-3 w-3 text-amber-400 shrink-0" />
-            <span className="font-semibold text-amber-400 uppercase tracking-wide text-[10px]">Field Guide</span>
-          </div>
-          <div className="space-y-1.5">
-            <div>
-              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">What it is</span>
-              <p className="text-foreground/90 mt-0.5">{hint.what}</p>
-            </div>
-            <div>
-              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Why we need it</span>
-              <p className="text-foreground/90 mt-0.5">{hint.why}</p>
-            </div>
-            {hint.how && (
-              <div>
-                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">How to find it</span>
-                <p className="text-foreground/90 mt-0.5">{hint.how}</p>
-              </div>
-            )}
-          </div>
-          <div className="absolute -left-1.5 top-3 h-3 w-3 rotate-45 border-l border-b border-amber-400/30 bg-zinc-900" />
-        </div>
-      )}
-    </div>
+      </span>
+      {popup}
+    </span>
   );
 }

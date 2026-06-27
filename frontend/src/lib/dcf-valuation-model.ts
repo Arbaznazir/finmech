@@ -109,54 +109,52 @@ export class DCFValuationModel {
     };
   }
 
-  // ==================== DCF PROJECTION (with Base Year) ====================
+  // ==================== DCF PROJECTION (Excel DCF Engine) ====================
   calculateDCF(): DCFResults {
-    const { baseYearRevenue, ebitdaMargin, depreciationPct, capexPct, workingCapitalPct, taxRate, terminalGrowthRate } = this.inputs;
+    const {
+      baseYearRevenue,
+      ebitdaMargin,
+      depreciationPct,
+      capexPct,
+      workingCapitalPct,
+      taxRate,
+      terminalGrowthRate,
+      debt,
+      equityMarketValue,
+    } = this.inputs;
     const waccResult = this.calculateWACC();
     const wacc = waccResult.wacc;
+    const annualCapex = baseYearRevenue * capexPct;
 
-    const growthRates = [
+    const growthInputs = [
       this.inputs.revenueGrowthY1,
       this.inputs.revenueGrowthY2,
       this.inputs.revenueGrowthY3,
       this.inputs.revenueGrowthY4,
-      this.inputs.revenueGrowthY5
+      this.inputs.revenueGrowthY5,
+    ];
+    const projectionGrowths = [
+      growthInputs[0],
+      growthInputs[1],
+      growthInputs[2],
+      growthInputs[3],
+      growthInputs[3],
     ];
 
     const years: DCFYearData[] = [];
     let previousRevenue = baseYearRevenue;
-    let previousWC = baseYearRevenue * workingCapitalPct;
-
-    // Year 0 - Base Year
-    years.push({
-      year: "Year 0 (Base)",
-      revenue: baseYearRevenue,
-      ebitda: baseYearRevenue * ebitdaMargin,
-      depreciation: baseYearRevenue * depreciationPct,
-      ebit: baseYearRevenue * ebitdaMargin - baseYearRevenue * depreciationPct,
-      nopat: (baseYearRevenue * ebitdaMargin - baseYearRevenue * depreciationPct) * (1 - taxRate),
-      capex: baseYearRevenue * capexPct,
-      changeInWC: 0,
-      fcff: 0,
-      pvOfFCFF: 0
-    });
-
     let totalPVofFCFF = 0;
 
-    // Years 1-5
     for (let i = 0; i < 5; i++) {
-      const revenue = previousRevenue * (1 + growthRates[i]);
+      const revenue = previousRevenue * (1 + projectionGrowths[i]);
       const ebitda = revenue * ebitdaMargin;
       const depreciation = revenue * depreciationPct;
       const ebit = ebitda - depreciation;
       const nopat = ebit * (1 - taxRate);
-      const capex = revenue * capexPct;
-
-      const currentWC = revenue * workingCapitalPct;
-      const changeInWC = currentWC - previousWC;
-
+      const capex = annualCapex;
+      const changeInWC = (revenue - previousRevenue) * workingCapitalPct;
       const fcff = nopat + depreciation - capex - changeInWC;
-      const pvOfFCFF = fcff / Math.pow(1 + wacc, i + 1);
+      const pvOfFCFF = wacc > 0 ? fcff / (1 + wacc) : 0;
 
       totalPVofFCFF += pvOfFCFF;
 
@@ -170,21 +168,22 @@ export class DCFValuationModel {
         capex,
         changeInWC,
         fcff,
-        pvOfFCFF
+        pvOfFCFF,
       });
 
       previousRevenue = revenue;
-      previousWC = currentWC;
     }
 
-    // Terminal Value (Gordon Growth)
-    const lastYearFCFF = years[5].fcff;
-    const terminalValue = lastYearFCFF * (1 + terminalGrowthRate) / (wacc - terminalGrowthRate);
-    const pvOfTerminalValue = terminalValue / Math.pow(1 + wacc, 5);
+    const lastYearFCFF = years[4].fcff;
+    const terminalValue =
+      wacc > terminalGrowthRate
+        ? (lastYearFCFF * (1 + terminalGrowthRate)) / (wacc - terminalGrowthRate)
+        : 0;
+    const pvOfTerminalValue = wacc > 0 ? terminalValue / (1 + wacc) : 0;
 
     const enterpriseValue = totalPVofFCFF + pvOfTerminalValue;
-    const equityValue = enterpriseValue - this.inputs.debt;
-    const valuePerShare = equityValue / 180000;
+    const equityValue = enterpriseValue - debt;
+    const valuePerShare = equityValue / 180_000;
 
     return {
       wacc: waccResult,
@@ -194,7 +193,7 @@ export class DCFValuationModel {
       pvOfTerminalValue,
       enterpriseValue,
       equityValue,
-      valuePerShare
+      valuePerShare,
     };
   }
 }

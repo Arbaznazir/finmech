@@ -2,13 +2,14 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import dynamic from "next/dynamic";
-import Link from "next/link";
+import Link from "next/link"
+import { ModelBackLink } from "@/components/model-back-link";
 import { ArrowLeft, Banknote, Save, RotateCcw } from "lucide-react";
 import { FieldHint } from "@/components/FieldHint";
 import { FIELD_HINTS } from "@/lib/field-hints";
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
-import { formatCurrency } from "@/lib/utils";
+import {formatCurrency, formatChartCurrency} from "@/lib/utils";
 import api from "@/lib/api";
 import { offerSmartResultsAfterCalculate } from "@/lib/smart-results";
 import { loadModelResults, saveModelResults, clearModelResults } from "@/lib/model-link";
@@ -148,9 +149,7 @@ export default function InvCashFlowPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-8">
-      <Link href="/models/inv-common-utility" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
-        <ArrowLeft className="h-4 w-4" /> Back to Common Utility Hub
-      </Link>
+      <ModelBackLink fallbackHref="/models/inv-common-utility" label="Back to Common Utility Hub" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors" />
 
       <div className="flex items-start justify-between gap-4 mb-8">
         <div className="flex items-start gap-4">
@@ -186,7 +185,7 @@ export default function InvCashFlowPage() {
       <div className="rounded-2xl border border-border bg-card p-4 mb-6">
         <label className="flex items-center text-xs text-muted-foreground mb-1">Opening Cash Balance<FieldHint hint={{ what: "Cash and bank balance at the very start of the period being analysed.", why: "All cumulative cash calculations start from this number. Get it from your bank statement on day 1.", how: "Bank statement opening balance on 1st April or start of your financial year." }} /></label>
         <div className="relative w-64">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">$</span>
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">₹</span>
           <input type="number" value={openingCash || ""}
             onChange={(e) => { setOpeningCash(parseFloat(e.target.value) || 0); markDirty(); }}
             placeholder="0"
@@ -306,7 +305,7 @@ export default function InvCashFlowPage() {
               tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
               grid: { top: 15, right: 15, bottom: 30, left: 55 },
               xAxis: { type: "category", data: MONTHS_ORDER, axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
-              yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
+              yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => formatChartCurrency(v) }, splitLine: { lineStyle: { color: "#222" } } },
               series: [{
                 type: "line", smooth: true,
                 data: MONTHS_ORDER.map(m => results.monthlyData[m]?.["Cumulative Cash"] || 0),
@@ -325,7 +324,7 @@ export default function InvCashFlowPage() {
               legend: { data: ["Operating", "Investing", "Financing"], textStyle: { color: "#aaa", fontSize: 10 }, top: 0 },
               grid: { top: 30, right: 15, bottom: 30, left: 55 },
               xAxis: { type: "category", data: MONTHS_ORDER, axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
-              yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
+              yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => formatChartCurrency(v) }, splitLine: { lineStyle: { color: "#222" } } },
               series: [
                 { name: "Operating", type: "bar", stack: "cf", data: MONTHS_ORDER.map(m => results.monthlyData[m]?.["Operating Cash Flow"] || 0), itemStyle: { color: "#34d399" } },
                 { name: "Investing", type: "bar", stack: "cf", data: MONTHS_ORDER.map(m => results.monthlyData[m]?.["Investing Cash Flow"] || 0), itemStyle: { color: "#f59e0b" } },
@@ -341,7 +340,7 @@ export default function InvCashFlowPage() {
               tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
               grid: { top: 15, right: 15, bottom: 30, left: 55 },
               xAxis: { type: "category", data: MONTHS_ORDER, axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
-              yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
+              yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => formatChartCurrency(v) }, splitLine: { lineStyle: { color: "#222" } } },
               series: [{
                 type: "bar",
                 data: MONTHS_ORDER.map(m => {
@@ -359,7 +358,7 @@ export default function InvCashFlowPage() {
               tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
               grid: { top: 15, right: 15, bottom: 35, left: 55 },
               xAxis: { type: "category", data: ["Operating", "Investing", "Financing", "Net Cash", "Ending Cash"], axisLabel: { color: "#888", fontSize: 9 }, axisLine: { lineStyle: { color: "#333" } } },
-              yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
+              yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => formatChartCurrency(v) }, splitLine: { lineStyle: { color: "#222" } } },
               series: [{
                 type: "bar", barWidth: 28,
                 data: [
@@ -369,7 +368,7 @@ export default function InvCashFlowPage() {
                   { value: (results.annual as Record<string, number>).totalNetCash || 0, itemStyle: { color: ((results.annual as Record<string, number>).totalNetCash || 0) >= 0 ? "#34d399" : "#ef4444", borderRadius: [4, 4, 0, 0] } },
                   { value: (results.annual as Record<string, number>).endingCash || 0, itemStyle: { color: "#60a5fa", borderRadius: [4, 4, 0, 0] } },
                 ],
-                label: { show: true, position: "top", color: "#aaa", fontSize: 9, formatter: (p: any) => p.value >= 1000 ? `$${(p.value/1000).toFixed(0)}k` : `$${p.value}` },
+                label: { show: true, position: "top", color: "#aaa", fontSize: 9, formatter: (p: any) => formatChartCurrency(p.value) },
               }],
             }} />
           </div>
@@ -397,7 +396,7 @@ export default function InvCashFlowPage() {
               tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
               grid: { top: 15, right: 15, bottom: 30, left: 55 },
               xAxis: { type: "category", data: MONTHS_ORDER, axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
-              yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
+              yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => formatChartCurrency(v) }, splitLine: { lineStyle: { color: "#222" } } },
               series: [{
                 type: "bar",
                 data: MONTHS_ORDER.map(m => {

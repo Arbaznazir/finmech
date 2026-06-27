@@ -2,20 +2,21 @@
 
 import { useState, useEffect, useCallback } from "react";
 import dynamic from "next/dynamic";
-import Link from "next/link";
+import Link from "next/link"
+import { ModelBackLink } from "@/components/model-back-link";
 import {
   ArrowLeft, Rocket, Save, RotateCcw,
   CheckCircle, AlertTriangle, XCircle, Info,
 } from "lucide-react";
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
-import { formatCurrency } from "@/lib/utils";
+import {formatCurrency, formatChartCurrency} from "@/lib/utils";
 import api from "@/lib/api";
 import { useSavedModel } from "@/lib/use-saved-model";
 import { offerSmartResultsAfterCalculate } from "@/lib/smart-results";
 import { FieldHint } from "@/components/FieldHint";
 import { HintLabel } from "@/components/HintLabel";
-import { standaloneHint } from "@/lib/standalone-model-hints";
+import { useModelHints } from "@/hooks/use-model-hints";
 import {
   MONTHS_ORDER,
   INPUT_FIELDS,
@@ -30,6 +31,7 @@ type TabView = "input" | "monthly" | "summary";
 
 export default function FundingModelPage() {
   const { user, hydrate } = useAuth();
+  const { hint } = useModelHints("funding-model");
   const [activeMonth, setActiveMonth] = useState<MonthName>("Apr");
   const [monthsData, setMonthsData] = useState<Record<string, Record<string, number>>>({});
   const [openingCash, setOpeningCash] = useState(0);
@@ -113,9 +115,7 @@ export default function FundingModelPage() {
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
-      <Link href="/models?tier=standalone" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
-        <ArrowLeft className="h-4 w-4" /> Back to Models
-      </Link>
+      <ModelBackLink modelSlug="funding-model" label="Back to Models" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors" />
 
       <div className="flex items-start justify-between gap-4 mb-8">
         <div className="flex items-start gap-4">
@@ -200,10 +200,10 @@ export default function FundingModelPage() {
               <div>
                 <label className="flex items-center text-xs text-muted-foreground mb-1">
                   Opening Cash
-                  {standaloneHint("Opening Cash") && <FieldHint hint={standaloneHint("Opening Cash")!} />}
+                  {hint("Opening Cash") && <FieldHint hint={hint("Opening Cash")!} />}
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">$</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">₹</span>
                   <input
                     type="number"
                     value={openingCash || ""}
@@ -216,7 +216,7 @@ export default function FundingModelPage() {
               <div>
                 <label className="flex items-center text-xs text-muted-foreground mb-1">
                   Contingency %
-                  {standaloneHint("contingencyPct") && <FieldHint hint={standaloneHint("contingencyPct")!} />}
+                  {hint("contingencyPct") && <FieldHint hint={hint("contingencyPct")!} />}
                 </label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
@@ -253,7 +253,7 @@ export default function FundingModelPage() {
                     <div key={field.key}>
                       <label className="flex items-center text-xs text-muted-foreground mb-1">
                         {field.label}
-                        {standaloneHint(field.key) && <FieldHint hint={standaloneHint(field.key)!} />}
+                        {hint(field.key) && <FieldHint hint={hint(field.key)!} />}
                       </label>
                       <div className="relative">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">{field.prefix}</span>
@@ -318,7 +318,7 @@ export default function FundingModelPage() {
                 {OUTPUT_FIELDS.map((field) => (
                   <tr key={field.key} className={`border-b border-border/30 ${field.bold ? "bg-background/30" : ""}`}>
                     <td className={`px-4 py-2.5 sticky left-0 bg-card ${field.bold ? "font-semibold bg-background/30" : "text-muted-foreground"}`}>
-                      <HintLabel hint={standaloneHint(field.key)} className={field.bold ? "font-semibold" : ""}>{field.label}</HintLabel>
+                      <HintLabel hint={hint(field.key)} className={field.bold ? "font-semibold" : ""}>{field.label}</HintLabel>
                     </td>
                     {results.monthsAdded.map((m) => {
                       const val = results.monthlyData[m]?.[field.key] ?? 0;
@@ -341,17 +341,17 @@ export default function FundingModelPage() {
         <div className="max-w-2xl mx-auto space-y-6">
           {/* Big numbers */}
           <div className="grid grid-cols-2 gap-4">
-            <div className={`rounded-2xl border-2 p-6 text-center ${results.summary.maxCashDeficit < 0 ? "border-danger/30 bg-danger/5" : "border-success/30 bg-success/5"}`}>
+            <div className={`rounded-2xl border-2 p-6 text-center ${results.summary.fundingRequired > 0 ? "border-danger/30 bg-danger/5" : "border-success/30 bg-success/5"}`}>
               <p className="text-sm text-muted-foreground mb-2 flex items-center justify-center">
-                <HintLabel hint={standaloneHint("maxCashDeficit")}>Max Cash Deficit</HintLabel>
+                <HintLabel hint={hint("maxCashDeficit")}>Lowest Cumulative Cash</HintLabel>
               </p>
-              <p className={`text-3xl font-bold ${results.summary.maxCashDeficit < 0 ? "text-danger" : "text-success"}`}>
+              <p className={`text-3xl font-bold ${results.summary.fundingRequired > 0 ? "text-danger" : "text-success"}`}>
                 {formatCurrency(results.summary.maxCashDeficit)}
               </p>
             </div>
             <div className="rounded-2xl border-2 border-primary/30 bg-primary/5 p-6 text-center output-panel-primary">
               <p className="text-sm text-muted-foreground mb-2 flex items-center justify-center">
-                <HintLabel hint={standaloneHint("totalFundingRequired")}>Total Funding Required</HintLabel>
+                <HintLabel hint={hint("totalFundingRequired")}>Total Funding Required</HintLabel>
               </p>
               <p className="text-3xl font-bold text-primary">
                 {formatCurrency(results.summary.totalFunding)}
@@ -365,7 +365,7 @@ export default function FundingModelPage() {
             <div className="space-y-3">
               {([
                 { label: "Opening Cash", key: "Opening Cash", value: results.summary.openingCash },
-                { label: "Max Cash Deficit", key: "maxCashDeficit", value: results.summary.maxCashDeficit, color: results.summary.maxCashDeficit < 0 ? "text-danger" : "" },
+                { label: "Lowest Cumulative Cash", key: "maxCashDeficit", value: results.summary.maxCashDeficit, color: results.summary.fundingRequired > 0 ? "text-danger" : "" },
                 { label: "Funding Required (to cover deficit)", key: "fundingRequired", value: results.summary.fundingRequired, bold: true },
                 { label: `Contingency (${results.summary.contingencyPct}%)`, key: "contingency", value: results.summary.contingency },
                 { label: "Total Funding Required", key: "totalFundingRequired", value: results.summary.totalFunding, bold: true, primary: true },
@@ -374,7 +374,7 @@ export default function FundingModelPage() {
                   row.primary ? "bg-primary/5 border border-primary/20" : row.bold ? "bg-background/80 border border-border" : "bg-background/50 border border-border/50"
                 }`}>
                   <span className={`text-sm inline-flex items-center ${row.bold ? "font-semibold" : "text-muted-foreground"}`}>
-                    <HintLabel hint={standaloneHint(row.key)}>{row.label}</HintLabel>
+                    <HintLabel hint={hint(row.key)}>{row.label}</HintLabel>
                   </span>
                   <span className={`text-sm font-semibold ${row.color || ""} ${row.primary ? "text-primary" : ""}`}>
                     {formatCurrency(row.value)}
@@ -386,9 +386,9 @@ export default function FundingModelPage() {
 
           {/* Status indicator */}
           <div className={`rounded-2xl border p-6 text-center ${
-            results.summary.maxCashDeficit >= 0 ? "bg-success/5 border-success/20" : "bg-amber-400/5 border-amber-400/20"
+            results.summary.fundingRequired <= 0 ? "bg-success/5 border-success/20" : "bg-amber-400/5 border-amber-400/20"
           }`}>
-            {results.summary.maxCashDeficit >= 0 ? (
+            {results.summary.fundingRequired <= 0 ? (
               <>
                 <CheckCircle className="h-8 w-8 text-success mx-auto mb-2" />
                 <p className="font-semibold text-success">Cash Positive</p>
@@ -429,7 +429,7 @@ export default function FundingModelPage() {
                 tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
                 grid: { top: 15, right: 15, bottom: 30, left: 55 },
                 xAxis: { type: "category", data: results.monthsAdded, axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
-                yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
+                yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => formatChartCurrency(v) }, splitLine: { lineStyle: { color: "#222" } } },
                 series: [{
                   type: "line", smooth: true,
                   data: results.monthsAdded.map(m => results.monthlyData[m]?.["Cumulative Cash"] || 0),
@@ -452,7 +452,7 @@ export default function FundingModelPage() {
                 legend: { data: ["Revenue", "Total Costs"], textStyle: { color: "#aaa", fontSize: 10 }, top: 0 },
                 grid: { top: 30, right: 15, bottom: 30, left: 55 },
                 xAxis: { type: "category", data: results.monthsAdded, axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
-                yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
+                yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => formatChartCurrency(v) }, splitLine: { lineStyle: { color: "#222" } } },
                 series: [
                   { name: "Revenue", type: "bar", data: results.monthsAdded.map(m => results.monthlyData[m]?.["Revenue"] || 0), itemStyle: { color: "#60a5fa", borderRadius: [4, 4, 0, 0] } },
                   { name: "Total Costs", type: "bar", data: results.monthsAdded.map(m => (results.monthlyData[m]?.["Cost of Goods Sold (COGS)"] || 0) + (results.monthlyData[m]?.["Variable Cost"] || 0) + (results.monthlyData[m]?.["Fixed Cost"] || 0)), itemStyle: { color: "#ef4444", borderRadius: [4, 4, 0, 0] } },
@@ -470,7 +470,7 @@ export default function FundingModelPage() {
                 tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
                 grid: { top: 15, right: 15, bottom: 35, left: 55 },
                 xAxis: { type: "category", data: ["Max Deficit", "Funding Req", "Contingency", "Total Funding"], axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
-                yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
+                yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => formatChartCurrency(v) }, splitLine: { lineStyle: { color: "#222" } } },
                 series: [{
                   type: "bar", barWidth: 32,
                   data: [
@@ -479,7 +479,7 @@ export default function FundingModelPage() {
                     { value: results.summary.contingency, itemStyle: { color: "#a78bfa", borderRadius: [4, 4, 0, 0] } },
                     { value: results.summary.totalFunding, itemStyle: { color: "#34d399", borderRadius: [4, 4, 0, 0] } },
                   ],
-                  label: { show: true, position: "top", color: "#aaa", fontSize: 9, formatter: (p: any) => `$${(p.value/1000).toFixed(0)}k` },
+                  label: { show: true, position: "top", color: "#aaa", fontSize: 9, formatter: (p: any) => formatChartCurrency(p.value) },
                 }],
               }}
             />
@@ -494,7 +494,7 @@ export default function FundingModelPage() {
                 tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
                 grid: { top: 15, right: 15, bottom: 30, left: 55 },
                 xAxis: { type: "category", data: results.monthsAdded, axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
-                yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => `$${(v/1000).toFixed(0)}k` }, splitLine: { lineStyle: { color: "#222" } } },
+                yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => formatChartCurrency(v) }, splitLine: { lineStyle: { color: "#222" } } },
                 series: [{
                   type: "bar",
                   data: results.monthsAdded.map(m => ({

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, use, useCallback } from "react";
-import Link from "next/link";
+import Link from "next/link"
+import { ModelBackLink } from "@/components/model-back-link";
 import {
   TrendingUp, Calculator, DollarSign, BarChart3, FileText, Scale,
   Flame, ArrowRightLeft, Activity, Users, Gem, Rocket, PieChart,
@@ -191,9 +192,7 @@ export default function ModelCalculatorPage({ params }: { params: Promise<{ slug
 
   return (
     <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-8">
-      <Link href="/models?list=1" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
-        <ArrowLeft className="h-4 w-4" /> Back to Models
-      </Link>
+      <ModelBackLink fallbackHref="/models?list=1" label="Back to Models" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors" />
 
       <div className="flex items-start gap-4 mb-8">
         <div className={`h-14 w-14 rounded-2xl flex items-center justify-center shrink-0 ${tierInfo.bgColor}`}>
@@ -236,7 +235,7 @@ export default function ModelCalculatorPage({ params }: { params: Promise<{ slug
                 </label>
                 <div className="relative">
                   {field.type === "currency" && (
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">₹</span>
                   )}
                   <input
                     type={field.type === "text" ? "text" : "number"}

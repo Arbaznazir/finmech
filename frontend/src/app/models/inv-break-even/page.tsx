@@ -2,13 +2,14 @@
 
 import { useState, useEffect, useCallback } from "react";
 import dynamic from "next/dynamic";
-import Link from "next/link";
+import Link from "next/link"
+import { ModelBackLink } from "@/components/model-back-link";
 import { ArrowLeft, TrendingUp, Save, RotateCcw } from "lucide-react";
 import { FieldHint } from "@/components/FieldHint";
 import { FIELD_HINTS } from "@/lib/field-hints";
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
-import { formatCurrency } from "@/lib/utils";
+import {formatCurrency, formatChartCurrency} from "@/lib/utils";
 import api from "@/lib/api";
 import { loadModelResults, saveModelResults, clearModelResults } from "@/lib/model-link";
 import { useSavedModel } from "@/lib/use-saved-model";
@@ -93,17 +94,15 @@ export default function InvBreakEvenPage() {
   };
 
   const fields: { key: keyof BreakEvenMonthInputs; label: string; prefix: string; linked?: boolean }[] = [
-    { key: "pricePerUnit", label: "Price Per Unit", prefix: "$" },
-    { key: "variableCostPerUnit", label: "Variable Cost Per Unit", prefix: "$" },
-    { key: "fixedCostMonthly", label: "Fixed Cost (Monthly)", prefix: "$", linked: linkedFields.has("fixedCostMonthly") },
+    { key: "pricePerUnit", label: "Price Per Unit", prefix: "₹" },
+    { key: "variableCostPerUnit", label: "Variable Cost Per Unit", prefix: "₹" },
+    { key: "fixedCostMonthly", label: "Fixed Cost (Monthly)", prefix: "₹", linked: linkedFields.has("fixedCostMonthly") },
     { key: "unitsSoldForProjection", label: "Units Sold (for projection)", prefix: "#" },
   ];
 
   return (
     <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-8">
-      <Link href="/models?tier=investor" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
-        <ArrowLeft className="h-4 w-4" /> Back to Models
-      </Link>
+      <ModelBackLink modelSlug="inv-break-even" label="Back to Models" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors" />
 
       <div className="flex items-start justify-between gap-4 mb-8">
         <div className="flex items-start gap-4">
@@ -239,7 +238,7 @@ export default function InvBreakEvenPage() {
               legend: { data: ["Revenue", "Total Cost"], textStyle: { color: "#aaa", fontSize: 10 }, top: 0 },
               grid: { top: 30, right: 15, bottom: 25, left: 55 },
               xAxis: { type: "category", name: "Units", nameTextStyle: { color: "#888", fontSize: 9 }, data: results.projection.map(r => r.units.toLocaleString()), axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
-              yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
+              yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => formatChartCurrency(v) }, splitLine: { lineStyle: { color: "#222" } } },
               series: [
                 { name: "Revenue", type: "line", data: results.projection.map(r => r.revenue), smooth: true, lineStyle: { color: "#34d399", width: 2 }, itemStyle: { color: "#34d399" }, symbol: "circle", symbolSize: 4 },
                 { name: "Total Cost", type: "line", data: results.projection.map(r => r.totalCost), smooth: true, lineStyle: { color: "#ef4444", width: 2 }, itemStyle: { color: "#ef4444" }, symbol: "circle", symbolSize: 4 },
@@ -254,7 +253,7 @@ export default function InvBreakEvenPage() {
               tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
               grid: { top: 15, right: 15, bottom: 25, left: 55 },
               xAxis: { type: "category", data: results.projection.map(r => r.units.toLocaleString()), axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
-              yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
+              yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => formatChartCurrency(v) }, splitLine: { lineStyle: { color: "#222" } } },
               series: [{ type: "bar", data: results.projection.map(r => ({ value: r.profit, itemStyle: { color: r.profit >= 0 ? "#34d399" : "#ef4444", borderRadius: [4, 4, 0, 0] } })) }],
             }} />
           </div>
@@ -281,7 +280,7 @@ export default function InvBreakEvenPage() {
               tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
               grid: { top: 15, right: 15, bottom: 35, left: 55 },
               xAxis: { type: "category", data: ["Price/Unit", "Var Cost/Unit", "Contribution/Unit", "Fixed Cost", "Profit/Loss"], axisLabel: { color: "#888", fontSize: 9 }, axisLine: { lineStyle: { color: "#333" } } },
-              yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
+              yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => formatChartCurrency(v) }, splitLine: { lineStyle: { color: "#222" } } },
               series: [{ type: "bar", barWidth: 28,
                 data: [
                   { value: results.pricePerUnit, itemStyle: { color: "#60a5fa", borderRadius: [4, 4, 0, 0] } },
@@ -290,7 +289,7 @@ export default function InvBreakEvenPage() {
                   { value: results.fixedCostMonthly, itemStyle: { color: "#f59e0b", borderRadius: [4, 4, 0, 0] } },
                   { value: results.profitAtUnits, itemStyle: { color: results.profitAtUnits >= 0 ? "#34d399" : "#ef4444", borderRadius: [4, 4, 0, 0] } },
                 ],
-                label: { show: true, position: "top", color: "#aaa", fontSize: 9, formatter: (p: any) => `$${p.value.toLocaleString()}` },
+                label: { show: true, position: "top", color: "#aaa", fontSize: 9, formatter: (p: any) => formatChartCurrency(p.value) },
               }],
             }} />
           </div>

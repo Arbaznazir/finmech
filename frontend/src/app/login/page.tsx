@@ -3,7 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BarChart3, Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
+import BrandLogo from "@/components/BrandLogo";
 import api from "@/lib/api";
 import { useAuth } from "@/lib/store";
 
@@ -35,7 +36,7 @@ export default function LoginPage() {
     <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <BarChart3 className="h-10 w-10 text-primary mx-auto mb-4" />
+          <BrandLogo variant="auth" className="mb-6" />
           <h1 className="text-2xl font-bold">Welcome back</h1>
           <p className="text-sm text-muted-foreground mt-2">Log in to continue building your models</p>
         </div>

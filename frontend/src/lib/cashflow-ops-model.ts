@@ -1,6 +1,7 @@
 // ========================================================
-// CASHFLOW OPERATIONS MODEL – Detailed Monthly Cash Flow
-// Sheet 1 of Cash Flow Statement Excel
+// CASHFLOW OPERATIONS – Excel sheet "CashflowOps"
+// FINMECH-UPGRADED/2.Stand alone models/4.Cash Flow Statement.xlsx
+// Operating inflows/outflows only — CFI/CFF on Consolidated CFS sheet
 // ========================================================
 
 export const CF_OPS_MONTHS = [
@@ -12,10 +13,8 @@ export type CFOpsMonth = (typeof CF_OPS_MONTHS)[number];
 
 export interface CFOpsInputs {
   [key: string]: number;
-  // Cash Inflows (Operating)
   "Business receipts": number;
   "Other cash receipts (including interest income)": number;
-  // Cash Outflows (Operating)
   "COGS (Raw Materials, Manufacturing, shipping)": number;
   "Frieght & Logistics": number;
   "Other Variable Costs": number;
@@ -28,48 +27,23 @@ export interface CFOpsInputs {
   "Other Miscll operating expenses": number;
   "Interest expenses": number;
   "Income Tax expenses (including Provision)": number;
-  // Investing
-  "Purchase of Assets": number;
-  "Sale of Assets": number;
-  // Financing
-  "Equity raised": number;
-  "Loan Taken": number;
-  "Loan repaid": number;
-  "Dividends paid": number;
-  // Depreciation for EBITDA calc
-  "Depreciation and Amortization": number;
-  // From P&L for ratios
-  "Net Profit/Loss": number;
 }
 
-export const CF_OPS_INPUT_FIELDS: { key: keyof CFOpsInputs | string; label: string; category: string }[] = [
-  // Cash Inflows
-  { key: "Business receipts", label: "Business Receipts", category: "Cash Inflows" },
-  { key: "Other cash receipts (including interest income)", label: "Other Cash Receipts", category: "Cash Inflows" },
-  // Cash Outflows
-  { key: "COGS (Raw Materials, Manufacturing, shipping)", label: "COGS", category: "Cash Outflows" },
-  { key: "Frieght & Logistics", label: "Freight & Logistics", category: "Cash Outflows" },
-  { key: "Other Variable Costs", label: "Other Variable Costs", category: "Cash Outflows" },
-  { key: "Salaries & Wages", label: "Salaries & Wages", category: "Cash Outflows" },
-  { key: "Rent & Utilities", label: "Rent & Utilities", category: "Cash Outflows" },
-  { key: "Marketing & Advertising", label: "Marketing & Advertising", category: "Cash Outflows" },
-  { key: "Technology and IT costs", label: "Technology & IT Costs", category: "Cash Outflows" },
-  { key: "Professional and Legal Fees", label: "Professional & Legal Fees", category: "Cash Outflows" },
-  { key: "Travel & Entertainment", label: "Travel & Entertainment", category: "Cash Outflows" },
-  { key: "Other Miscll operating expenses", label: "Other Misc Operating Expenses", category: "Cash Outflows" },
-  { key: "Interest expenses", label: "Interest Expenses", category: "Cash Outflows" },
-  { key: "Income Tax expenses (including Provision)", label: "Income Tax Expenses", category: "Cash Outflows" },
-  // Investing
-  { key: "Purchase of Assets", label: "Purchase of Assets", category: "Investing Activities" },
-  { key: "Sale of Assets", label: "Sale of Assets", category: "Investing Activities" },
-  // Financing
-  { key: "Equity raised", label: "Equity Raised", category: "Financing Activities" },
-  { key: "Loan Taken", label: "Loan Taken", category: "Financing Activities" },
-  { key: "Loan repaid", label: "Loan Repaid", category: "Financing Activities" },
-  { key: "Dividends paid", label: "Dividends Paid", category: "Financing Activities" },
-  // Additional
-  { key: "Depreciation and Amortization", label: "Depreciation & Amortization", category: "Additional" },
-  { key: "Net Profit/Loss", label: "Net Profit/Loss (from P&L)", category: "Additional" },
+export const CF_OPS_INPUT_FIELDS: { key: string; label: string; category: string }[] = [
+  { key: "Business receipts", label: "Business receipts", category: "— CASH INFLOWS —" },
+  { key: "Other cash receipts (including interest income)", label: "Other cash receipts (including interest income)", category: "— CASH INFLOWS —" },
+  { key: "COGS (Raw Materials, Manufacturing, shipping)", label: "COGS (Raw Materials, Manufacturing, shipping)", category: "— CASH OUTFLOWS —" },
+  { key: "Frieght & Logistics", label: "Frieght & Logistics", category: "— CASH OUTFLOWS —" },
+  { key: "Other Variable Costs", label: "Other Variable Costs", category: "— CASH OUTFLOWS —" },
+  { key: "Salaries & Wages", label: "Salaries & Wages", category: "— CASH OUTFLOWS —" },
+  { key: "Rent & Utilities", label: "Rent & Utilities", category: "— CASH OUTFLOWS —" },
+  { key: "Marketing & Advertising", label: "Marketing & Advertising", category: "— CASH OUTFLOWS —" },
+  { key: "Technology and IT costs", label: "Technology and IT costs", category: "— CASH OUTFLOWS —" },
+  { key: "Professional and Legal Fees", label: "Professional and Legal Fees", category: "— CASH OUTFLOWS —" },
+  { key: "Travel & Entertainment", label: "Travel & Entertainment", category: "— CASH OUTFLOWS —" },
+  { key: "Other Miscll operating expenses", label: "Other Miscll operating expenses", category: "— CASH OUTFLOWS —" },
+  { key: "Interest expenses", label: "Interest expenses", category: "— CASH OUTFLOWS —" },
+  { key: "Income Tax expenses (including Provision)", label: "Income Tax expenses (including Provision)", category: "— CASH OUTFLOWS —" },
 ];
 
 export function createEmptyCFOpsInputs(): Record<string, number> {
@@ -78,39 +52,30 @@ export function createEmptyCFOpsInputs(): Record<string, number> {
   return empty;
 }
 
-// Computed fields for each month
 export interface CFOpsComputed {
   [key: string]: number;
   "Total Cash inflow": number;
   "Total Outflows": number;
-  "Net Cash Flow from Operating Activities (CFO)": number;
-  "Cash Flow from Investing Activities (CFI)": number;
-  "Cash Flow from Financing Activities (CFF)": number;
-  "Net Cash Flow": number;
+  "Net Cash Flow (Inflow - Outflow)": number;
   "Closing Balance": number;
-  "EBITDA": number;
-  "Profit After Tax (PAT)": number;
 }
 
 export interface CFOpsResults {
   monthlyData: Record<string, CFOpsComputed>;
   monthsAdded: string[];
-  openingCash: number;
 }
-
-// ================== CALCULATION ENGINE ==================
 
 export function computeCFOpsMonth(
   inputs: Record<string, number>,
-  runningCash: number
-): { computed: CFOpsComputed; endingCash: number } {
+  priorClosing: number,
+  isFirstMonth: boolean,
+): CFOpsComputed {
   const n = (k: string) => Number(inputs[k]) || 0;
   const c = {} as CFOpsComputed;
 
-  // Cash Inflows
-  c["Total Cash inflow"] = n("Business receipts") + n("Other cash receipts (including interest income)");
+  c["Total Cash inflow"] =
+    n("Business receipts") + n("Other cash receipts (including interest income)");
 
-  // Cash Outflows
   c["Total Outflows"] =
     n("COGS (Raw Materials, Manufacturing, shipping)") +
     n("Frieght & Logistics") +
@@ -125,70 +90,58 @@ export function computeCFOpsMonth(
     n("Interest expenses") +
     n("Income Tax expenses (including Provision)");
 
-  // CFO
-  c["Net Cash Flow from Operating Activities (CFO)"] = c["Total Cash inflow"] - c["Total Outflows"];
+  c["Net Cash Flow (Inflow - Outflow)"] = c["Total Cash inflow"] - c["Total Outflows"];
 
-  // CFI
-  c["Cash Flow from Investing Activities (CFI)"] = n("Sale of Assets") - n("Purchase of Assets");
+  // Excel: B22=B21; C22=B22+C21; …
+  c["Closing Balance"] = isFirstMonth
+    ? c["Net Cash Flow (Inflow - Outflow)"]
+    : priorClosing + c["Net Cash Flow (Inflow - Outflow)"];
 
-  // CFF
-  c["Cash Flow from Financing Activities (CFF)"] =
-    n("Equity raised") + n("Loan Taken") - n("Loan repaid") - n("Dividends paid");
-
-  // Net Cash Flow
-  c["Net Cash Flow"] =
-    c["Net Cash Flow from Operating Activities (CFO)"] +
-    c["Cash Flow from Investing Activities (CFI)"] +
-    c["Cash Flow from Financing Activities (CFF)"];
-
-  // Closing Balance
-  const endingCash = runningCash + c["Net Cash Flow"];
-  c["Closing Balance"] = endingCash;
-
-  // Additional metrics
-  c["EBITDA"] = c["Net Cash Flow from Operating Activities (CFO)"] + n("Depreciation and Amortization");
-  c["Profit After Tax (PAT)"] = n("Net Profit/Loss");
-
-  return { computed: c, endingCash };
+  return c;
 }
 
 export function calculateCFOps(
   monthsData: Record<string, Record<string, number>>,
-  openingCash: number
 ): CFOpsResults {
   const computed: Record<string, CFOpsComputed> = {};
   const addedMonths: string[] = [];
-  let runningCash = openingCash;
+  let priorClosing = 0;
 
-  CF_OPS_MONTHS.forEach((month) => {
+  CF_OPS_MONTHS.forEach((month, idx) => {
     if (!monthsData[month]) return;
     addedMonths.push(month);
-    const { computed: c, endingCash } = computeCFOpsMonth(monthsData[month], runningCash);
+    const c = computeCFOpsMonth(monthsData[month], priorClosing, idx === 0);
     computed[month] = c;
-    runningCash = endingCash;
+    priorClosing = c["Closing Balance"];
   });
 
-  return { monthlyData: computed, monthsAdded: addedMonths, openingCash };
+  return { monthlyData: computed, monthsAdded: addedMonths };
 }
 
-// Auto-fill from Common Utility
+export const CF_OPS_OUTPUT_FIELDS: { key: string; label: string; bold?: boolean }[] = [
+  { key: "Total Cash inflow", label: "Total Cash inflow" },
+  { key: "Total Outflows", label: "Total Outflows" },
+  { key: "Net Cash Flow (Inflow - Outflow)", label: "Net Cash Flow (Inflow - Outflow)", bold: true },
+  { key: "Closing Balance", label: "Closing Balance", bold: true },
+];
+
 export function autoFillFromCommonUtility(
   inputs: Record<string, number>,
   month: string,
-  commonUtilityData: Record<string, any> | null
+  commonUtilityData: Record<string, unknown> | null,
 ): Record<string, number> {
-  if (!commonUtilityData?.monthlyData?.[month]) return inputs;
-  
-  const cu = commonUtilityData.monthlyData[month];
+  const md = commonUtilityData?.monthlyData as Record<string, Record<string, number>> | undefined;
+  if (!md?.[month]) return inputs;
+
+  const cu = md[month];
   const filled = { ...inputs };
-  
-  // Auto-fill linked fields
+
   if (cu["Gross Revenue"] !== undefined) {
     filled["Business receipts"] = cu["Gross Revenue"];
   }
-  if (cu["Net Profit (PAT)"] !== undefined || cu["Net Profit"] !== undefined) {
-    filled["Net Profit/Loss"] = cu["Net Profit (PAT)"] || cu["Net Profit"] || 0;
+  if (cu["Net Profit"] !== undefined) {
+    // retained for consolidated PAT link — not an ops input field
   }
-  
+
   return filled;
 }

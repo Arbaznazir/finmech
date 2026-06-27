@@ -19,8 +19,14 @@ import {
   XCircle,
   Clock,
   Tag,
+  Info,
+  HelpCircle,
+  Sparkles,
 } from "lucide-react";
 import { AdminPricingPanel } from "@/components/admin-pricing-panel";
+import { AdminModelHintsPanel } from "@/components/admin-model-hints-panel";
+import { AdminFaqsPanel } from "@/components/admin-faqs-panel";
+import { AdminSmartResultsPanel } from "@/components/admin-smart-results-panel";
 import { useAuth } from "@/lib/store";
 import api from "@/lib/api";
 
@@ -68,7 +74,7 @@ interface Stats {
   revenueByPlan: Record<string, number>;
 }
 
-type TabView = "users" | "invoices" | "stats" | "pricing";
+type TabView = "users" | "invoices" | "stats" | "pricing" | "hints" | "faqs" | "smart-results";
 
 export default function AdminDashboard() {
   const { user, hydrate } = useAuth();
@@ -238,10 +244,10 @@ export default function AdminDashboard() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 mb-8">
+      <div className="flex gap-2 mb-8 overflow-x-auto pb-1 scrollbar-thin">
         <button
           onClick={() => setActiveTab("stats")}
-          className={`flex items-center gap-2 px-6 py-3 font-medium rounded-xl border-2 transition-all ${
+          className={`flex items-center gap-2 px-6 py-3 font-medium rounded-xl border-2 transition-all shrink-0 ${
             activeTab === "stats"
               ? "bg-primary text-primary-foreground border-primary"
               : "border-border text-muted-foreground hover:text-foreground"
@@ -252,7 +258,7 @@ export default function AdminDashboard() {
         </button>
         <button
           onClick={() => setActiveTab("users")}
-          className={`flex items-center gap-2 px-6 py-3 font-medium rounded-xl border-2 transition-all ${
+          className={`flex items-center gap-2 px-6 py-3 font-medium rounded-xl border-2 transition-all shrink-0 ${
             activeTab === "users"
               ? "bg-primary text-primary-foreground border-primary"
               : "border-border text-muted-foreground hover:text-foreground"
@@ -263,7 +269,7 @@ export default function AdminDashboard() {
         </button>
         <button
           onClick={() => setActiveTab("invoices")}
-          className={`flex items-center gap-2 px-6 py-3 font-medium rounded-xl border-2 transition-all ${
+          className={`flex items-center gap-2 px-6 py-3 font-medium rounded-xl border-2 transition-all shrink-0 ${
             activeTab === "invoices"
               ? "bg-primary text-primary-foreground border-primary"
               : "border-border text-muted-foreground hover:text-foreground"
@@ -273,8 +279,41 @@ export default function AdminDashboard() {
           Invoices ({invoices.length})
         </button>
         <button
+          onClick={() => setActiveTab("faqs")}
+          className={`flex items-center gap-2 px-6 py-3 font-medium rounded-xl border-2 transition-all shrink-0 ${
+            activeTab === "faqs"
+              ? "bg-primary text-primary-foreground border-primary"
+              : "border-border text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <HelpCircle className="h-4 w-4" />
+          FAQs
+        </button>
+        <button
+          onClick={() => setActiveTab("smart-results")}
+          className={`flex items-center gap-2 px-6 py-3 font-medium rounded-xl border-2 transition-all shrink-0 ${
+            activeTab === "smart-results"
+              ? "bg-primary text-primary-foreground border-primary"
+              : "border-border text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <Sparkles className="h-4 w-4" />
+          Smart Results
+        </button>
+        <button
+          onClick={() => setActiveTab("hints")}
+          className={`flex items-center gap-2 px-6 py-3 font-medium rounded-xl border-2 transition-all shrink-0 ${
+            activeTab === "hints"
+              ? "bg-primary text-primary-foreground border-primary"
+              : "border-border text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <Info className="h-4 w-4" />
+          Field Guides
+        </button>
+        <button
           onClick={() => setActiveTab("pricing")}
-          className={`flex items-center gap-2 px-6 py-3 font-medium rounded-xl border-2 transition-all ${
+          className={`flex items-center gap-2 px-6 py-3 font-medium rounded-xl border-2 transition-all shrink-0 ${
             activeTab === "pricing"
               ? "bg-primary text-primary-foreground border-primary"
               : "border-border text-muted-foreground hover:text-foreground"
@@ -469,6 +508,12 @@ export default function AdminDashboard() {
       )}
 
       {activeTab === "pricing" && <AdminPricingPanel />}
+
+      {activeTab === "hints" && <AdminModelHintsPanel />}
+
+      {activeTab === "faqs" && <AdminFaqsPanel />}
+
+      {activeTab === "smart-results" && <AdminSmartResultsPanel />}
 
       {/* Invoices Tab */}
       {activeTab === "invoices" && (

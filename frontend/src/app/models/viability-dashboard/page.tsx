@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import dynamic from "next/dynamic";
-import Link from "next/link";
+import Link from "next/link"
+import { ModelBackLink } from "@/components/model-back-link";
 import {
   ArrowLeft, Activity, Save, RotateCcw,
   CheckCircle, AlertTriangle, XCircle, Lightbulb, Info,
@@ -15,7 +16,7 @@ import { useSavedModel } from "@/lib/use-saved-model";
 import { offerSmartResultsAfterCalculate } from "@/lib/smart-results";
 import { FieldHint } from "@/components/FieldHint";
 import { HintLabel } from "@/components/HintLabel";
-import { standaloneHint } from "@/lib/standalone-model-hints";
+import { useModelHints } from "@/hooks/use-model-hints";
 import {
   calculateViability,
   type ViabilityInputs,
@@ -49,6 +50,7 @@ function ragIcon(s: RAGStatus) {
 
 export default function ViabilityDashboardPage() {
   const { user, hydrate } = useAuth();
+  const { hint } = useModelHints("viability-dashboard");
   const [inputs, setInputs] = useState<ViabilityInputs>({
     averagePricePerUnit: 0,
     variableCostPerUnit: 0,
@@ -100,18 +102,16 @@ export default function ViabilityDashboardPage() {
   };
 
   const fields: { key: keyof ViabilityInputs; label: string; prefix: string; placeholder: string }[] = [
-    { key: "averagePricePerUnit", label: "Average Price per Unit", prefix: "$", placeholder: "15000" },
-    { key: "variableCostPerUnit", label: "Variable Cost per Unit", prefix: "$", placeholder: "14700" },
-    { key: "monthlyFixedCosts", label: "Monthly Fixed Costs", prefix: "$", placeholder: "90000" },
+    { key: "averagePricePerUnit", label: "Average Price per Unit", prefix: "₹", placeholder: "15000" },
+    { key: "variableCostPerUnit", label: "Variable Cost per Unit", prefix: "₹", placeholder: "14700" },
+    { key: "monthlyFixedCosts", label: "Monthly Fixed Costs", prefix: "₹", placeholder: "90000" },
     { key: "unitsSoldPerMonth", label: "Units Sold per Month", prefix: "#", placeholder: "290" },
   ];
 
   return (
     <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
-      <Link href="/models?tier=standalone" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
-        <ArrowLeft className="h-4 w-4" /> Back to Models
-      </Link>
+      <ModelBackLink modelSlug="viability-dashboard" label="Back to Models" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors" />
 
       <div className="flex items-start justify-between gap-4 mb-8">
         <div className="flex items-start gap-4">
@@ -152,7 +152,7 @@ export default function ViabilityDashboardPage() {
             <div key={field.key}>
               <label className="flex items-center text-sm text-muted-foreground mb-1.5">
                 {field.label}
-                {standaloneHint(field.key) && <FieldHint hint={standaloneHint(field.key)!} />}
+                {hint(field.key) && <FieldHint hint={hint(field.key)!} />}
               </label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">{field.prefix}</span>
@@ -211,7 +211,7 @@ export default function ViabilityDashboardPage() {
             ].map((m) => (
               <div key={m.label} className="rounded-xl bg-card border border-border p-4">
                 <p className="text-xs text-muted-foreground mb-1 flex items-center">
-                  <HintLabel hint={standaloneHint(m.key)}>{m.label}</HintLabel>
+                  <HintLabel hint={hint(m.key)}>{m.label}</HintLabel>
                 </p>
                 <p className={`text-xl font-bold ${m.color || ""}`}>{m.value}</p>
               </div>
@@ -222,7 +222,7 @@ export default function ViabilityDashboardPage() {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="rounded-xl bg-card border border-border p-4">
               <p className="text-xs text-muted-foreground mb-1 flex items-center">
-                <HintLabel hint={standaloneHint("breakEvenUnits")}>Break-Even Units</HintLabel>
+                <HintLabel hint={hint("breakEvenUnits")}>Break-Even Units</HintLabel>
               </p>
               <p className="text-xl font-bold">
                 {results.breakEvenUnits === Infinity ? "∞" : results.breakEvenUnits.toLocaleString()}
@@ -230,7 +230,7 @@ export default function ViabilityDashboardPage() {
             </div>
             <div className="rounded-xl bg-card border border-border p-4">
               <p className="text-xs text-muted-foreground mb-1 flex items-center">
-                <HintLabel hint={standaloneHint("breakEvenRevenue")}>Break-Even Revenue</HintLabel>
+                <HintLabel hint={hint("breakEvenRevenue")}>Break-Even Revenue</HintLabel>
               </p>
               <p className="text-xl font-bold">
                 {results.breakEvenRevenue === Infinity ? "∞" : formatCurrency(results.breakEvenRevenue)}
@@ -238,7 +238,7 @@ export default function ViabilityDashboardPage() {
             </div>
             <div className="rounded-xl bg-card border border-border p-4">
               <p className="text-xs text-muted-foreground mb-1 flex items-center">
-                <HintLabel hint={standaloneHint("breakEvenUtilisationPct")}>BE Utilisation</HintLabel>
+                <HintLabel hint={hint("breakEvenUtilisationPct")}>BE Utilisation</HintLabel>
               </p>
               <p className={`text-xl font-bold ${results.breakEvenUtilisationPct > 100 ? "text-danger" : results.breakEvenUtilisationPct > 80 ? "text-amber-400" : "text-success"}`}>
                 {results.breakEvenUtilisationPct.toFixed(1)}%
@@ -246,7 +246,7 @@ export default function ViabilityDashboardPage() {
             </div>
             <div className="rounded-xl bg-card border border-border p-4">
               <p className="text-xs text-muted-foreground mb-1 flex items-center">
-                <HintLabel hint={standaloneHint("marginOfSafetyPct")}>Margin of Safety</HintLabel>
+                <HintLabel hint={hint("marginOfSafetyPct")}>Margin of Safety</HintLabel>
               </p>
               <p className={`text-xl font-bold ${results.marginOfSafetyPct > 20 ? "text-success" : results.marginOfSafetyPct > 0 ? "text-amber-400" : "text-danger"}`}>
                 {results.marginOfSafetyPct.toFixed(1)}%
@@ -309,10 +309,10 @@ export default function ViabilityDashboardPage() {
             <h2 className="font-semibold mb-5">RAG Classification</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {([
-                { label: "Contribution Margin", status: results.contributionStatus, value: results.contributionMarginPct.toFixed(1) + "%", tip: results.contributionStatus === "GREEN" ? "> 25% is healthy" : results.contributionStatus === "AMBER" ? "10-25% needs improvement" : "< 10% is critical" },
-                { label: "Net Profit", status: results.netProfitStatus, value: formatCurrency(results.netProfitLoss), tip: results.netProfitStatus === "GREEN" ? "Profitable" : results.netProfitStatus === "AMBER" ? "Small loss (< ₹10k)" : "Significant loss (≥ ₹10k)" },
-                { label: "Break-Even Utilisation", status: results.breakevenStatus, value: results.breakEvenUtilisationPct.toFixed(1) + "%", tip: results.breakevenStatus === "GREEN" ? "< 70% is comfortable" : results.breakevenStatus === "AMBER" ? "70-100% is tight" : "> 100% is unsustainable" },
-                { label: "Margin of Safety", status: results.marginSafetyStatus, value: results.marginOfSafetyPct.toFixed(1) + "%", tip: results.marginSafetyStatus === "GREEN" ? "> 20% buffer" : results.marginSafetyStatus === "AMBER" ? "0-20% buffer" : "Negative - below break-even" },
+                { label: "Contribution Margin", status: results.contributionStatus, value: results.contributionMarginPct.toFixed(1) + "%", tip: results.contributionStatus === "GREEN" ? "At or above Excel 0.2% threshold" : "Below 0.2% — unit profitability needs attention" },
+                { label: "Net Profit Margin", status: results.netProfitStatus, value: results.netProfitMarginPct.toFixed(2) + "%", tip: results.netProfitStatus === "GREEN" ? "At or above Excel 0.2% threshold" : "Below 0.2% — profitability under pressure" },
+                { label: "Break-Even Utilisation", status: results.breakevenStatus, value: results.breakEvenUtilisationPct.toFixed(1) + "%", tip: results.breakevenStatus === "GREEN" ? "At or above Excel 0.2% threshold" : "Below 0.2% — capacity utilisation risk" },
+                { label: "Margin of Safety", status: results.marginSafetyStatus, value: results.marginOfSafetyPct.toFixed(1) + "%", tip: results.marginSafetyStatus === "GREEN" ? "At or above Excel 0.2% threshold" : "Below 0.2% — limited sales cushion" },
               ] as const).map((card) => (
                 <div key={card.label} className={`rounded-xl border px-5 py-4 ${ragBg(card.status)}`}>
                   <div className="flex items-center justify-between mb-2">

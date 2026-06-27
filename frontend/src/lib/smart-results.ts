@@ -1,5 +1,6 @@
 import { MODELS } from "@/lib/models-data";
 import type { CalculationExport } from "@/lib/calculation-pdf";
+import type { MatchedSmartResultPoint } from "@/lib/smart-result-evaluator";
 
 export const SMART_RESULTS_EVENT = "finmech:calculation-complete";
 
@@ -9,6 +10,7 @@ export type SmartResultsPayload = {
   tier?: string;
   inputs: Record<string, unknown>;
   outputs: Record<string, unknown>;
+  smartResultPoints?: MatchedSmartResultPoint[];
 };
 
 type ExportRecord = Record<string, unknown>;
@@ -28,6 +30,7 @@ export function toCalculationExport(payload: SmartResultsPayload): CalculationEx
     tier: payload.tier ?? model?.tier ?? "free",
     inputs: payload.inputs as CalculationExport["inputs"],
     outputs: payload.outputs as CalculationExport["outputs"],
+    smartResultPoints: payload.smartResultPoints,
     createdAt: new Date().toISOString(),
   };
 }

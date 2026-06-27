@@ -2,14 +2,15 @@
 
 import { useState, useEffect, useCallback } from "react";
 import dynamic from "next/dynamic";
-import Link from "next/link";
+import Link from "next/link"
+import { ModelBackLink } from "@/components/model-back-link";
 import { ArrowLeft, Calculator, Save, RotateCcw, ArrowRight, ArrowLeftRight } from "lucide-react";
 import { FieldHint } from "@/components/FieldHint";
 import { HintLabel } from "@/components/HintLabel";
-import { freeHint } from "@/lib/free-model-hints";
+import { useModelHints } from "@/hooks/use-model-hints";
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
-import { formatCurrency } from "@/lib/utils";
+import {formatCurrency, formatChartCurrency} from "@/lib/utils";
 import api from "@/lib/api";
 import { clearModelResults } from "@/lib/model-link";
 import { useSavedModel } from "@/lib/use-saved-model";
@@ -25,6 +26,7 @@ import {
 
 export default function CostingModelPage() {
   const { user, hydrate } = useAuth();
+  const { hint } = useModelHints("costing-model");
   const [inputs, setInputs] = useState<CostingInputs>(createEmptyCostingInputs());
   const [results, setResults] = useState<CostingResults | null>(null);
 
@@ -64,9 +66,7 @@ export default function CostingModelPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-8">
-      <Link href="/models?tier=free" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
-        <ArrowLeft className="h-4 w-4" /> Back to Models
-      </Link>
+      <ModelBackLink modelSlug="costing-model" label="Back to Models" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors" />
 
       <div className="flex items-start justify-between gap-4 mb-8">
         <div className="flex items-start gap-4">
@@ -99,7 +99,7 @@ export default function CostingModelPage() {
           <div className="rounded-2xl border border-border bg-card p-6 output-panel">
             <h2 className="font-semibold text-sm mb-3 flex items-center">
               Units Sold (Monthly)
-              {freeHint("unitsSold") && <FieldHint hint={freeHint("unitsSold")!} />}
+              {hint("unitsSold") && <FieldHint hint={hint("unitsSold")!} />}
             </h2>
             <div className="relative max-w-xs">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">#</span>
@@ -128,9 +128,9 @@ export default function CostingModelPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {FIXED_COST_FIELDS.map((field) => (
                 <div key={field.key}>
-                  <label className="flex items-center text-xs text-muted-foreground mb-1">{field.label}{freeHint(field.key) && <FieldHint hint={freeHint(field.key)!} />}</label>
+                  <label className="flex items-center text-xs text-muted-foreground mb-1">{field.label}{hint(field.key) && <FieldHint hint={hint(field.key)!} />}</label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">$</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">₹</span>
                     <input
                       type="number"
                       data-field={field.key}
@@ -159,9 +159,9 @@ export default function CostingModelPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {VARIABLE_COST_FIELDS.map((field) => (
                 <div key={field.key}>
-                  <label className="flex items-center text-xs text-muted-foreground mb-1">{field.label}{freeHint(field.key) && <FieldHint hint={freeHint(field.key)!} />}</label>
+                  <label className="flex items-center text-xs text-muted-foreground mb-1">{field.label}{hint(field.key) && <FieldHint hint={hint(field.key)!} />}</label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">$</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">₹</span>
                     <input
                       type="number"
                       data-field={field.key}
@@ -200,7 +200,7 @@ export default function CostingModelPage() {
           <div className="space-y-4 h-fit sticky top-8">
             <div className="rounded-2xl border-2 border-danger/30 bg-danger/5 p-5 text-center">
               <p className="text-xs text-muted-foreground mb-1 flex items-center justify-center">
-                <HintLabel hint={freeHint("totalMonthlyCost")}>Total Monthly Cost</HintLabel>
+                <HintLabel hint={hint("totalMonthlyCost")}>Total Monthly Cost</HintLabel>
               </p>
               <p className="text-2xl font-bold text-danger">{formatCurrency(results.totalMonthlyCost)}</p>
             </div>
@@ -213,7 +213,7 @@ export default function CostingModelPage() {
               ]).map((row) => (
                 <div key={row.key} className="rounded-xl bg-muted border border-border p-3 output-panel text-center">
                   <p className="text-xs text-muted-foreground mb-1 flex items-center justify-center">
-                    <HintLabel hint={freeHint(row.key)}>{row.label}</HintLabel>
+                    <HintLabel hint={hint(row.key)}>{row.label}</HintLabel>
                   </p>
                   <p className="text-lg font-bold">{row.value}</p>
                 </div>
@@ -226,7 +226,7 @@ export default function CostingModelPage() {
               <ReactECharts
                 style={{ height: 220 }}
                 option={{
-                  tooltip: { trigger: "item", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 }, formatter: (p: any) => `${p.name}: $${p.value.toLocaleString()} (${p.percent}%)` },
+                  tooltip: { trigger: "item", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 }, formatter: (p: any) => `${p.name}: ₹${p.value.toLocaleString("en-IN")} (${p.percent}%)` },
                   series: [{
                     type: "pie", radius: ["45%", "72%"], center: ["50%", "50%"],
                     label: { color: "#ccc", fontSize: 10, formatter: "{b}\n{d}%" },
@@ -247,7 +247,7 @@ export default function CostingModelPage() {
                 option={{
                   tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
                   grid: { top: 10, right: 15, bottom: 25, left: 90 },
-                  xAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => `$${v >= 1000 ? (v/1000).toFixed(0) + "k" : v}` }, splitLine: { lineStyle: { color: "#222" } } },
+                  xAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => formatChartCurrency(v) }, splitLine: { lineStyle: { color: "#222" } } },
                   yAxis: { type: "category", data: ["Salaries", "Rent", "Utilities", "Software", "Admin", "Other Fixed"], axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
                   series: [{
                     type: "bar", barWidth: 14,

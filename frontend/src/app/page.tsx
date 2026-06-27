@@ -21,6 +21,7 @@ import {
   LineChart,
   Lightbulb,
 } from "lucide-react";
+import BrandLogo from "@/components/BrandLogo";
 
 // Rotating taglines for hero section
 const taglines = [
@@ -202,6 +203,8 @@ export default function Home() {
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--color-primary)_0%,_transparent_50%)] opacity-15" />
         <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-24 pb-16 text-center">
+          <BrandLogo variant="hero" className="mb-8" />
+
           {/* Rotating Tagline Badge */}
           <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 text-sm text-primary mb-8 min-h-[36px]">
             <Zap className="h-3.5 w-3.5 shrink-0" />
@@ -302,7 +305,7 @@ export default function Home() {
           <div className="text-center mb-16">
             <h2 className="text-3xl sm:text-4xl font-bold mb-4">Everything you need to model your finances</h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
-              Stop wrestling with spreadsheets. FinMech gives you purpose-built financial calculators that actually work together.
+              Stop wrestling with spreadsheets. FinMech gives you purpose-built financial models that actually work together.
             </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

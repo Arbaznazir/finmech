@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   TrendingUp, Calculator, DollarSign, BarChart3, FileText, Scale,
@@ -10,8 +10,11 @@ import {
   ArrowLeft, ChevronRight, Clock,
 } from "lucide-react";
 import { MODELS, TIER_INFO } from "@/lib/models-data";
+import { modelHref } from "@/lib/model-navigation";
 import { canAccessTier, canAccessModel } from "@/lib/access";
 import { useAuth } from "@/lib/store";
+import { FieldHint } from "@/components/FieldHint";
+import { useTierHints } from "@/hooks/use-tier-hints";
 
 const ICONS: Record<string, any> = {
   TrendingUp, Calculator, DollarSign, BarChart3, FileText, Scale,
@@ -21,6 +24,26 @@ const ICONS: Record<string, any> = {
 
 const TIER_ORDER = ["free", "standalone", "standard", "investor"] as const;
 type Tier = typeof TIER_ORDER[number];
+
+/** Client request: Standard & Investor Grade modules marked Coming Soon on Models tab. */
+const COMING_SOON_TIERS: Tier[] = ["standard", "investor"];
+const isComingSoonTier = (tier: Tier) => COMING_SOON_TIERS.includes(tier);
+
+function ComingSoonBadge({ size = "sm", className = "" }: { size?: "sm" | "lg"; className?: string }) {
+  const lg = size === "lg";
+  return (
+    <div
+      className={`inline-flex items-center gap-1.5 rounded-full font-bold uppercase tracking-wider backdrop-blur ${
+        lg
+          ? "bg-amber-400/15 border-2 border-amber-400/50 px-4 py-2 text-sm text-amber-400 shadow-lg shadow-amber-400/10"
+          : "bg-amber-400/10 border border-amber-400/40 px-2.5 py-1 text-[10px] text-amber-400"
+      } ${className}`}
+    >
+      <Clock className={lg ? "h-4 w-4" : "h-3 w-3"} />
+      Coming Soon
+    </div>
+  );
+}
 
 const TIER_META: Record<Tier, {
   label: string;
@@ -81,15 +104,30 @@ const TIER_META: Record<Tier, {
 
 function ModelsPageInner() {
   const { user, hydrate } = useAuth();
+  const { hint: tierHint } = useTierHints();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [openTier, setOpenTier] = useState<Tier | null>(null);
   const [search, setSearch] = useState("");
+
+  const openTierGallery = (tier: Tier) => {
+    setOpenTier(tier);
+    router.push(`/models?tier=${tier}`, { scroll: false });
+  };
+
+  const closeTierGallery = () => {
+    setOpenTier(null);
+    setSearch("");
+    router.push("/models", { scroll: false });
+  };
 
   useEffect(() => { hydrate(); }, [hydrate]);
 
   useEffect(() => {
     const t = searchParams.get("tier");
-    if (t && TIER_ORDER.includes(t as Tier)) setOpenTier(t as Tier);
+    if (t && TIER_ORDER.includes(t as Tier) && !isComingSoonTier(t as Tier)) {
+      setOpenTier(t as Tier);
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
@@ -99,8 +137,11 @@ function ModelsPageInner() {
 
   const tierModels = (tier: Tier) => allModels.filter((m) => m.tier === tier);
 
-  const filteredModels = openTier
-    ? tierModels(openTier).filter((m) =>
+  const effectiveOpenTier =
+    openTier && !isComingSoonTier(openTier) ? openTier : null;
+
+  const filteredModels = effectiveOpenTier
+    ? tierModels(effectiveOpenTier).filter((m) =>
         !search ||
         m.name.toLowerCase().includes(search.toLowerCase()) ||
         m.category.toLowerCase().includes(search.toLowerCase())
@@ -108,9 +149,9 @@ function ModelsPageInner() {
     : [];
 
   /* ── TIER OVERVIEW (4 tiles) ── */
-  if (!openTier) {
+  if (!effectiveOpenTier) {
     return (
-      <div className="min-h-screen">
+      <div>
         {/* Hero */}
         <div className="relative overflow-hidden">
           <div className="absolute inset-0 pointer-events-none">
@@ -136,28 +177,30 @@ function ModelsPageInner() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             {TIER_ORDER.map((tier) => {
               const meta = TIER_META[tier];
-              const tierInfo = TIER_INFO[tier];
               const TileIcon = meta.icon;
               const count = tierModels(tier).length;
               const accessible = canAccess(tier);
+              const comingSoon = isComingSoonTier(tier);
 
-              return (
-                <button
-                  key={tier}
-                  onClick={() => setOpenTier(tier)}
-                  className={`group relative text-left rounded-3xl border ${meta.borderColor} bg-card overflow-hidden transition-all duration-300 hover:shadow-2xl hover:scale-[1.025] active:scale-[0.99] cursor-pointer`}
-                  style={{ minHeight: 280 }}
-                >
+              const tileClassName = `group relative text-left rounded-3xl border ${meta.borderColor} bg-card overflow-hidden transition-all duration-300 ${
+                comingSoon
+                  ? "opacity-90 cursor-not-allowed"
+                  : "hover:shadow-2xl hover:scale-[1.025] active:scale-[0.99] cursor-pointer"
+              }`;
+
+              const tileContent = (
+                <>
                   {/* Glow blob */}
                   <div className={`absolute -top-10 -right-10 w-48 h-48 rounded-full opacity-20 blur-2xl pointer-events-none ${meta.sectionColor.replace("text-", "bg-")}`} />
 
                   {/* Lock / Coming Soon */}
-                  {tier === "investor" ? (
-                    <div className="absolute top-5 right-5 z-10">
-                      <div className="flex items-center gap-1 rounded-full bg-amber-400/10 border border-amber-400/30 px-2.5 py-1 text-[10px] text-amber-400 font-semibold backdrop-blur">
-                        <Clock className="h-3 w-3" /> Coming Soon
+                  {comingSoon ? (
+                    <>
+                      <div className="absolute inset-x-0 top-0 z-10 flex justify-center pt-5 pointer-events-none">
+                        <ComingSoonBadge size="lg" />
                       </div>
-                    </div>
+                      <div className="absolute inset-0 z-[1] bg-background/40 pointer-events-none" />
+                    </>
                   ) : !accessible && (
                     <div className="absolute top-5 right-5 z-10">
                       <div className="flex items-center gap-1 rounded-full bg-background/80 border border-border px-2.5 py-1 text-[10px] text-muted-foreground backdrop-blur">
@@ -178,7 +221,16 @@ function ModelsPageInner() {
                     </div>
 
                     {/* Label + tagline */}
-                    <h2 className={`text-2xl font-extrabold mb-1 ${meta.sectionColor}`}>{meta.label}</h2>
+                    <div className="flex items-center gap-1 mb-1">
+                      <h2 className={`text-2xl font-extrabold ${meta.sectionColor}`}>{meta.label}</h2>
+                      {tierHint(tier) && (
+                        <FieldHint
+                          hint={tierHint(tier)!}
+                          title="Tier Guide"
+                          stopPropagation
+                        />
+                      )}
+                    </div>
                     <p className="text-xs text-muted-foreground mb-4 font-medium">{meta.tagline}</p>
 
                     {/* Divider */}
@@ -197,12 +249,50 @@ function ModelsPageInner() {
                     {/* CTA */}
                     <div className={`flex items-center justify-between pt-4 border-t ${meta.borderColor}`}>
                       <p className="text-xs text-muted-foreground">{meta.description.split(".")[0]}.</p>
-                      <span className={`flex items-center gap-1 text-sm font-semibold ${meta.sectionColor} group-hover:gap-2 transition-all`}>
-                        Open <ChevronRight className="h-4 w-4" />
-                      </span>
+                      {comingSoon ? (
+                        <span className="text-sm font-bold uppercase tracking-wide text-amber-400 select-none">
+                          Coming Soon
+                        </span>
+                      ) : (
+                        <span className={`flex items-center gap-1 text-sm font-semibold ${meta.sectionColor} group-hover:gap-2 transition-all`}>
+                          Open <ChevronRight className="h-4 w-4" />
+                        </span>
+                      )}
                     </div>
                   </div>
-                </button>
+                </>
+              );
+
+              if (comingSoon) {
+                return (
+                  <div
+                    key={tier}
+                    className={tileClassName}
+                    style={{ minHeight: 280 }}
+                    aria-disabled="true"
+                  >
+                    {tileContent}
+                  </div>
+                );
+              }
+
+              return (
+                <div
+                  key={tier}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => openTierGallery(tier)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setOpenTier(tier);
+                    }
+                  }}
+                  className={tileClassName}
+                  style={{ minHeight: 280 }}
+                >
+                  {tileContent}
+                </div>
               );
             })}
           </div>
@@ -212,19 +302,19 @@ function ModelsPageInner() {
   }
 
   /* ── TIER DRILL-DOWN (model cards) ── */
-  const meta = TIER_META[openTier];
-  const tierInfo = TIER_INFO[openTier];
+  const meta = TIER_META[effectiveOpenTier];
+  const tierInfo = TIER_INFO[effectiveOpenTier];
   const TierIcon = meta.icon;
 
   return (
-    <div className="min-h-screen">
+    <div>
       {/* Drill-down hero banner */}
       <div className={`relative overflow-hidden border-b ${meta.borderColor}`}>
         <div className={`absolute inset-0 ${meta.headerBg} pointer-events-none`} />
         <div className={`absolute -top-20 -right-20 w-80 h-80 rounded-full blur-3xl opacity-20 pointer-events-none ${meta.sectionColor.replace("text-", "bg-")}`} />
         <div className="relative mx-auto max-w-7xl px-6 py-10">
           <button
-            onClick={() => { setOpenTier(null); setSearch(""); }}
+            onClick={closeTierGallery}
             className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors mb-6 group"
           >
             <ArrowLeft className="h-3.5 w-3.5 group-hover:-translate-x-0.5 transition-transform" />
@@ -236,7 +326,15 @@ function ModelsPageInner() {
                 <TierIcon className={`h-7 w-7 ${meta.sectionColor}`} />
               </div>
               <div>
-                <h1 className={`text-3xl font-extrabold ${meta.sectionColor}`}>{meta.label}</h1>
+                <div className="flex items-center gap-1">
+                  <h1 className={`text-3xl font-extrabold ${meta.sectionColor}`}>{meta.label}</h1>
+                  {tierHint(effectiveOpenTier) && (
+                    <FieldHint
+                      hint={tierHint(effectiveOpenTier)!}
+                      title="Tier Guide"
+                    />
+                  )}
+                </div>
                 <p className="text-sm text-muted-foreground mt-0.5">{meta.tagline}</p>
               </div>
             </div>
@@ -267,17 +365,18 @@ function ModelsPageInner() {
             {filteredModels.map((model) => {
               const IconComp = ICONS[model.icon] || BarChart3;
               const accessible = canAccessModel(user, model);
-              const isComingSoon = model.tier === "investor";
 
-              const cardContent = (
-                <>
-                  {isComingSoon ? (
-                    <div className="absolute top-4 right-4 z-10">
-                      <div className="flex items-center gap-1 rounded-full bg-amber-400/10 border border-amber-400/30 px-2 py-0.5 text-[10px] text-amber-400 font-semibold">
-                        <Clock className="h-2.5 w-2.5" /> Coming Soon
-                      </div>
-                    </div>
-                  ) : !accessible && (
+              return (
+                <Link
+                  key={model.slug}
+                  href={accessible ? modelHref(model.slug, effectiveOpenTier) : "/pricing"}
+                  className={`group relative rounded-2xl border bg-card p-6 transition-all duration-200 hover:shadow-xl ${
+                    accessible
+                      ? `border-border ${meta.hoverBorder}`
+                      : "border-border/40 opacity-55 hover:opacity-75"
+                  }`}
+                >
+                  {!accessible && (
                     <div className="absolute top-4 right-4">
                       <div className="flex items-center gap-1 rounded-full bg-background border border-border px-2 py-0.5 text-[10px] text-muted-foreground">
                         <Lock className="h-2.5 w-2.5" /> Locked
@@ -311,39 +410,10 @@ function ModelsPageInner() {
                         </span>
                       </>
                     )}
-                    {isComingSoon ? (
-                      <span className="ml-auto text-[10px] text-amber-400/60 font-medium">Under Development</span>
-                    ) : (
-                      <span className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity">
-                        <ChevronRight className={`h-3.5 w-3.5 ${meta.sectionColor}`} />
-                      </span>
-                    )}
+                    <span className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity">
+                      <ChevronRight className={`h-3.5 w-3.5 ${meta.sectionColor}`} />
+                    </span>
                   </div>
-                </>
-              );
-
-              if (isComingSoon) {
-                return (
-                  <div
-                    key={model.slug}
-                    className="group relative rounded-2xl border border-border/40 bg-card p-6 opacity-60 cursor-not-allowed"
-                  >
-                    {cardContent}
-                  </div>
-                );
-              }
-
-              return (
-                <Link
-                  key={model.slug}
-                  href={accessible ? `/models/${model.slug}` : "/pricing"}
-                  className={`group relative rounded-2xl border bg-card p-6 transition-all duration-200 hover:shadow-xl ${
-                    accessible
-                      ? `border-border ${meta.hoverBorder}`
-                      : "border-border/40 opacity-55 hover:opacity-75"
-                  }`}
-                >
-                  {cardContent}
                 </Link>
               );
             })}

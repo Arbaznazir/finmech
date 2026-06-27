@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import dynamic from "next/dynamic";
-import Link from "next/link";
+import Link from "next/link"
+import { ModelBackLink } from "@/components/model-back-link";
 import {
   ArrowLeft, Presentation, Save, RotateCcw,
   CheckCircle, AlertTriangle, XCircle, Lightbulb, Info,
@@ -10,7 +11,7 @@ import {
 } from "lucide-react";
 import { FieldHint } from "@/components/FieldHint";
 import { HintLabel } from "@/components/HintLabel";
-import { standaloneHint } from "@/lib/standalone-model-hints";
+import { useModelHints } from "@/hooks/use-model-hints";
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
@@ -52,6 +53,7 @@ function flagIcon(v: boolean) {
 
 export default function PitchDeckKPIsPage() {
   const { user, hydrate } = useAuth();
+  const { hint } = useModelHints("pitchdeck-kpis");
   const [inputs, setInputs] = useState<PitchDeckInputs>(createEmptyInputs());
   const [results, setResults] = useState<PitchDeckResults | null>(null);
   const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({});
@@ -111,9 +113,7 @@ export default function PitchDeckKPIsPage() {
   return (
     <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
-      <Link href="/models?tier=standalone" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
-        <ArrowLeft className="h-4 w-4" /> Back to Models
-      </Link>
+      <ModelBackLink modelSlug="pitchdeck-kpis" label="Back to Models" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors" />
 
       <div className="flex items-start justify-between gap-4 mb-8">
         <div className="flex items-start gap-4">
@@ -162,7 +162,7 @@ export default function PitchDeckKPIsPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 px-1">
                 {fields.map((field) => (
                   <div key={field.key}>
-                    <label className="flex items-center text-xs text-muted-foreground mb-1">{field.label}{standaloneHint(field.key) && <FieldHint hint={standaloneHint(field.key)!} />}</label>
+                    <label className="flex items-center text-xs text-muted-foreground mb-1">{field.label}{hint(field.key) && <FieldHint hint={hint(field.key)!} />}</label>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">{field.prefix}</span>
                       <input
@@ -214,22 +214,22 @@ export default function PitchDeckKPIsPage() {
           {/* Key Metrics */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
             {[
-              { label: "Gross Margin", key: "grossMargin", value: results.grossMargin.toFixed(1) + "%", color: results.grossMargin > 40 ? "text-success" : results.grossMargin > 20 ? "text-amber-400" : "text-danger" },
-              { label: "Contribution Margin", key: "contributionMarginAfterCAC", value: results.contributionMarginAfterCAC.toFixed(1) + "%" },
-              { label: "CAC", key: "cac", value: formatCurrency(results.cac) },
-              { label: "LTV", key: "ltv", value: formatCurrency(results.ltv) },
-              { label: "LTV / CAC", key: "ltvCacRatio", value: results.ltvCacRatio.toFixed(2) + "x", color: results.ltvCacRatio > 3 ? "text-success" : results.ltvCacRatio > 1 ? "text-amber-400" : "text-danger" },
-              { label: "Recurring Rev %", key: "recurringRevenueRatio", value: results.recurringRevenueRatio.toFixed(1) + "%" },
-              { label: "Net Burn", key: "netBurn", value: formatCurrency(results.netBurn), color: results.netBurn < 0 ? "text-success" : "text-danger" },
-              { label: "Runway", key: "runwayMonths", value: results.runwayMonths === Infinity ? "∞" : results.runwayMonths.toFixed(1) + " mo", color: results.runwayMonths === Infinity || results.runwayMonths > 12 ? "text-success" : results.runwayMonths > 6 ? "text-amber-400" : "text-danger" },
-              { label: "Burn Multiple", key: "burnMultiple", value: results.burnMultiple.toFixed(2) + "x" },
-              { label: "Cash Efficiency", key: "cashEfficiencyRatio", value: results.cashEfficiencyRatio.toFixed(2) + "x" },
+              { label: "Gross Margin", key: "grossMargin", value: results.grossMargin.toFixed(1) + "%", status: results.grossMarginStatus },
+              { label: "Contribution Margin", key: "contributionMarginAfterCAC", value: results.contributionMarginAfterCAC.toFixed(1) + "%", status: results.contributionStatus },
+              { label: "CAC", key: "cac", value: formatCurrency(results.cac), status: results.cacStatus },
+              { label: "LTV", key: "ltv", value: formatCurrency(results.ltv), status: results.ltvStatus },
+              { label: "LTV / CAC", key: "ltvCacRatio", value: results.ltvCacRatio.toFixed(2) + "x", status: results.ltvCacStatus },
+              { label: "Recurring Rev %", key: "recurringRevenueRatio", value: results.recurringRevenueRatio.toFixed(1) + "%", status: results.recurringRatioStatus },
+              { label: "Net Burn", key: "netBurn", value: formatCurrency(results.netBurn), status: results.burnStatus },
+              { label: "Runway", key: "runwayMonths", value: results.runwayMonths === Infinity ? "∞" : results.runwayMonths.toFixed(1) + " mo", status: results.runwayStatus },
+              { label: "Burn Multiple", key: "burnMultiple", value: results.burnMultiple.toFixed(2) + "x", status: results.burnStatus },
+              { label: "Cash Efficiency", key: "cashEfficiencyRatio", value: results.cashEfficiencyRatio.toFixed(2) + "x", status: results.burnStatus },
             ].map((m) => (
               <div key={m.label} className="rounded-xl bg-card border border-border p-4">
                 <p className="text-xs text-muted-foreground mb-1 flex items-center">
-                  <HintLabel hint={standaloneHint(m.key)}>{m.label}</HintLabel>
+                  <HintLabel hint={hint(m.key)}>{m.label}</HintLabel>
                 </p>
-                <p className={`text-xl font-bold ${m.color || ""}`}>{m.value}</p>
+                <p className={`text-xl font-bold ${ragColor(m.status)}`}>{m.value}</p>
               </div>
             ))}
           </div>
@@ -290,10 +290,13 @@ export default function PitchDeckKPIsPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {([
                 { label: "Gross Margin", status: results.grossMarginStatus, value: results.grossMargin.toFixed(1) + "%", tip: results.mentoringTips.grossMargin },
+                { label: "Contribution Margin", status: results.contributionStatus, value: results.contributionMarginAfterCAC.toFixed(1) + "%", tip: results.mentoringTips.contribution },
+                { label: "CAC", status: results.cacStatus, value: formatCurrency(results.cac), tip: results.mentoringTips.cac },
+                { label: "LTV", status: results.ltvStatus, value: formatCurrency(results.ltv), tip: results.mentoringTips.ltv },
                 { label: "LTV / CAC", status: results.ltvCacStatus, value: results.ltvCacRatio.toFixed(2) + "x", tip: results.mentoringTips.ltvCac },
                 { label: "Runway", status: results.runwayStatus, value: results.runwayMonths === Infinity ? "∞" : results.runwayMonths.toFixed(1) + " mo", tip: results.mentoringTips.runway },
                 { label: "Recurring Revenue", status: results.recurringRatioStatus, value: results.recurringRevenueRatio.toFixed(1) + "%", tip: results.mentoringTips.recurring },
-                { label: "Net Burn", status: results.burnStatus, value: formatCurrency(results.netBurn), tip: results.netBurn < 0 ? "Revenue exceeds costs. Positive cash flow." : "Burning cash. Control spend." },
+                { label: "Net Burn", status: results.burnStatus, value: formatCurrency(results.netBurn), tip: results.mentoringTips.netBurn },
               ] as const).map((card) => (
                 <div key={card.label} className={`rounded-xl border px-5 py-4 ${ragBg(card.status)}`}>
                   <div className="flex items-center justify-between mb-2">
@@ -455,33 +458,39 @@ export default function PitchDeckKPIsPage() {
                 <tbody className="text-muted-foreground">
                   <tr className="border-b border-border/30">
                     <td className="py-2 px-3">Gross Margin</td>
-                    <td className="text-center py-2 px-3">&gt; 40%</td>
-                    <td className="text-center py-2 px-3">20–40%</td>
-                    <td className="text-center py-2 px-3">&lt; 20%</td>
+                    <td className="text-center py-2 px-3">≥ 60%</td>
+                    <td className="text-center py-2 px-3">40–60%</td>
+                    <td className="text-center py-2 px-3">&lt; 40%</td>
+                  </tr>
+                  <tr className="border-b border-border/30">
+                    <td className="py-2 px-3">Contribution Margin</td>
+                    <td className="text-center py-2 px-3">≥ 30%</td>
+                    <td className="text-center py-2 px-3">15–30%</td>
+                    <td className="text-center py-2 px-3">&lt; 15%</td>
                   </tr>
                   <tr className="border-b border-border/30">
                     <td className="py-2 px-3">LTV / CAC</td>
-                    <td className="text-center py-2 px-3">&gt; 3x</td>
-                    <td className="text-center py-2 px-3">1–3x</td>
-                    <td className="text-center py-2 px-3">&lt; 1x</td>
+                    <td className="text-center py-2 px-3">≥ 5x</td>
+                    <td className="text-center py-2 px-3">3–5x</td>
+                    <td className="text-center py-2 px-3">&lt; 3x</td>
                   </tr>
                   <tr className="border-b border-border/30">
                     <td className="py-2 px-3">Runway</td>
-                    <td className="text-center py-2 px-3">&gt; 12 mo</td>
-                    <td className="text-center py-2 px-3">6–12 mo</td>
-                    <td className="text-center py-2 px-3">&lt; 6 mo</td>
+                    <td className="text-center py-2 px-3">≥ 18 mo</td>
+                    <td className="text-center py-2 px-3">9–18 mo</td>
+                    <td className="text-center py-2 px-3">&lt; 9 mo</td>
                   </tr>
                   <tr className="border-b border-border/30">
                     <td className="py-2 px-3">Recurring Rev %</td>
-                    <td className="text-center py-2 px-3">&gt; 70%</td>
-                    <td className="text-center py-2 px-3">40–70%</td>
-                    <td className="text-center py-2 px-3">&lt; 40%</td>
+                    <td className="text-center py-2 px-3">≥ 60%</td>
+                    <td className="text-center py-2 px-3">30–60%</td>
+                    <td className="text-center py-2 px-3">&lt; 30%</td>
                   </tr>
                   <tr>
                     <td className="py-2 px-3">Net Burn</td>
-                    <td className="text-center py-2 px-3">Negative (profit)</td>
+                    <td className="text-center py-2 px-3">Self-funding / controlled</td>
                     <td className="text-center py-2 px-3">—</td>
-                    <td className="text-center py-2 px-3">Positive (burning)</td>
+                    <td className="text-center py-2 px-3">Excessive burn</td>
                   </tr>
                 </tbody>
               </table>

@@ -2,14 +2,15 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import dynamic from "next/dynamic";
-import Link from "next/link";
+import Link from "next/link"
+import { ModelBackLink } from "@/components/model-back-link";
 import { ArrowLeft, Settings, Save, RotateCcw, ArrowRight } from "lucide-react";
 import { FieldHint } from "@/components/FieldHint";
 import { HintLabel } from "@/components/HintLabel";
 import { standardHint } from "@/lib/standard-model-hints";
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
-import { formatCurrency } from "@/lib/utils";
+import {formatCurrency, formatChartCurrency} from "@/lib/utils";
 import api from "@/lib/api";
 import { offerSmartResultsAfterCalculate } from "@/lib/smart-results";
 import { saveModelResults, clearModelResults } from "@/lib/model-link";
@@ -142,9 +143,7 @@ export default function StdCommonUtilityIncomePage() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-8">
-      <Link href="/models/std-common-utility" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
-        <ArrowLeft className="h-4 w-4" /> Back to Common Utility
-      </Link>
+      <ModelBackLink fallbackHref="/models/std-common-utility" label="Back to Common Utility" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors" />
 
       <div className="flex items-start justify-between gap-4 mb-6">
         <div className="flex items-start gap-4">
@@ -194,7 +193,7 @@ export default function StdCommonUtilityIncomePage() {
                   <div key={field.key}>
                     <label className="flex items-center text-xs text-muted-foreground mb-1">{field.label}{standardHint(field.key) && <FieldHint hint={standardHint(field.key)!} />}</label>
                     <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">$</span>
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">₹</span>
                       <input type="number" data-field={field.key}
                         value={monthData[activeMonth][field.key] || ""}
                         onChange={(e) => handleChange(field.key, e.target.value)}
@@ -301,7 +300,7 @@ export default function StdCommonUtilityIncomePage() {
                 legend: { data: ["Revenue", "Net Profit"], textStyle: { color: "#aaa", fontSize: 10 }, top: 0 },
                 grid: { top: 30, right: 15, bottom: 25, left: 55 },
                 xAxis: { type: "category", data: MONTHS_ORDER, axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
-                yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
+                yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => formatChartCurrency(v) }, splitLine: { lineStyle: { color: "#222" } } },
                 series: [
                   { name: "Revenue", type: "bar", data: MONTHS_ORDER.map(m => isResult.monthlyData[m]?.["Gross Revenue"] || 0), itemStyle: { color: "#60a5fa", borderRadius: [4, 4, 0, 0] } },
                   { name: "Net Profit", type: "line", data: MONTHS_ORDER.map(m => isResult.monthlyData[m]?.["Net Profit"] || 0), smooth: true, lineStyle: { color: "#34d399", width: 2 }, itemStyle: { color: "#34d399" }, symbol: "circle", symbolSize: 5 },
@@ -357,7 +356,7 @@ export default function StdCommonUtilityIncomePage() {
                 tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
                 grid: { top: 15, right: 15, bottom: 35, left: 55 },
                 xAxis: { type: "category", data: ["Revenue", "Gross Profit", "EBITDA", "Net Profit"], axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
-                yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
+                yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => formatChartCurrency(v) }, splitLine: { lineStyle: { color: "#222" } } },
                 series: [{
                   type: "bar", barWidth: 32,
                   data: [
@@ -366,7 +365,7 @@ export default function StdCommonUtilityIncomePage() {
                     { value: isResult.annual["EBITDA"] || 0, itemStyle: { color: "#f59e0b", borderRadius: [4, 4, 0, 0] } },
                     { value: isResult.annual["Net Profit"] || 0, itemStyle: { color: (isResult.annual["Net Profit"] || 0) >= 0 ? "#34d399" : "#ef4444", borderRadius: [4, 4, 0, 0] } },
                   ],
-                  label: { show: true, position: "top", color: "#aaa", fontSize: 9, formatter: (p: { value: number }) => p.value >= 1000 ? `$${(p.value/1000).toFixed(0)}k` : `$${p.value}` },
+                  label: { show: true, position: "top", color: "#aaa", fontSize: 9, formatter: (p: { value: number }) => formatChartCurrency(p.value) },
                 }],
               }}
             />

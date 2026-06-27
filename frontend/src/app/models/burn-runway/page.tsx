@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import dynamic from "next/dynamic";
-import Link from "next/link";
+import Link from "next/link"
+import { ModelBackLink } from "@/components/model-back-link";
 import {
   ArrowLeft, Flame, Save, RotateCcw, ChevronDown, ChevronUp,
   CheckCircle, AlertTriangle, XCircle, Info,
@@ -12,7 +13,7 @@ import { HintLabel } from "@/components/HintLabel";
 import { standaloneHint } from "@/lib/standalone-model-hints";
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, ragCardClasses, ragTextClass } from "@/lib/utils";
 import api from "@/lib/api";
 import { useSavedModel } from "@/lib/use-saved-model";
 import { offerSmartResultsAfterCalculate } from "@/lib/smart-results";
@@ -22,6 +23,8 @@ import {
   OUTPUT_FIELDS,
   calculateBurnRunway,
   createEmptyInputs,
+  formatRunway,
+  isInfiniteRunway,
   type MonthName,
   type BurnRunwayResults,
   type Classification,
@@ -36,26 +39,24 @@ function fmtVal(key: string, value: number | string | undefined): string {
   if (key.includes("Ratio") || key.includes("ratio"))
     return (value * 100).toFixed(1) + "%";
   if (key === "Runway (months)")
-    return value === Infinity ? "∞" : Math.round(value * 10) / 10 + " mo";
+    return formatRunway(value as number | null);
   return formatCurrency(value);
 }
 
 function classColor(c: Classification): string {
-  if (c === "GREEN") return "text-success";
-  if (c === "AMBER") return "text-amber-400";
-  return "text-danger";
+  return ragTextClass(c);
 }
 
 function classBg(c: Classification): string {
-  if (c === "GREEN") return "bg-success/10 border-success/30";
-  if (c === "AMBER") return "bg-amber-400/10 border-amber-400/30";
-  return "bg-danger/10 border-danger/30";
+  return `${ragCardClasses(c)} border`;
 }
 
-function classIcon(c: Classification) {
-  if (c === "GREEN") return <CheckCircle className="h-5 w-5 text-success" />;
-  if (c === "AMBER") return <AlertTriangle className="h-5 w-5 text-amber-400" />;
-  return <XCircle className="h-5 w-5 text-danger" />;
+function classIcon(c: Classification | null, size: "sm" | "lg" = "lg") {
+  const cls = size === "sm" ? "h-5 w-5" : "h-8 w-8";
+  if (c === "GREEN") return <CheckCircle className={`${cls} text-success`} />;
+  if (c === "AMBER") return <AlertTriangle className={`${cls} text-amber-400`} />;
+  if (c === "RED") return <XCircle className={`${cls} text-danger`} />;
+  return <Info className={`${cls} text-muted-foreground`} />;
 }
 
 export default function BurnRunwayPage() {
@@ -140,9 +141,7 @@ export default function BurnRunwayPage() {
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
-      <Link href="/models?tier=standalone" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
-        <ArrowLeft className="h-4 w-4" /> Back to Models
-      </Link>
+      <ModelBackLink modelSlug="burn-runway" label="Back to Models" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors" />
 
       <div className="flex items-start justify-between gap-4 mb-8">
         <div className="flex items-start gap-4">
@@ -241,7 +240,7 @@ export default function BurnRunwayPage() {
                 {standaloneHint("Opening Cash Balance") && <FieldHint hint={standaloneHint("Opening Cash Balance")!} />}
               </label>
               <div className="relative max-w-xs">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">$</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">₹</span>
                 <input
                   type="number"
                   value={openingCash || ""}
@@ -262,7 +261,7 @@ export default function BurnRunwayPage() {
                     <div key={field.key}>
                       <label className="flex items-center text-xs text-muted-foreground mb-1">{field.label}{standaloneHint(field.key) && <FieldHint hint={standaloneHint(field.key)!} />}</label>
                       <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">$</span>
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">₹</span>
                         <input
                           type="number"
                           data-field={field.key}
@@ -361,28 +360,40 @@ export default function BurnRunwayPage() {
         <div className="max-w-3xl mx-auto space-y-6">
           {/* Overall Health Score */}
           <div className={`rounded-2xl border bg-card p-8 text-center ${
-            results.insights.healthScore >= 80 ? "border-success/30" :
-            results.insights.healthScore >= 60 ? "border-amber-400/30" :
-            results.insights.healthScore >= 40 ? "border-orange-400/30" : "border-danger/30"
+            results.insights.classification
+              ? ragCardClasses(results.insights.classification)
+              : "border-border"
           }`}>
             <div className="flex justify-center mb-4">
-              {results.insights.healthScore >= 80 ? <CheckCircle className="h-8 w-8 text-success" /> :
-               results.insights.healthScore >= 60 ? <Info className="h-8 w-8 text-amber-400" /> :
-               results.insights.healthScore >= 40 ? <AlertTriangle className="h-8 w-8 text-orange-400" /> :
-               <XCircle className="h-8 w-8 text-danger" />}
+              {classIcon(results.insights.classification ?? "RED")}
             </div>
+            {results.insights.classification && (
+              <div className="mb-3">
+                <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold border ${
+                  results.insights.classification === "GREEN" ? "bg-success/10 text-success border-success/30" :
+                  results.insights.classification === "AMBER" ? "bg-amber-400/10 text-amber-400 border-amber-400/30" :
+                  "bg-danger/10 text-danger border-danger/30"
+                }`}>
+                  {results.insights.classification}
+                </span>
+              </div>
+            )}
             <div className="text-5xl font-bold mb-2">
-              <span className={results.insights.overallColor}>{results.insights.healthScore}/100</span>
+              <span className={results.insights.classification ? ragTextClass(results.insights.classification) : results.insights.overallColor}>
+                {results.insights.healthScore}/100
+              </span>
             </div>
-            <h2 className={`text-xl font-bold mb-2 ${results.insights.overallColor}`}>
-              {results.insights.overall}
+            <h2 className={`text-xl font-bold mb-2 ${results.insights.classification ? ragTextClass(results.insights.classification) : results.insights.overallColor}`}>
+              <HintLabel hint={standaloneHint("burnHealthScore")}>{results.insights.overall}</HintLabel>
             </h2>
           </div>
 
           {/* Runway Trend & Cash Outlook */}
           <div className="grid grid-cols-2 gap-4">
             <div className="rounded-xl bg-card border border-border p-4 text-center">
-              <p className="text-xs text-muted-foreground mb-1">Runway Trend</p>
+              <p className="text-xs text-muted-foreground mb-1">
+                <HintLabel hint={standaloneHint("runwayTrend")}>Runway Trend</HintLabel>
+              </p>
               <p className={`text-xl font-bold ${
                 results.insights.runwayTrend === "improving" ? "text-success" :
                 results.insights.runwayTrend === "declining" ? "text-amber-400" :
@@ -394,7 +405,9 @@ export default function BurnRunwayPage() {
               </p>
             </div>
             <div className="rounded-xl bg-card border border-border p-4 text-center">
-              <p className="text-xs text-muted-foreground mb-1">Cash Outlook</p>
+              <p className="text-xs text-muted-foreground mb-1">
+                <HintLabel hint={standaloneHint("cashOutlook")}>Cash Outlook</HintLabel>
+              </p>
               <p className={`text-xl font-bold ${
                 results.insights.cashOutlook === "surplus" ? "text-success" :
                 results.insights.cashOutlook === "constrained" ? "text-amber-400" :
@@ -429,18 +442,19 @@ export default function BurnRunwayPage() {
           {/* Key Metrics Summary */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="rounded-xl bg-background/50 border border-border/50 p-4 text-center">
-              <p className="text-xs text-muted-foreground mb-1">Latest Runway</p>
+              <p className="text-xs text-muted-foreground mb-1">
+                <HintLabel hint={standaloneHint("Runway (months)")}>Latest Runway</HintLabel>
+              </p>
               <p className="text-2xl font-bold">
                 {results.status.length > 0
-                  ? (() => {
-                      const last = results.status[results.status.length - 1];
-                      return last.runway === Infinity ? "∞" : (Math.round(last.runway * 10) / 10) + " mo";
-                    })()
+                  ? formatRunway(results.status[results.status.length - 1].runway)
                   : "—"}
               </p>
             </div>
             <div className="rounded-xl bg-background/50 border border-border/50 p-4 text-center">
-              <p className="text-xs text-muted-foreground mb-1">Net Burn</p>
+              <p className="text-xs text-muted-foreground mb-1">
+                <HintLabel hint={standaloneHint("Net Burn")}>Net Burn</HintLabel>
+              </p>
               <p className="text-2xl font-bold text-danger">
                 {results.status.length > 0
                   ? formatCurrency(results.status[results.status.length - 1].netBurn)
@@ -448,7 +462,9 @@ export default function BurnRunwayPage() {
               </p>
             </div>
             <div className="rounded-xl bg-background/50 border border-border/50 p-4 text-center">
-              <p className="text-xs text-muted-foreground mb-1">Cumulative Cash</p>
+              <p className="text-xs text-muted-foreground mb-1">
+                <HintLabel hint={standaloneHint("Cumulative Cash")}>Cumulative Cash</HintLabel>
+              </p>
               <p className={`text-2xl font-bold ${results.status.length > 0 && results.status[results.status.length - 1].cumulativeCash < 0 ? "text-danger" : ""}`}>
                 {results.status.length > 0
                   ? formatCurrency(results.status[results.status.length - 1].cumulativeCash)
@@ -456,7 +472,9 @@ export default function BurnRunwayPage() {
               </p>
             </div>
             <div className="rounded-xl bg-background/50 border border-border/50 p-4 text-center">
-              <p className="text-xs text-muted-foreground mb-1">GREEN/AMBER/RED</p>
+              <p className="text-xs text-muted-foreground mb-1">
+                <HintLabel hint={standaloneHint("CLASSIFICATION")}>GREEN/AMBER/RED</HintLabel>
+              </p>
               <p className="text-2xl font-bold">
                 {results.status.length > 0
                   ? `${results.status.filter(s => s.classification === "GREEN").length}/${results.status.filter(s => s.classification === "AMBER").length}/${results.status.filter(s => s.classification === "RED").length}`
@@ -478,10 +496,7 @@ export default function BurnRunwayPage() {
                   <HintLabel hint={standaloneHint("Runway (months)")}>Latest Runway</HintLabel>
                 </p>
                 <p className="text-2xl font-bold">
-                  {(() => {
-                    const last = results.status[results.status.length - 1];
-                    return last.runway === Infinity ? "∞" : (Math.round(last.runway * 10) / 10) + " mo";
-                  })()}
+                  {formatRunway(results.status[results.status.length - 1].runway)}
                 </p>
               </div>
               <div className="rounded-xl bg-card border border-border p-4 text-center">
@@ -510,11 +525,11 @@ export default function BurnRunwayPage() {
               {results.status.map((s) => (
                 <div key={s.month} className={`flex items-center justify-between rounded-xl px-5 py-4 border ${classBg(s.classification)}`}>
                   <div className="flex items-center gap-3">
-                    {classIcon(s.classification)}
+                    {classIcon(s.classification, "sm")}
                     <div>
                       <p className="font-semibold">{s.month}</p>
                       <p className="text-xs text-muted-foreground">
-                        Cash: {formatCurrency(s.cumulativeCash)} · Net Burn: {formatCurrency(s.netBurn)} · Runway: {s.runway === Infinity ? "∞" : (Math.round(s.runway * 10) / 10) + " mo"}
+                        Cash: {formatCurrency(s.cumulativeCash)} · Net Burn: {formatCurrency(s.netBurn)} · Runway: {formatRunway(s.runway)}
                       </p>
                     </div>
                   </div>
@@ -532,11 +547,11 @@ export default function BurnRunwayPage() {
             <div className="space-y-2 text-xs text-muted-foreground">
               <div className="flex items-center gap-2">
                 <span className="w-3 h-3 rounded-full bg-success shrink-0" />
-                <span><strong className="text-success">GREEN</strong> — Recurring Revenue ≥ 70%, Runway ≥ 12 mo, Net Burn Ratio ≤ 30%</span>
+                <span><strong className="text-success">GREEN</strong> — Recurring Revenue ≥ 70%, profitable or low burn ratio, Runway ≥ 12 mo (or infinite), Variable Cost Ratio &lt; 50%</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="w-3 h-3 rounded-full bg-amber-400 shrink-0" />
-                <span><strong className="text-amber-400">AMBER</strong> — Recurring Revenue ≥ 40%, Runway ≥ 6 mo, Net Burn Ratio ≤ 60%</span>
+                <span><strong className="text-amber-400">AMBER</strong> — Recurring Revenue 14–70%, loss-making, Net Burn Ratio &lt; 30%, Runway &gt; 6 mo, Fixed Cost Ratio &gt; 30%</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="w-3 h-3 rounded-full bg-danger shrink-0" />
@@ -555,7 +570,7 @@ export default function BurnRunwayPage() {
                   tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
                   grid: { top: 15, right: 15, bottom: 30, left: 55 },
                   xAxis: { type: "category", data: results.status.map(s => s.month), axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
-                  yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
+                  yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000 ? `₹${(v/1000).toFixed(0)}k` : `₹${v}` }, splitLine: { lineStyle: { color: "#222" } } },
                   series: [{
                     type: "line", smooth: true,
                     data: results.status.map(s => s.cumulativeCash),
@@ -579,7 +594,7 @@ export default function BurnRunwayPage() {
                   tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
                   grid: { top: 15, right: 15, bottom: 30, left: 55 },
                   xAxis: { type: "category", data: results.status.map(s => s.month), axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
-                  yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => `$${(v/1000).toFixed(0)}k` }, splitLine: { lineStyle: { color: "#222" } } },
+                  yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => `₹${(v/1000).toFixed(0)}k` }, splitLine: { lineStyle: { color: "#222" } } },
                   series: [{
                     type: "bar",
                     data: results.status.map(s => ({
@@ -608,8 +623,18 @@ export default function BurnRunwayPage() {
                       axisTick: { show: false },
                       splitLine: { show: false },
                       axisLabel: { color: "#888", fontSize: 9, distance: 25 },
-                      detail: { valueAnimation: true, formatter: "{value} mo", color: "#e0e0e0", fontSize: 18, offsetCenter: [0, "70%"] },
-                      data: [{ value: Math.min(24, last.runway === Infinity ? 24 : Math.round(last.runway * 10) / 10) }],
+                      detail: {
+                        valueAnimation: true,
+                        formatter: isInfiniteRunway(last.runway) ? "∞" : "{value} mo",
+                        color: "#e0e0e0",
+                        fontSize: 18,
+                        offsetCenter: [0, "70%"],
+                      },
+                      data: [{
+                        value: isInfiniteRunway(last.runway)
+                          ? 24
+                          : Math.min(24, Math.max(0, Math.round((last.runway as number) * 10) / 10)),
+                      }],
                     }],
                   }}
                 />

@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import dynamic from "next/dynamic";
-import Link from "next/link";
+import Link from "next/link"
+import { ModelBackLink } from "@/components/model-back-link";
 import { ArrowLeft, LayoutDashboard, Save, RotateCcw, RefreshCw } from "lucide-react";
 import { FieldHint } from "@/components/FieldHint";
 import { FIELD_HINTS } from "@/lib/field-hints";
@@ -200,21 +201,21 @@ export default function InvBusinessSnapshotPage() {
   };
 
   const fields: { key: keyof SnapshotInputs; label: string; prefix: string }[] = [
-    { key: "monthlyRevenue", label: "Monthly Revenue", prefix: "$" },
+    { key: "monthlyRevenue", label: "Monthly Revenue", prefix: "₹" },
     { key: "grossMargin", label: "Gross Margin %", prefix: "%" },
     { key: "netMargin", label: "Net Margin %", prefix: "%" },
-    { key: "cashBalance", label: "Cash Balance", prefix: "$" },
-    { key: "burnRate", label: "Monthly Burn", prefix: "$" },
+    { key: "cashBalance", label: "Cash Balance", prefix: "₹" },
+    { key: "burnRate", label: "Monthly Burn", prefix: "₹" },
     { key: "totalCustomers", label: "Total Customers", prefix: "#" },
-    { key: "ltv", label: "LTV", prefix: "$" },
-    { key: "cac", label: "CAC", prefix: "$" },
-    { key: "arr", label: "ARR", prefix: "$" },
+    { key: "ltv", label: "LTV", prefix: "₹" },
+    { key: "cac", label: "CAC", prefix: "₹" },
+    { key: "arr", label: "ARR", prefix: "₹" },
     { key: "nrr", label: "NRR %", prefix: "%" },
-    { key: "enterpriseValue", label: "Enterprise Value", prefix: "$" },
-    { key: "receivables", label: "Trade Receivables", prefix: "$" },
-    { key: "inventory", label: "Inventory", prefix: "$" },
-    { key: "payables", label: "Trade Payables", prefix: "$" },
-    { key: "changeInWC", label: "Δ Working Capital", prefix: "$" },
+    { key: "enterpriseValue", label: "Enterprise Value", prefix: "₹" },
+    { key: "receivables", label: "Trade Receivables", prefix: "₹" },
+    { key: "inventory", label: "Inventory", prefix: "₹" },
+    { key: "payables", label: "Trade Payables", prefix: "₹" },
+    { key: "changeInWC", label: "Δ Working Capital", prefix: "₹" },
   ];
 
   const ragColor = (status: string) =>
@@ -224,9 +225,7 @@ export default function InvBusinessSnapshotPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-8">
-      <Link href="/models?tier=investor" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
-        <ArrowLeft className="h-4 w-4" /> Back to Models
-      </Link>
+      <ModelBackLink modelSlug="inv-business-snapshot" label="Back to Models" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors" />
 
       <div className="flex items-start justify-between gap-4 mb-8">
         <div className="flex items-start gap-4">

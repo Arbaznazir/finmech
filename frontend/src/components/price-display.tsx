@@ -1,14 +1,30 @@
 import type { PriceDisplay } from "@/lib/pricing-api";
 
+export function ContactForPricing({ size = "md" }: { size?: "sm" | "md" | "lg" }) {
+  const sizeClass =
+    size === "lg" ? "text-2xl" : size === "sm" ? "text-base" : "text-xl";
+  return (
+    <div>
+      <p className={`font-bold ${sizeClass} text-foreground`}>Contact for pricing</p>
+      <p className="text-xs text-muted-foreground mt-1">
+        Set after your consultation with our team
+      </p>
+    </div>
+  );
+}
+
 export function PriceDisplayBlock({
   pricing,
   period,
   size = "md",
 }: {
-  pricing: PriceDisplay;
+  pricing: PriceDisplay | null | undefined;
   period?: string;
   size?: "sm" | "md" | "lg";
 }) {
+  if (!pricing || pricing.finalPaise <= 0) {
+    return <ContactForPricing size={size} />;
+  }
   const sizeClass =
     size === "lg" ? "text-4xl" : size === "sm" ? "text-xl" : "text-3xl";
 

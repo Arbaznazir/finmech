@@ -1,3 +1,5 @@
+import { checklistStatusAdvisory } from "@/lib/free-excel-content";
+
 // ========================================================
 // KNOW YOUR BUSINESS NUMBERS – CHECKLIST MODEL
 // Exact Excel match: 8 sections, weighted scoring,
@@ -45,11 +47,11 @@ export const QUESTIONS: ChecklistQuestion[] = [
   { id: "cf_q4", section: "Cash Flow", text: "Cash review is done monthly", weight: 3 },
   // Revenue (weight 2)
   { id: "rv_q1", section: "Revenue", text: "I track receivables & ageing", weight: 2 },
-  { id: "rv_q2", section: "Revenue", text: "I know the % of one-time vs recurring revenue", weight: 2 },
+  { id: "rv_q2", section: "Revenue", text: "I know recurring vs one-time revenue", weight: 2 },
   { id: "rv_q3", section: "Revenue", text: "Collection cycle is predictable", weight: 2 },
   // Costs (weight 2)
   { id: "co_q1", section: "Costs", text: "Fixed vs variable costs identified", weight: 2 },
-  { id: "co_q2", section: "Costs", text: "Costs are reviewed before expansion", weight: 2 },
+  { id: "co_q2", section: "Costs", text: "Costs reviewed before expansion", weight: 2 },
   { id: "co_q3", section: "Costs", text: "I can reduce burn within 30 days", weight: 2 },
   // Unit Economics (weight 3)
   { id: "ue_q1", section: "Unit Economics", text: "Gross margin is known", weight: 3 },
@@ -58,18 +60,19 @@ export const QUESTIONS: ChecklistQuestion[] = [
   // Forecasting (weight 2)
   { id: "fc_q1", section: "Forecasting", text: "12–24 month forecast exists", weight: 2 },
   { id: "fc_q2", section: "Forecasting", text: "Best/Base/Worst cases modeled", weight: 2 },
-  { id: "fc_q3", section: "Forecasting", text: "Break-even point is clear", weight: 2 },
+  { id: "fc_q3", section: "Forecasting", text: "Break-even point known", weight: 2 },
   // Compliance (weight 2)
-  { id: "cm_q1", section: "Compliance", text: "GST/TDS/IT is tracked on calendar", weight: 2 },
+  { id: "cm_q1", section: "Compliance", text: "GST/TDS/IT tracked on calendar", weight: 2 },
   { id: "cm_q2", section: "Compliance", text: "Tax provisions are planned", weight: 2 },
   { id: "cm_q3", section: "Compliance", text: "Books updated monthly", weight: 2 },
   // Fundraising (weight 2)
-  { id: "fr_q1", section: "Fundraising", text: "Cap Table is clean", weight: 2 },
-  { id: "fr_q2", section: "Fundraising", text: "Dilution logic is understood", weight: 2 },
-  { id: "fr_q3", section: "Fundraising", text: "Ready for Term Sheet", weight: 2 },
+  { id: "fr_q1", section: "Fundraising", text: "Cap table is clean", weight: 2 },
+  { id: "fr_q2", section: "Fundraising", text: "Dilution logic understood", weight: 2 },
+  { id: "fr_q3", section: "Fundraising", text: "MIS ready for investors", weight: 2 },
   // Controls (weight 2)
   { id: "ct_q1", section: "Controls", text: "Personal & business money separated", weight: 2 },
   { id: "ct_q2", section: "Controls", text: "Expense approvals exist", weight: 2 },
+  { id: "ct_q3", section: "Controls", text: "No single-person dependency", weight: 2 },
 ];
 
 export const SECTIONS = [...new Set(QUESTIONS.map((q) => q.section))];
@@ -102,21 +105,18 @@ export function calculateChecklist(
 
   let readinessStatus: string;
   let statusColor: "green" | "amber" | "red";
-  let advisorySummary: string;
 
   if (readinessPercentage >= 80) {
     readinessStatus = "FINANCE-READY";
     statusColor = "green";
-    advisorySummary = "Strong financial foundation. Focus on optimisation and growth acceleration.";
   } else if (readinessPercentage >= 50) {
     readinessStatus = "GROWTH RISK";
     statusColor = "amber";
-    advisorySummary = "Key gaps identified. Prioritise cash flow discipline, unit economics tracking, and compliance.";
   } else {
     readinessStatus = "SURVIVAL RISK";
     statusColor = "red";
-    advisorySummary = "Urgent corrective action required: cash, compliance and cost discipline.";
   }
+  const advisorySummary = checklistStatusAdvisory(readinessStatus);
 
   const sectionScores: SectionScore[] = SECTIONS.map((section) => ({
     section,

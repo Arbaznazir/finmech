@@ -2,55 +2,58 @@
 
 import { useState, useEffect, useCallback } from "react";
 import dynamic from "next/dynamic";
-import Link from "next/link";
+import Link from "next/link"
+import { ModelBackLink } from "@/components/model-back-link";
 import {
   ArrowLeft, TrendingUp, Save, RotateCcw,
   CheckCircle, XCircle,
 } from "lucide-react";
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
-import { formatCurrency } from "@/lib/utils";
+import {formatCurrency, formatChartCurrency} from "@/lib/utils";
 import api from "@/lib/api";
 import { useSavedModel } from "@/lib/use-saved-model";
 import { offerSmartResultsAfterCalculate } from "@/lib/smart-results";
+import { FieldHint } from "@/components/FieldHint";
+import { HintLabel } from "@/components/HintLabel";
+import { useModelHints } from "@/hooks/use-model-hints";
 import {
-  calculateBreakEven,
-  createEmptyMonthInputs,
-  type BreakEvenMonthInputs,
-  type BreakEvenMonthResults,
-} from "@/lib/breakeven-model";
+  calculateBreakEvenFree,
+  createEmptyBreakEvenInputs,
+  type BreakEvenFreeInputs,
+  type BreakEvenFreeResults,
+} from "@/lib/breakeven-free-model";
 
 export default function BreakEvenPage() {
   const { user, hydrate } = useAuth();
-  const [inputs, setInputs] = useState<BreakEvenMonthInputs>(createEmptyMonthInputs());
-  const [results, setResults] = useState<BreakEvenMonthResults | null>(null);
+  const { hint } = useModelHints("break-even-pro");
+  const [inputs, setInputs] = useState<BreakEvenFreeInputs>(createEmptyBreakEvenInputs());
+  const [results, setResults] = useState<BreakEvenFreeResults | null>(null);
   const { save: persistState, reset: clearPersisted, saving, saved, markDirty } = useSavedModel({
     modelSlug: "break-even-pro",
     onLoad: (data: Record<string, unknown>) => {
-      if (data.inputs) setInputs(data.inputs as BreakEvenMonthInputs);
+      if (data.inputs) setInputs(data.inputs as BreakEvenFreeInputs);
     },
     getState: useCallback(() => ({ inputs }), [inputs]),
   });
 
   useEffect(() => { hydrate(); }, [hydrate]);
 
-  const handleChange = (key: keyof BreakEvenMonthInputs, value: string) => {
+  const handleChange = (key: keyof BreakEvenFreeInputs, value: string) => {
     setInputs((prev) => ({ ...prev, [key]: parseFloat(value) || 0 }));
     markDirty();
   };
 
   const handleCalculate = () => {
     if (inputs.pricePerUnit <= 0) return;
-    const monthlyData = { "Apr": inputs };
-    const fullResults = calculateBreakEven(monthlyData);
-    const monthResult = fullResults.monthlyData["Apr"] || null;
+    const monthResult = calculateBreakEvenFree(inputs);
     setResults(monthResult);
-    if (monthResult) offerSmartResultsAfterCalculate("break-even-pro", inputs, monthResult);
+    offerSmartResultsAfterCalculate("break-even-pro", inputs, monthResult);
     persistState();
   };
 
   const handleReset = () => {
-    setInputs(createEmptyMonthInputs());
+    setInputs(createEmptyBreakEvenInputs());
     setResults(null);
     clearPersisted();
   };
@@ -69,19 +72,17 @@ export default function BreakEvenPage() {
     }
   };
 
-  const fields: { key: keyof BreakEvenMonthInputs; label: string; prefix: string; placeholder: string }[] = [
-    { key: "pricePerUnit", label: "Selling Price per Unit", prefix: "$", placeholder: "3000" },
-    { key: "variableCostPerUnit", label: "Variable Cost per Unit", prefix: "$", placeholder: "2295" },
-    { key: "fixedCostMonthly", label: "Fixed Cost (Monthly)", prefix: "$", placeholder: "87500" },
+  const fields: { key: keyof BreakEvenFreeInputs; label: string; prefix: string; placeholder: string }[] = [
+    { key: "pricePerUnit", label: "Selling Price per Unit", prefix: "₹", placeholder: "3000" },
+    { key: "variableCostPerUnit", label: "Variable Cost per Unit", prefix: "₹", placeholder: "2295" },
+    { key: "fixedCostMonthly", label: "Fixed Cost (Monthly)", prefix: "₹", placeholder: "87500" },
     { key: "unitsSoldForProjection", label: "Units Sold (for projection)", prefix: "#", placeholder: "200" },
   ];
 
   return (
     <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
-      <Link href="/models?tier=standalone" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
-        <ArrowLeft className="h-4 w-4" /> Back to Models
-      </Link>
+      <ModelBackLink modelSlug="break-even-pro" label="Back to Models" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors" />
 
       <div className="flex items-start justify-between gap-4 mb-8">
         <div className="flex items-start gap-4">
@@ -91,8 +92,8 @@ export default function BreakEvenPage() {
           <div>
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-bold">Break-Even Model</h1>
-              <span className="rounded px-2 py-0.5 text-xs font-medium uppercase bg-blue-400/10 text-blue-400">
-                Standalone
+              <span className="rounded px-2 py-0.5 text-xs font-medium uppercase bg-green-400/10 text-green-400">
+                Free
               </span>
             </div>
             <p className="text-muted-foreground mt-1">
@@ -121,7 +122,10 @@ export default function BreakEvenPage() {
           <div className="space-y-4">
             {fields.map((field) => (
               <div key={field.key}>
-                <label className="block text-sm text-muted-foreground mb-1.5">{field.label}</label>
+                <label className="block text-sm text-muted-foreground mb-1.5 flex items-center">
+                  {field.label}
+                  {hint(field.key) && <FieldHint hint={hint(field.key)!} />}
+                </label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">{field.prefix}</span>
                   <input
@@ -172,17 +176,25 @@ export default function BreakEvenPage() {
             {/* Key Metrics */}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
               <div className="rounded-xl bg-card border border-border p-4">
-                <p className="text-xs text-muted-foreground mb-1">Contribution / Unit</p>
+                <p className="text-xs text-muted-foreground mb-1 flex items-center">
+                  <HintLabel hint={hint("contributionPerUnit")}>Contribution / Unit</HintLabel>
+                </p>
                 <p className="text-xl font-bold">{formatCurrency(results.contributionPerUnit)}</p>
               </div>
               <div className="rounded-xl bg-card border border-border p-4">
-                <p className="text-xs text-muted-foreground mb-1">Break-Even Units</p>
+                <p className="text-xs text-muted-foreground mb-1 flex items-center">
+                  <HintLabel hint={hint("breakEvenUnits")}>Break-Even Units</HintLabel>
+                </p>
                 <p className="text-xl font-bold">
-                  {results.breakEvenUnits === Infinity ? "∞" : results.breakEvenUnits.toLocaleString()}
+                  {results.breakEvenUnits === 0 && inputs.pricePerUnit <= inputs.variableCostPerUnit
+                    ? "∞"
+                    : results.breakEvenUnits.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                 </p>
               </div>
               <div className="rounded-xl bg-card border border-border p-4">
-                <p className="text-xs text-muted-foreground mb-1">Break-Even Revenue</p>
+                <p className="text-xs text-muted-foreground mb-1 flex items-center">
+                  <HintLabel hint={hint("breakEvenRevenue")}>Break-Even Revenue</HintLabel>
+                </p>
                 <p className="text-xl font-bold">
                   {results.breakEvenRevenue === Infinity ? "∞" : formatCurrency(results.breakEvenRevenue)}
                 </p>
@@ -201,6 +213,9 @@ export default function BreakEvenPage() {
                   {results.status === "GREEN"
                     ? <CheckCircle className="h-5 w-5 text-success" />
                     : <XCircle className="h-5 w-5 text-danger" />}
+                  <span className={`text-xs font-bold uppercase ${results.status === "GREEN" ? "text-success" : "text-danger"}`}>
+                    {results.status}
+                  </span>
                   <p className={`text-xl font-bold ${results.status === "GREEN" ? "text-success" : "text-danger"}`}>
                     {formatCurrency(results.profitAtUnits)}
                   </p>
@@ -225,7 +240,9 @@ export default function BreakEvenPage() {
                   </thead>
                   <tbody>
                     {results.projection.map((row) => {
-                      const isBreakEven = row.units === results.breakEvenUnits;
+                      const isBreakEven =
+                        results.breakEvenUnits > 0 &&
+                        Math.abs(row.units - results.breakEvenUnits) < 0.5;
                       const isProjection = row.units === results.unitsSoldForProjection && results.unitsSoldForProjection > 0;
                       return (
                         <tr
@@ -272,7 +289,7 @@ export default function BreakEvenPage() {
                 legend: { data: ["Revenue", "Total Cost"], textStyle: { color: "#aaa", fontSize: 10 }, top: 0 },
                 grid: { top: 30, right: 15, bottom: 30, left: 55 },
                 xAxis: { type: "category", name: "Units", nameTextStyle: { color: "#888", fontSize: 10 }, data: results.projection.map(r => r.units.toLocaleString()), axisLabel: { color: "#888", fontSize: 9, rotate: 30 }, axisLine: { lineStyle: { color: "#333" } } },
-                yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
+                yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => formatChartCurrency(v) }, splitLine: { lineStyle: { color: "#222" } } },
                 series: [
                   { name: "Revenue", type: "line", data: results.projection.map(r => r.revenue), smooth: true, lineStyle: { color: "#60a5fa", width: 2 }, itemStyle: { color: "#60a5fa" }, symbol: "circle", symbolSize: 4 },
                   { name: "Total Cost", type: "line", data: results.projection.map(r => r.totalCost), smooth: true, lineStyle: { color: "#ef4444", width: 2 }, itemStyle: { color: "#ef4444" }, symbol: "circle", symbolSize: 4 },
@@ -290,7 +307,7 @@ export default function BreakEvenPage() {
                 tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
                 grid: { top: 15, right: 15, bottom: 30, left: 55 },
                 xAxis: { type: "category", data: results.projection.map(r => r.units.toLocaleString()), axisLabel: { color: "#888", fontSize: 9, rotate: 30 }, axisLine: { lineStyle: { color: "#333" } } },
-                yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => `$${(v/1000).toFixed(0)}k` }, splitLine: { lineStyle: { color: "#222" } } },
+                yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => formatChartCurrency(v) }, splitLine: { lineStyle: { color: "#222" } } },
                 series: [{
                   type: "bar",
                   data: results.projection.map(r => ({
@@ -311,7 +328,7 @@ export default function BreakEvenPage() {
                 tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
                 grid: { top: 15, right: 15, bottom: 35, left: 55 },
                 xAxis: { type: "category", data: ["Price/Unit", "Var Cost", "Contribution", "Fixed Cost", "Profit"], axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
-                yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => `$${v.toLocaleString()}` }, splitLine: { lineStyle: { color: "#222" } } },
+                yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => formatChartCurrency(v) }, splitLine: { lineStyle: { color: "#222" } } },
                 series: [
                   { type: "bar", stack: "w", itemStyle: { borderColor: "transparent", color: "transparent" }, emphasis: { itemStyle: { borderColor: "transparent", color: "transparent" } },
                     data: [0, results.pricePerUnit - results.variableCostPerUnit, 0, Math.max(0, results.contributionPerUnit - results.fixedCostMonthly / Math.max(1, results.unitsSoldForProjection)), 0] },

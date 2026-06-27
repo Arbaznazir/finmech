@@ -11,7 +11,7 @@ import { FieldHint } from "@/components/FieldHint";
 import { FIELD_HINTS } from "@/lib/field-hints";
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
-import { formatCurrency } from "@/lib/utils";
+import {formatCurrency, formatChartCurrency} from "@/lib/utils";
 import api from "@/lib/api";
 import { useSavedModel } from "@/lib/use-saved-model";
 import {
@@ -242,7 +242,7 @@ export default function CashFlowStatementPage() {
             <div className="mb-5 rounded-lg bg-background/50 p-4 border border-border/50">
               <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Opening Cash Balance (April 1st)</label>
               <div className="relative max-w-xs">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">$</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">₹</span>
                 <input
                   type="number"
                   value={openingCash || ""}
@@ -268,7 +268,7 @@ export default function CashFlowStatementPage() {
                       <div key={field.key}>
                         <label className="flex items-center text-xs text-muted-foreground mb-1">{field.label}{FIELD_HINTS[field.key] && <FieldHint hint={FIELD_HINTS[field.key]} />}</label>
                         <div className="relative">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">$</span>
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">₹</span>
                           <input
                             type="number"
                             data-field={field.key}
@@ -453,7 +453,7 @@ export default function CashFlowStatementPage() {
                   legend: { data: ["CFO", "CFI", "CFF"], textStyle: { color: "#aaa", fontSize: 10 }, top: 0 },
                   grid: { top: 30, right: 15, bottom: 30, left: 55 },
                   xAxis: { type: "category", data: results.monthsAdded, axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
-                  yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
+                  yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => formatChartCurrency(v) }, splitLine: { lineStyle: { color: "#222" } } },
                   series: [
                     { name: "CFO", type: "bar", stack: "cf", data: results.monthsAdded.map(m => results.monthlyData[m]?.["Net Cash Flow from Operating Activities (CFO)"] || 0), itemStyle: { color: "#22d3ee" } },
                     { name: "CFI", type: "bar", stack: "cf", data: results.monthsAdded.map(m => results.monthlyData[m]?.["Cash Flow from Investing Activities (CFI)"] || 0), itemStyle: { color: "#a78bfa" } },
@@ -472,7 +472,7 @@ export default function CashFlowStatementPage() {
                   tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
                   grid: { top: 15, right: 15, bottom: 30, left: 55 },
                   xAxis: { type: "category", data: results.monthsAdded, axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
-                  yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
+                  yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => formatChartCurrency(v) }, splitLine: { lineStyle: { color: "#222" } } },
                   series: [{
                     type: "line", smooth: true,
                     data: results.monthsAdded.map(m => results.monthlyData[m]?.["Ending Cash"] || 0),
@@ -515,7 +515,7 @@ export default function CashFlowStatementPage() {
                   tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
                   grid: { top: 15, right: 15, bottom: 30, left: 55 },
                   xAxis: { type: "category", data: results.monthsAdded, axisLabel: { color: "#888", fontSize: 10 }, axisLine: { lineStyle: { color: "#333" } } },
-                  yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => `$${(v/1000).toFixed(0)}k` }, splitLine: { lineStyle: { color: "#222" } } },
+                  yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => formatChartCurrency(v) }, splitLine: { lineStyle: { color: "#222" } } },
                   series: [{
                     type: "bar",
                     data: results.monthsAdded.map(m => {

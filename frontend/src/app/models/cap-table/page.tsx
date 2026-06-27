@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import Link from "next/link";
+import Link from "next/link"
+import { ModelBackLink } from "@/components/model-back-link";
 import dynamic from "next/dynamic";
 import {
   ArrowLeft, PieChart, RotateCcw, Plus, TrendingUp, Calculator, FileText, Download, Save,
@@ -13,8 +14,15 @@ import { useSavedModel } from "@/lib/use-saved-model";
 import { offerSmartResultsAfterCalculate } from "@/lib/smart-results";
 import { FieldHint } from "@/components/FieldHint";
 import { HintLabel } from "@/components/HintLabel";
-import { standaloneHint } from "@/lib/standalone-model-hints";
-import { CapTableMechanicsModel, type Round, type ExitResult } from "@/lib/cap-table-mechanics-model";
+import { useModelHints } from "@/hooks/use-model-hints";
+import {
+  CapTableMechanicsModel,
+  EXCEL_CAP_TABLE_FORMAT_DEFAULTS,
+  calculateCapTableFormat,
+  type Round,
+  type ExitResult,
+  type CapTableFormatResults,
+} from "@/lib/cap-table-mechanics-model";
 
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 
@@ -25,7 +33,9 @@ const model = new CapTableMechanicsModel();
 
 export default function CapTablePage() {
   const { user, hydrate } = useAuth();
+  const { hint } = useModelHints("cap-table");
   const [activeTab, setActiveTab] = useState<TabView>("simulation");
+  const [formatResults, setFormatResults] = useState<CapTableFormatResults | null>(null);
   
   // Simulation state
   const [rounds, setRounds] = useState<Round[]>([]);
@@ -39,12 +49,16 @@ export default function CapTablePage() {
   const [quickInputs, setQuickInputs] = useState({
     preSeed: 2000000,
     invSeed: 500000,
-    preA: 8000000,
-    invA: 3000000,
-    preB: 25000000,
-    invB: 10000000,
-    exitVal: 100000000,
+    preA: 3000000,
+    invA: 1000000,
+    preB: 8000000,
+    invB: 3000000,
+    exitVal: 30000000,
   });
+
+  useEffect(() => {
+    setFormatResults(calculateCapTableFormat(EXCEL_CAP_TABLE_FORMAT_DEFAULTS));
+  }, []);
 
   const { save: persistState, reset: clearPersisted, saving, saved } = useSavedModel({
     modelSlug: "cap-table",
@@ -100,10 +114,10 @@ export default function CapTablePage() {
   const loadTemplate = () => {
     model.reset();
     model.addRound("Seed", 2000000, 500000);
-    model.addRound("Series A", 8000000, 3000000);
-    model.addRound("Series B", 25000000, 10000000);
+    model.addRound("Series A", 3000000, 1000000);
+    model.addRound("Series B", 8000000, 3000000);
     setRounds([...model.rounds]);
-    setExitValue(100000000);
+    setExitValue(30000000);
     setResult(null);
   };
 
@@ -291,9 +305,7 @@ FinMech - Cap Table Mechanics
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
-      <Link href="/models?tier=standalone" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
-        <ArrowLeft className="h-4 w-4" /> Back to Models
-      </Link>
+      <ModelBackLink modelSlug="cap-table" label="Back to Models" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors" />
 
       <div className="flex items-start justify-between gap-4 mb-8">
         <div className="flex items-start gap-4">
@@ -377,7 +389,7 @@ FinMech - Cap Table Mechanics
                 <div key={item.key}>
                   <label className="flex items-center text-xs text-muted-foreground mb-1">
                     {item.label}
-                    {standaloneHint(item.key) && <FieldHint hint={standaloneHint(item.key)!} />}
+                    {hint(item.key) && <FieldHint hint={hint(item.key)!} />}
                   </label>
                   <input
                     type="number"
@@ -520,7 +532,7 @@ FinMech - Cap Table Mechanics
               <div className="flex-1">
                 <label className="flex items-center text-xs text-muted-foreground mb-2">
                   Exit Value
-                  {standaloneHint("exitValue") && <FieldHint hint={standaloneHint("exitValue")!} />}
+                  {hint("exitValue") && <FieldHint hint={hint("exitValue")!} />}
                 </label>
                 <input
                   type="number"
@@ -594,14 +606,19 @@ FinMech - Cap Table Mechanics
 
                   {/* Payout Waterfall Table */}
                   <div className="rounded-xl bg-background/50 p-4">
-                    <h4 className="font-medium mb-3 text-muted-foreground">Payout Waterfall @ {formatCurrency(result.exitValue)}</h4>
+                    <h4 className="font-medium mb-3 text-muted-foreground flex items-center gap-2">
+                      <HintLabel hint={hint("waterfall")}>Payout Waterfall @ {formatCurrency(result.exitValue)}</HintLabel>
+                    </h4>
                     <div className="space-y-2">
                       {Object.entries(result.waterfall).map(([key, data]) => (
                         <div key={key} className="flex justify-between p-3 bg-card rounded-xl">
                           <span>{key}</span>
                           <div className="text-right">
                             <div className="font-mono text-success font-semibold">{formatCurrency(data.payout)}</div>
-                            <div className="text-xs text-muted-foreground">{data.ownershipPct}%</div>
+                            <div className="text-xs text-muted-foreground">{data.ownershipPct.toFixed(2)}%</div>
+                            {data.irrMultiple != null && data.investment != null && (
+                              <div className="text-xs text-blue-400">{data.irrMultiple.toFixed(2)}× on {formatCurrency(data.investment)}</div>
+                            )}
                           </div>
                         </div>
                       ))}
@@ -615,65 +632,88 @@ FinMech - Cap Table Mechanics
       )}
 
       {/* ==================== TAB 2: ORIGINAL CAP TABLE ==================== */}
-      {activeTab === "original" && (
-        <div className="rounded-2xl border border-border bg-card p-6">
-          <h2 className="text-2xl font-bold mb-6">Original Cap Table</h2>
-          <p className="text-muted-foreground mb-6">
-            Static view of the initial cap table structure before any funding rounds.
-          </p>
-
-          {/* Founders Table */}
-          <div className="overflow-x-auto mb-8">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border bg-background/50">
-                  <th className="text-left py-3 px-4">Shareholder</th>
-                  <th className="text-left py-3 px-4">Role</th>
-                  <th className="text-right py-3 px-4">Shares</th>
-                  <th className="text-right py-3 px-4">Ownership</th>
-                  <th className="text-right py-3 px-4">Investment</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr className="border-b border-border/30">
-                  <td className="py-3 px-4 font-medium">Founders</td>
-                  <td className="py-3 px-4">Promoter</td>
-                  <td className="text-right py-3 px-4 font-mono">200,000</td>
-                  <td className="text-right py-3 px-4 font-semibold">100.00%</td>
-                  <td className="text-right py-3 px-4">—</td>
-                </tr>
-                <tr className="bg-background/50 font-semibold">
-                  <td className="py-3 px-4">Total</td>
-                  <td className="py-3 px-4" />
-                  <td className="text-right py-3 px-4 font-mono">200,000</td>
-                  <td className="text-right py-3 px-4">100.00%</td>
-                  <td className="text-right py-3 px-4">—</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          {/* Share Structure */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-            <div className="rounded-xl bg-background/50 p-4 text-center">
-              <div className="text-3xl font-bold text-primary">200,000</div>
-              <div className="text-sm text-muted-foreground mt-1">Founder Shares</div>
-            </div>
-            <div className="rounded-xl bg-background/50 p-4 text-center">
-              <div className="text-3xl font-bold text-primary">1</div>
-              <div className="text-sm text-muted-foreground mt-1">Share Classes</div>
-            </div>
-            <div className="rounded-xl bg-background/50 p-4 text-center">
-              <div className="text-3xl font-bold text-primary">100%</div>
-              <div className="text-sm text-muted-foreground mt-1">Founder Ownership</div>
-            </div>
-          </div>
-
-          <div className="bg-muted/50 rounded-xl p-4 text-sm text-muted-foreground">
-            <p>
-              This represents the starting point. Use the "Round Simulation & Exit" tab to 
-              add funding rounds and see how dilution affects founder ownership.
+      {activeTab === "original" && formatResults && (
+        <div className="space-y-8">
+          <div className="rounded-2xl border border-border bg-card p-6">
+            <h2 className="text-2xl font-bold mb-2">Original Cap Table</h2>
+            <p className="text-muted-foreground mb-6">
+              Pre-money ownership by investment amount (Excel CAP Table format sheet).
             </p>
+            <div className="overflow-x-auto mb-4">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border bg-background/50">
+                    <th className="text-left py-3 px-4">Shareholder</th>
+                    <th className="text-right py-3 px-4">Shares</th>
+                    <th className="text-right py-3 px-4">Investment</th>
+                    <th className="text-right py-3 px-4">Ownership %</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {formatResults.original.promoters.map((p) => (
+                    <tr key={p.name} className="border-b border-border/30">
+                      <td className="py-3 px-4 font-medium">{p.name}</td>
+                      <td className="text-right py-3 px-4 font-mono">{p.shares.toLocaleString()}</td>
+                      <td className="text-right py-3 px-4">{formatCurrency(p.investment)}</td>
+                      <td className="text-right py-3 px-4 font-semibold">{p.ownershipPct?.toFixed(2)}%</td>
+                    </tr>
+                  ))}
+                  <tr className="bg-background/50 font-semibold">
+                    <td className="py-3 px-4">Total</td>
+                    <td className="text-right py-3 px-4 font-mono">{formatResults.original.totalPromoterShares.toLocaleString()}</td>
+                    <td className="text-right py-3 px-4">{formatCurrency(formatResults.original.totalInvestment)}</td>
+                    <td className="text-right py-3 px-4">100.00%</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Pre-money valuation: {formatCurrency(formatResults.original.preMoneyValuation)}
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-border bg-card p-6">
+            <h2 className="text-2xl font-bold mb-6">Post-Dilution (Angel + VC)</h2>
+            <div className="overflow-x-auto mb-6">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border bg-background/50">
+                    <th className="text-left py-3 px-4">Shareholder</th>
+                    <th className="text-right py-3 px-4">Shares</th>
+                    <th className="text-right py-3 px-4">Investment</th>
+                    <th className="text-right py-3 px-4">Ownership %</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {formatResults.postDilution.promoters.map((p) => (
+                    <tr key={p.name} className="border-b border-border/30">
+                      <td className="py-3 px-4">{p.name}</td>
+                      <td className="text-right py-3 px-4 font-mono">{Math.round(p.shares).toLocaleString()}</td>
+                      <td className="text-right py-3 px-4">{formatCurrency(p.investment)}</td>
+                      <td className="text-right py-3 px-4">{p.ownershipPct?.toFixed(2)}%</td>
+                    </tr>
+                  ))}
+                  <tr className="border-b border-border/30">
+                    <td className="py-3 px-4">Angel Investor</td>
+                    <td className="text-right py-3 px-4 font-mono">{formatResults.postDilution.angelShares.toLocaleString()}</td>
+                    <td className="text-right py-3 px-4">{formatCurrency(EXCEL_CAP_TABLE_FORMAT_DEFAULTS.angelInvestment)}</td>
+                    <td className="text-right py-3 px-4">{formatResults.postDilution.angelOwnershipPct.toFixed(2)}%</td>
+                  </tr>
+                  <tr className="border-b border-border/30">
+                    <td className="py-3 px-4">VC Investor</td>
+                    <td className="text-right py-3 px-4 font-mono">{formatResults.postDilution.vcShares.toLocaleString()}</td>
+                    <td className="text-right py-3 px-4">{formatCurrency(EXCEL_CAP_TABLE_FORMAT_DEFAULTS.vcInvestment)}</td>
+                    <td className="text-right py-3 px-4">{formatResults.postDilution.vcOwnershipPct.toFixed(2)}%</td>
+                  </tr>
+                  <tr className="bg-background/50 font-semibold">
+                    <td className="py-3 px-4">Total</td>
+                    <td className="text-right py-3 px-4 font-mono">{Math.round(formatResults.postDilution.totalShares).toLocaleString()}</td>
+                    <td className="text-right py-3 px-4">{formatCurrency(formatResults.postDilution.postMoneyValuation)}</td>
+                    <td className="text-right py-3 px-4">100.00%</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}

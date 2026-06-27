@@ -4,6 +4,7 @@ import "./globals.css";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import Background3D from "@/components/Background3D";
+import { FaqChatWidgetLoader } from "@/components/FaqChatWidgetLoader";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -16,8 +17,17 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "FinMech — Financial Mechanics for Startups",
+  title: "FinMech — Smart tools. Smart finance",
   description: "Build, analyze, and share financial models. Break-even, DCF, burn rate, cap table, and more.",
+  icons: {
+    icon: [
+      { url: "/favicon.ico" },
+      { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
+      { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+    ],
+    apple: "/apple-touch-icon.png",
+  },
+  manifest: "/site.webmanifest",
 };
 
 export default function RootLayout({
@@ -30,12 +40,13 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased dark`}
     >
-      <body className="min-h-full flex flex-col bg-background text-foreground">
+      <body className="min-h-screen bg-background text-foreground">
         <Background3D />
-        <div className="relative z-10 flex flex-col min-h-full">
+        <div className="relative z-10">
           <Navbar />
-          <main className="flex-1 pt-16">{children}</main>
+          <main className="pt-16">{children}</main>
           <Footer />
+          <FaqChatWidgetLoader />
         </div>
       </body>
     </html>

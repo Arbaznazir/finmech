@@ -2,14 +2,15 @@
 
 import { useState, useEffect, useCallback } from "react";
 import dynamic from "next/dynamic";
-import Link from "next/link";
+import Link from "next/link"
+import { ModelBackLink } from "@/components/model-back-link";
 import { ArrowLeft, PieChart, Save, RotateCcw, Plus, Trash2, Play } from "lucide-react";
 import { FieldHint } from "@/components/FieldHint";
 import { HintLabel } from "@/components/HintLabel";
 import { standardHint } from "@/lib/standard-model-hints";
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
-import { formatCurrency } from "@/lib/utils";
+import {formatCurrency, formatChartCurrency} from "@/lib/utils";
 import api from "@/lib/api";
 import { loadModelResults, saveModelResults, clearModelResults } from "@/lib/model-link";
 import { useSavedModel } from "@/lib/use-saved-model";
@@ -98,9 +99,7 @@ export default function StdCapTablePage() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-8">
-      <Link href="/models?tier=standard" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
-        <ArrowLeft className="h-4 w-4" /> Back to Models
-      </Link>
+      <ModelBackLink modelSlug="std-cap-table" label="Back to Models" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors" />
 
       <div className="flex items-start justify-between gap-4 mb-8">
         <div className="flex items-start gap-4">
@@ -227,7 +226,7 @@ export default function StdCapTablePage() {
             <div className="max-w-sm">
               <label className="flex items-center text-xs text-muted-foreground mb-1">Exit Value ($){standardHint("exitValue") && <FieldHint hint={standardHint("exitValue")!} />}</label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">$</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">₹</span>
                 <input type="number" value={exitValue || ""} onChange={(e) => { setExitValue(parseFloat(e.target.value) || 0); markDirty(); }} placeholder="30000000" className="w-full rounded-lg border border-border bg-input pl-7 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50" />
               </div>
             </div>
@@ -300,14 +299,14 @@ export default function StdCapTablePage() {
                 tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
                 grid: { top: 15, right: 15, bottom: 40, left: 55 },
                 xAxis: { type: "category", data: results.shareholders.map(s => s.name), axisLabel: { color: "#888", fontSize: 9, rotate: 20 }, axisLine: { lineStyle: { color: "#333" } } },
-                yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
+                yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => formatChartCurrency(v) }, splitLine: { lineStyle: { color: "#222" } } },
                 series: [{
                   type: "bar", barWidth: 28,
                   data: results.shareholders.map((s, i) => ({
                     value: s.investment,
                     itemStyle: { color: ["#60a5fa", "#34d399", "#f59e0b", "#a78bfa", "#ec4899", "#22d3ee", "#84cc16", "#ef4444"][i % 8], borderRadius: [4, 4, 0, 0] },
                   })),
-                  label: { show: true, position: "top", color: "#aaa", fontSize: 9, formatter: (p: any) => `$${p.value.toLocaleString()}` },
+                  label: { show: true, position: "top", color: "#aaa", fontSize: 9, formatter: (p: any) => formatChartCurrency(p.value) },
                 }],
               }}
             />
@@ -323,14 +322,14 @@ export default function StdCapTablePage() {
                   tooltip: { trigger: "axis", backgroundColor: "#1a1a2e", borderColor: "#333", textStyle: { color: "#e0e0e0", fontSize: 11 } },
                   grid: { top: 15, right: 15, bottom: 40, left: 55 },
                   xAxis: { type: "category", data: results.exit.payouts.map(p => p.name), axisLabel: { color: "#888", fontSize: 9, rotate: 20 }, axisLine: { lineStyle: { color: "#333" } } },
-                  yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}` }, splitLine: { lineStyle: { color: "#222" } } },
+                  yAxis: { type: "value", axisLabel: { color: "#888", fontSize: 10, formatter: (v: number) => formatChartCurrency(v) }, splitLine: { lineStyle: { color: "#222" } } },
                   series: [{
                     type: "bar", barWidth: 28,
                     data: results.exit.payouts.map((p, i) => ({
                       value: p.payout,
                       itemStyle: { color: ["#60a5fa", "#34d399", "#f59e0b", "#a78bfa", "#ec4899", "#22d3ee"][i % 6], borderRadius: [4, 4, 0, 0] },
                     })),
-                    label: { show: true, position: "top", color: "#aaa", fontSize: 9, formatter: (p: any) => `$${(p.value/1000).toFixed(0)}k` },
+                    label: { show: true, position: "top", color: "#aaa", fontSize: 9, formatter: (p: any) => formatChartCurrency(p.value) },
                   }],
                 }}
               />
