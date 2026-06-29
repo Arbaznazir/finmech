@@ -1,3 +1,5 @@
+import { getBackendBaseUrl } from "./backend-url";
+
 function normalizeApiUrl(raw: string): string {
   const trimmed = raw.replace(/\/+$/, "");
   return trimmed.endsWith("/api") ? trimmed : `${trimmed}/api`;
@@ -5,20 +7,13 @@ function normalizeApiUrl(raw: string): string {
 
 /**
  * API base URL for axios/fetch.
- * - Browser: same-origin `/api` (proxied by Next.js to the backend container)
- * - Server (SSR): internal Docker/host URL
+ * - Browser: same-origin `/api` (proxied by Next.js route handler)
+ * - Server (SSR): backend container / localhost in dev
  */
 export function getApiBaseUrl(): string {
   if (typeof window !== "undefined") {
     return "/api";
   }
 
-  const raw =
-    process.env.API_INTERNAL_URL ||
-    process.env.NEXT_PUBLIC_API_URL ||
-    (process.env.NODE_ENV === "development"
-      ? "http://localhost:5001/api"
-      : "http://host.docker.internal:5000/api");
-
-  return normalizeApiUrl(raw);
+  return normalizeApiUrl(`${getBackendBaseUrl()}/api`);
 }

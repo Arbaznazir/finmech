@@ -12,9 +12,7 @@ COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED=1
 ARG NEXT_PUBLIC_API_URL=/api
-ARG API_PROXY_TARGET=http://host.docker.internal:5000
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
-ENV API_PROXY_TARGET=${API_PROXY_TARGET}
 RUN npm run build
 
 # ── Stage 3: Production runner ──
@@ -25,7 +23,7 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
-ENV API_INTERNAL_URL=http://host.docker.internal:5000
+ENV API_INTERNAL_URL=http://finmech-api:5000
 
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs

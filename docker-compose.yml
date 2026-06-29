@@ -36,12 +36,11 @@ services:
       dockerfile: Dockerfile
       args:
         - NEXT_PUBLIC_API_URL=/api
-        - API_PROXY_TARGET=http://backend:5000
     container_name: finmech-web
     ports:
       - "3000:3000"
     environment:
-      - API_INTERNAL_URL=http://backend:5000
+      - API_INTERNAL_URL=http://finmech-api:5000
     depends_on:
       - backend
     restart: unless-stopped

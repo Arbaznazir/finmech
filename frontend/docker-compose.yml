@@ -4,14 +4,17 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        # Browser calls /api on the same host; Next proxies to API_INTERNAL_URL
         - NEXT_PUBLIC_API_URL=/api
-        - API_PROXY_TARGET=${API_INTERNAL_URL:-http://host.docker.internal:5000}
     container_name: finmech-web
     ports:
       - "3000:3000"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     environment:
-      - API_INTERNAL_URL=${API_INTERNAL_URL:-http://host.docker.internal:5000}
+      - API_INTERNAL_URL=${API_INTERNAL_URL:-http://finmech-api:5000}
+    networks:
+      - finmech-net
     restart: unless-stopped
+
+networks:
+  finmech-net:
+    external: true
+    name: finmech-net
