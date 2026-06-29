@@ -1,6 +1,7 @@
 "use client";
 
 import { create } from "zustand";
+import { getApiBaseUrl } from "./api-config";
 
 export interface User {
   id: string;
@@ -42,7 +43,7 @@ export const useAuth = create<AuthState>((set) => ({
 
         // Refresh user data from backend to pick up plan changes
         fetch(
-          `${process.env.NEXT_PUBLIC_API_URL || "https://api.finmech.co/api"}/auth/me`,
+          `${getApiBaseUrl()}/auth/me`,
           { headers: { Authorization: `Bearer ${token}` } }
         )
           .then((r) => (r.ok ? r.json() : Promise.reject()))

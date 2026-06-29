@@ -33,22 +33,70 @@ for (const model of REQUIRED_PRISMA_MODELS) {
 
 const app = express();
 
+const STATIC_CORS_ORIGINS = [
+  process.env.FRONTEND_URL || 'http://localhost:3000',
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+  'http://localhost:3001',
+  'http://127.0.0.1:3001',
+  'http://localhost:3002',
+  'http://127.0.0.1:3002',
+  'https://finmech.co',
+  'https://www.finmech.co',
+];
+
+function isAllowedCorsOrigin(origin) {
+  if (!origin) return true;
+  if (STATIC_CORS_ORIGINS.includes(origin)) return true;
+  if (process.env.CORS_ORIGINS) {
+    const extra = process.env.CORS_ORIGINS.split(',').map((s) => s.trim()).filter(Boolean);
+    if (extra.includes(origin)) return true;
+  }
+  try {
+    const { port } = new URL(origin);
+    // Same EC2: frontend container is always published on 3000
+    if (port === '3000') return true;
+  } catch {
+    return false;
+  }
+  return false;
+}
+
 app.use(cors({
-  origin: [
-    process.env.FRONTEND_URL || 'http://localhost:3000',
-    'http://localhost:3000',
-    'http://127.0.0.1:3000',
-    'http://localhost:3001',
-    'http://127.0.0.1:3001',
-    'http://localhost:3002',
-    'http://127.0.0.1:3002',
-    'https://finmech.co',
-    'https://www.finmech.co',
-  ],
+  origin: (origin, callback) => {
+    callback(null, isAllowedCorsOrigin(origin));
+  },
   credentials: true,
 }));
 app.use(helmet());
 app.use(morgan('dev'));
+
+// Some deployments proxy /auth/* instead of /api/auth/* — accept both.
+app.use((req, _res, next) => {
+  const path = req.url.split('?')[0];
+  if (path === '/api' || path.startsWith('/api/')) {
+    return next();
+  }
+  const API_ROOTS = [
+    '/auth',
+    '/models',
+    '/calculations',
+    '/user',
+    '/saved-models',
+    '/payments',
+    '/admin',
+    '/pricing',
+    '/model-hints',
+    '/tier-hints',
+    '/faqs',
+    '/smart-result-points',
+    '/health',
+  ];
+  if (API_ROOTS.some((root) => path === root || path.startsWith(`${root}/`))) {
+    req.url = `/api${req.url}`;
+  }
+  next();
+});
 
 // Razorpay webhook requires raw body for HMAC signature verification
 app.post(

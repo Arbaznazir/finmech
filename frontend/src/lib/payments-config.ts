@@ -1,3 +1,5 @@
+import { getApiBaseUrl } from "./api-config";
+
 export interface PaymentsConfig {
   paymentsEnabled: boolean;
   configured: boolean;
@@ -12,8 +14,7 @@ let cachedConfig: PaymentsConfig | null = null;
 export async function fetchPaymentsConfig(): Promise<PaymentsConfig> {
   if (cachedConfig) return cachedConfig;
 
-  const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
-  const res = await fetch(`${base}/payments/config`, { cache: "no-store" });
+  const res = await fetch(`${getApiBaseUrl()}/payments/config`, { cache: "no-store" });
   if (!res.ok) {
     return {
       paymentsEnabled: false,

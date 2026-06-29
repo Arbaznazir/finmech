@@ -1,0 +1,50 @@
+# Run both containers on the same EC2 with one command:
+#   docker compose up -d --build
+#
+# Open http://<EC2_PUBLIC_IP>:3000 — API is proxied via /api (no port 5000 needed in browser).
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: finmech-api
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - NODE_ENV=production
+      - DATABASE_URL=${DATABASE_URL}
+      - JWT_SECRET=${JWT_SECRET}
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
+      - RAZORPAY_KEY_ID=${RAZORPAY_KEY_ID:-}
+      - RAZORPAY_KEY_SECRET=${RAZORPAY_KEY_SECRET:-}
+      - RAZORPAY_WEBHOOK_SECRET=${RAZORPAY_WEBHOOK_SECRET:-}
+      - RAZORPAY_COMPANY_NAME=${RAZORPAY_COMPANY_NAME:-FinMech}
+    volumes:
+      - backend-data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:5000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=/api
+        - API_PROXY_TARGET=http://backend:5000
+    container_name: finmech-web
+    ports:
+      - "3000:3000"
+    environment:
+      - API_INTERNAL_URL=http://backend:5000
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  backend-data:
