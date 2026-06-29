@@ -32,7 +32,7 @@ import {
 
 type TabView = "input" | "monthly" | "insights" | "status";
 
-function fmtVal(key: string, value: number | string | undefined): string {
+function fmtVal(key: string, value: number | string | null | undefined): string {
   if (value === undefined || value === null) return "—";
   if (key === "CLASSIFICATION") return String(value);
   if (typeof value === "string") return value;

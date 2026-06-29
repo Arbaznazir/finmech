@@ -87,7 +87,7 @@ function getRAG(metrics: {
   const marginSafetyStatus = excelViabilityRag(marginOfSafetyPct);
 
   // Generate comprehensive insights
-  const insights = generateInsights(metrics, {
+  const insights = generateInsights({
     contributionStatus,
     netProfitStatus,
     breakevenStatus,
@@ -104,12 +104,6 @@ function getRAG(metrics: {
 }
 
 function generateInsights(
-  metrics: {
-    contributionMarginPct: number;
-    netProfitLoss: number;
-    breakEvenUtilisationPct: number;
-    marginOfSafetyPct: number;
-  },
   status: {
     contributionStatus: RAGStatus;
     netProfitStatus: RAGStatus;

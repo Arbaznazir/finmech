@@ -143,7 +143,7 @@ export function AdminPricingPanel() {
                   <ModelPriceEditor
                     key={mp.modelSlug}
                     model={mp}
-                    includes={product.includes}
+                    includes={"includes" in product ? product.includes : undefined}
                     saving={saving === mp.modelSlug}
                     onSave={(draft) => saveModel(mp.modelSlug, draft)}
                   />

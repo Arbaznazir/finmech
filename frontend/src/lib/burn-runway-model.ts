@@ -70,7 +70,12 @@ export function createEmptyInputs(): BurnMonthInputs {
   };
 }
 
-export interface ComputedBurnMonth extends BurnMonthInputs {
+export interface ComputedBurnMonth {
+  [key: string]: number | string | null;
+  "Fixed Expenses": number;
+  "Variable Expenses": number;
+  "Recurring Revenue": number;
+  "Miscll. revenue": number;
   "Total Expenses": number;
   "Total Revenue": number;
   "Net Profit/Loss": number;
@@ -167,7 +172,7 @@ export function calculateBurnRunway(
   MONTHS_ORDER.forEach((month) => {
     if (!normalized[month]) return;
 
-    const m = { ...normalized[month] } as Record<string, number | string>;
+    const m = { ...normalized[month] } as Record<string, number | string | null>;
     addedMonths.push(month);
 
     // Core calculations

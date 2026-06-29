@@ -213,7 +213,7 @@ export function calculateUnitEconomics(
   const computed: Record<string, ComputedUEMonth> = {};
   const addedMonths: string[] = [];
   let prevCustomers = 0;
-  let prevArpu = UE_ASSUMPTIONS.baselineArpu;
+  let prevArpu: number = UE_ASSUMPTIONS.baselineArpu;
   let prevTotalCustomers = 0;
   let isFirstMonth = true;
 

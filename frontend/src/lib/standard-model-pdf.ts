@@ -207,9 +207,9 @@ function analyzeStdBurnRunway(out: Record<string, unknown>, inp: Record<string, 
     section("Complete Results Breakdown", results, STANDARD_ACCENT) +
     section("Deep Dive", `<ul style="margin:0;padding-left:18px">${(ins?.guidance ?? []).map(bullet).join("") || bullet("Revenue and costs auto-sync from Common Utility.")}</ul>`, STANDARD_ACCENT) +
     section("Scenario Analysis", scenarioTable(["Scenario", "Runway"], [
-      ["Base", `${runway.toFixed(1)} mo`],
+      ["Base", runwayInfinite ? "∞" : `${runway!.toFixed(1)} mo`],
       ["Burn −20%", netBurn > 0 ? `${(cumCash / (netBurn * 0.8)).toFixed(1)} mo` : "∞"],
-      ["Bridge (+3 mo burn)", `${(runway + 3).toFixed(1)} mo`],
+      ["Bridge (+3 mo burn)", runwayInfinite ? "∞" : `${(runway! + 3).toFixed(1)} mo`],
     ], STANDARD_ACCENT), STANDARD_ACCENT) +
     section("Risk Flags", risks.length ? `<ul style="margin:0;padding-left:18px">${risks.map(bullet).join("")}</ul>` : callout("ok", "Adequate runway", "Continue monthly monitoring."), STANDARD_ACCENT) +
     standardRoadmap({

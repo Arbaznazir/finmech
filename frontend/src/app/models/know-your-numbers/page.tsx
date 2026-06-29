@@ -7,6 +7,7 @@ import { ModelBackLink } from "@/components/model-back-link";
 import { ArrowLeft, BarChart3, Save, RotateCcw, CheckCircle, AlertTriangle, XCircle } from "lucide-react";
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 import { useAuth } from "@/lib/store";
+import api from "@/lib/api";
 import { checklistStatusToRag, ragCardClasses, ragTextClass } from "@/lib/utils";
 import { useSavedModel } from "@/lib/use-saved-model";
 import { offerSmartResultsAfterCalculate } from "@/lib/smart-results";
